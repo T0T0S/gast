@@ -1,0 +1,21 @@
+{
+	"tileSize": [64,32],
+	"tileTypes":{
+		"tile":{
+			"image":"tile.png"
+
+		}
+	},
+	"mapsData":{
+		"testMapZig":{
+			"tiles":[
+				"tile.png",
+				"tile2.png"
+			]
+		}
+	},
+	"camera":{
+		"sensitivity": 1,
+		"minimumMovement": 25
+	}
+}
