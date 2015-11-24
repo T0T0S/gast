@@ -22,7 +22,8 @@ class StateManager{
 	private var skipNextLateUpdate:Bool = false;
 	private var firstLoop:Bool = true;
 	
-	public var debugActiveState:Text = new Text("", { "fill":"white", "font":"30px Calibri" } );
+	public var debugActiveState:Text = new Text("Init", { "fill":"white", "font":"30px gastFont" } );
+	public var fpsCounter:Text = new Text("1", { "fill":"white", "font":"16px gastFont" } );
 	
 	/**
 	 * Classe de gestion des états,
@@ -42,6 +43,10 @@ class StateManager{
 		debugActiveState.x = 10;
 		debugActiveState.y = Main.getInstance().renderer.height - 30;
 		
+		fpsCounter.x = Main.getInstance().renderer.width - 50;
+		fpsCounter.y = Main.getInstance().renderer.height - 30;
+		Main.getInstance().debugCont.addChild(fpsCounter);
+		
 		switchToState(activeState);
 	}
 	
@@ -54,6 +59,8 @@ class StateManager{
 			statesArray[activeState].switchState();
 		firstLoop = false;
 		DrawManager.switchState();
+		Main.mapManager.switchState();
+		Main.characterManager.switchState();
 		Camera.getInstance().switchState();
 		activeState = newState;
 		activatedState = statesArray[activeState];
@@ -77,6 +84,9 @@ class StateManager{
 		if(!skipNextLateUpdate)
 			statesArray[activeState].LateUpdate();
 		skipNextLateUpdate = false;
+		
+		
+		fpsCounter.text = "["+TimeManager.FPS+"]";
 	}
 	
 	public static function getInstance():StateManager {

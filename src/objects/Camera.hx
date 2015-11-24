@@ -1,6 +1,7 @@
 package objects;
 import js.Browser;
 import managers.InitManager;
+import managers.MapManager;
 import pixi.core.math.shapes.Rectangle;
 import utils.Misc;
 
@@ -28,7 +29,7 @@ class Camera{
 	public var hasMovedEnough:Bool = false;
 	private var configTileSize:Array<Int>;
 	
-	public var gameSize:Rectangle;
+	public var mapSize:Rectangle;
 	
 	
 	/*
@@ -44,12 +45,11 @@ class Camera{
 		Browser.window.addEventListener("resize", getContainerBounds);		
 		getContainerBounds();
 		
-		gameSize = Main.getInstance().fullStage.getBounds();
+		mapSize = Main.getInstance().fullStage.getBounds();
 	}
 
 	private function mouseDownListener(e):Void {
 		clicked = true;
-
 		mouseDownPosition = [e.layerX, e.layerY];
 		oldCameraPosition = offset;
 	}
@@ -60,27 +60,22 @@ class Camera{
  * 3 - change l'offset de la caméra pour "suivre la souris" et clamp les valeurs pour qu'elle reste sur le terrain
  * */
 	private function mouseMoveListener (e):Void {
+		if(!MapManager.getInstance().activeMap.scrollable)
+			return;
 		if (!clicked)
 			return;
 		if (hasMovedEnough == false && Math.abs(mouseDownPosition[0] - e.layerX) < minimumMovement && Math.abs(mouseDownPosition[1] - e.layerY) < minimumMovement)
 			return;
+		else if(!hasMovedEnough){
+			mouseDownPosition[0] = e.layerX;
+			mouseDownPosition[1] = e.layerY;
+		}
 		hasMovedEnough = true;
-		offset = [oldCameraPosition[0] - (mouseDownPosition[0] - e.layerX) * dragSensitivity, oldCameraPosition[1] - (mouseDownPosition[1] - e.layerY)*dragSensitivity];
 		
-		if(gameSize.width > size[0])
-			offset[0] = Misc.clamp(offset[0],0,(gameSize.width - size[0]));
-		if(gameSize.height > size[1])
-			offset[1] = Misc.clamp(offset[1], 0, (gameSize.height - size[1]));
-			
-		if (gameSize.width > size[0] && gameSize.height > size[1])
-			offset = [0,0];
-		trace(offset);
+		offset = [oldCameraPosition[0] - (e.layerX - mouseDownPosition[0]) * dragSensitivity, oldCameraPosition[1] - (e.layerY - mouseDownPosition[1])*dragSensitivity];
 		
-		
-		/*
-		 * FAIRE LE SCROLL DE CAM ET GRANDE MAP POUR CHECKER 
-		 * COMMENCER LE PLAYER
-		 * */
+		offset[0] = Misc.clamp(offset[0],0,Math.max(mapSize.width - size[0],0));
+		offset[1] = Misc.clamp(offset[1],0,Math.max(mapSize.height - size[1],0));
 		
 		translateOffsetToConts();
 	}
@@ -96,22 +91,23 @@ class Camera{
 	}
 	
 	public function translateOffsetToConts():Void {
-		Main.getInstance().tileCont.x = offset[0];
-		Main.getInstance().tileCont.y = offset[1];
-		Main.getInstance().gameCont.x = offset[0];
-		Main.getInstance().gameCont.y = offset[1];
+		Main.getInstance().tileCont.x = -offset[0];
+		Main.getInstance().tileCont.y = -offset[1];
+		Main.getInstance().gameCont.x = -offset[0];
+		Main.getInstance().gameCont.y = -offset[1];
 	}
 	
 	public function getContainerBounds (?e):Void {
 		size = [Main.getInstance().renderer.width, Main.getInstance().renderer.height];
 	}
 	
-	public function Update():Void{
-		gameSize = Main.getInstance().fullStage.getBounds();
-	};
+	public function updateMapSize(newMap:GameMap):Void{
+		mapSize.width = newMap.graphicalData.length * InitManager.data.config.tileSize[0];
+		mapSize.height = newMap.graphicalData[0].length * InitManager.data.config.tileSize[1] * 0.5;
+	}
 	
 	public function switchState ():Void {
-		offset = [0, 0];
+		setCameraPosition([0,0]);
 	}
 		
 	public static function getInstance (): Camera {

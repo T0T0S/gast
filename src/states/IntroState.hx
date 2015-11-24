@@ -33,7 +33,8 @@ class IntroState extends State{
 
 		loadJson.set("tileSpriteSheet", "assets/spriteSheets/mapSpriteSheet.json");
 		loadJson.set("tileSh2", "assets/spriteSheets/loadSpriteSheet.json");
-		loadImage.set("tileSpriteSheet", "assets/misc/tilehover.png");
+		loadJson.set("buttons", "assets/spriteSheets/buttonSpriteSheet.json");
+		loadJson.set("hero", "assets/spriteSheets/heroSpriteSheet.json");
 		
 		
 		Main.getInstance().hudCont.addChild(loadingRecangle);

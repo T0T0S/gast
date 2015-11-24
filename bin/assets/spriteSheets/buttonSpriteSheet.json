@@ -1,0 +1,39 @@
+{"frames": {
+
+"baseButton_down.png":
+{
+	"frame": {"x":0,"y":0,"w":520,"h":229},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":520,"h":229},
+	"sourceSize": {"w":520,"h":229},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"baseButton_hover.png":
+{
+	"frame": {"x":520,"y":0,"w":520,"h":229},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":520,"h":229},
+	"sourceSize": {"w":520,"h":229},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"baseButton_idle.png":
+{
+	"frame": {"x":1040,"y":0,"w":520,"h":229},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":520,"h":229},
+	"sourceSize": {"w":520,"h":229},
+	"pivot": {"x":0.5,"y":0.5}
+}},
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "buttonSpriteSheet.png",
+	"format": "RGBA8888",
+	"size": {"w":1560,"h":229},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:603edb8e6613e6c51d15e0982406cdbd:c046a24e4ccf8d1e704beda9e41b5469:1b643566a68635c4fca9a34290a7fc18$"
+}
+}

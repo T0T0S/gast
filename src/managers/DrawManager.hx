@@ -49,7 +49,7 @@ class DrawManager
 		}
 	}
 	
-	public static function removeFromDisplay (element:Sprite):Void {
+	public static function removeFromDisplay (element:DisplayObject):Void {
 		Main.getInstance().tileCont.removeChild(element);		
 		Main.getInstance().gameCont.removeChild(element);
 		Main.getInstance().hudCont.removeChild(element);

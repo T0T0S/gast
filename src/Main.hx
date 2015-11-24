@@ -2,19 +2,19 @@ package ;
 
 import js.Browser;
 import js.html.Event;
+import js.html.Font;
+import managers.CharacterManager;
 import managers.DrawManager;
 import managers.InitManager;
 import managers.MapManager;
 import managers.MouseManager;
 import managers.StateManager;
+import managers.TimeManager;
 import objects.Camera;
 import pixi.core.display.Container;
-import pixi.core.display.DisplayObject;
 import pixi.core.graphics.Graphics;
-import pixi.core.particles.ParticleContainer;
 import pixi.core.renderers.Detector;
 import pixi.core.renderers.webgl.WebGLRenderer;
-import pixi.interaction.InteractionManager;
 
 //import managers.ZoomManager;
 
@@ -32,6 +32,8 @@ class Main
 	public static var mouseManager:MouseManager;	
 	public static var stateManager:StateManager;
 	public static var mapManager:MapManager;
+	public static var timeManager:TimeManager;
+	public static var characterManager:CharacterManager;
 	public static var camera:Camera;
 	
 	public var renderer:WebGLRenderer;
@@ -52,8 +54,8 @@ class Main
 	}
 	
 	private function new () {
-		renderer = Detector.autoDetectRenderer(1280, 720);
-		
+		renderer = Detector.autoDetectRenderer(1280, 720, {});
+		renderer.backgroundColor = 0x171824;
 		renderMask.beginFill();
 		renderMask.drawRect(0, 0, renderer.width, renderer.height);
 		renderMask.endFill();
@@ -62,7 +64,7 @@ class Main
 		
 		gameCont.interactive = true;
 		hudCont.interactive = true;
-		
+
 		fullStage.mask = renderMask;
 		Reflect.setField(tileCont, "isoSort", true);
 		Reflect.setField(gameCont, "isoSort", true);
@@ -98,12 +100,18 @@ class Main
 		drawManager = DrawManager.getInstance();
 		mouseManager = MouseManager.getInstance();
 		camera = Camera.getInstance();
-		stateManager = StateManager.getInstance();
 		mapManager = MapManager.getInstance();
+		characterManager = CharacterManager.getInstance();
+		timeManager = TimeManager.getInstance();
 		
+		stateManager = StateManager.getInstance();
 		Browser.window.addEventListener("resize", resize);
 
-		Browser.window.requestAnimationFrame(cast Update);
+		
+		var font = new Font();
+		font.onload = function() { Browser.window.requestAnimationFrame(cast Update); };
+		font.fontFamily = "gastFont";
+		font.src = "assets/fonts/CharlemagneStd-Bold.otf";
 		
 	}
 	
@@ -113,12 +121,14 @@ class Main
 	
 	public function Update() {
 		Browser.window.requestAnimationFrame(cast Update);
+		timeManager.Update();
 		mouseUpdate();
+		characterManager.update();
 		stateManager.Update();
 	}
 	
 	public function Render():Void {
-		drawManager.isometricSort(tileCont);
+		drawManager.isometricSort(MapManager.getInstance().activeMap.mapContainer);
 		drawManager.isometricSort(gameCont);
 		renderer.render(fullStage);
 	}

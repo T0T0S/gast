@@ -21,8 +21,8 @@ class State{
 	private var StateLoaded:Bool = false;
 	public var name:String = "default";
 	public var canPlaceBuildings:Bool = false;
-	public var LoadingText:Text = new Text("", { "fill":"white", "font":"30px Charlemagne" } );
-	public var ButtonText:Text = new Text("", { "fill":"black", "font":"30px Charlemagne" } );
+	public var LoadingText:Text = new Text("", { "fill":"white", "font":"30px gastFont" } );
+	public var ButtonText:Text = new Text("", { "fill":"black", "font":"30px gastFont" } );
 	/**
 	 * le tableau de nom d'asset a loader:
 	 * pusher les assets en faisant: elementsToLoad.push("assets/decor/cadre.png");

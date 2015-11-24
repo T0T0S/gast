@@ -3,6 +3,7 @@ import js.Browser;
 import js.Error;
 import managers.DrawManager;
 import managers.InitManager;
+import pixi.core.display.Container;
 import pixi.core.particles.ParticleContainer;
 import pixi.core.sprites.Sprite;
 
@@ -21,28 +22,26 @@ class GameMap{
 	public var OffsetX:Float = 0;
 	public var OffsetY:Float = 0;
 	
-	public var mapContainer:ParticleContainer = new ParticleContainer();
+	public var mapContainer:Container = new Container();
 	
-	public var associatedTiles:Array<String>;
+	public var scrollable:Bool = false;
 	
-	public function new(datas:Dynamic, mapName:String) {
+	public function new(datas:Dynamic = null, mapName:String = null) {
+		if (datas == null)
+			return;
 		name = mapName;
-		json = InitManager.data[untyped name];
+		json = InitManager.data.config.mapsData[untyped name];
+		
 		OffsetY = InitManager.data.config.tileSize[1] * 0.5;
 		
 		mapContainer.y = OffsetY;
 		mapContainer.x = OffsetX;
 		
-		
-		associatedTiles = InitManager.data.config.mapsData[untyped name].tiles;
-		if (associatedTiles == null)
-			throw new Error("[ERROR] No tileData defined in config for: "+name);
-		
-		associatedTiles.unshift(null);
-
-		
 		if (json == null)
 			Browser.window.console.warn("%c[WARNING] no data json found for map '" + mapName+"' ", "color:red;");
+		json.tiles.unshift(null);
+		json.tilesPriority.unshift(null);
+		
 		setMapData(datas.graphics, datas.collisions);
 	}
 	
@@ -51,8 +50,8 @@ class GameMap{
 		collisionData = newCollisionData;
 	}
 	
-	public function addTileToMap(tile:Sprite):Void{
-		DrawManager.addToDisplay(tile,mapContainer);
+	public function addTileToMap(tile:Sprite,layer:Int):Void{
+		DrawManager.addToDisplay(tile,mapContainer,layer);
 	}
 	
 	public function displayMap():Void{
@@ -62,16 +61,19 @@ class GameMap{
 		mapContainer.visible = true;
 	}
 	
-	public function getTileAt(tilePosition:Array<Int>):String{
-		return associatedTiles[graphicalData[tilePosition[0]][tilePosition[1]]];
-	}
-	
-	public function getColliAt(tilePosition:Array<Int>):Bool{
-		return collisionData[tilePosition[0]][tilePosition[1]] != 0;
-	}
-	
-	public function hideMap():Void {
+	public function hideMap(remove:Bool = false):Void {
 		mapContainer.visible = false;
+		if (remove)
+			DrawManager.removeFromDisplay(mapContainer);
 	}
+
+	public function getTileAt(tilePosistion:Array<Int>):String{
+		return json.tiles[graphicalData[tilePosistion[0]][tilePosistion[1]]];
+	}
+	
+	public function getColliAt(tilePosistion:Array<Int>):Bool{
+		return collisionData[tilePosistion[0]][tilePosistion[1]] != 0;
+	}
+	
 	
 }

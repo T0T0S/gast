@@ -46,7 +46,7 @@ class Misc {
 		var configTileSize:Array<Int> = InitManager.data.config.tileSize;
 		var returnPosition:Array<Float> = [];
 		returnPosition[0] = tilePosition[0] * configTileSize[0] -1;		
-		if (tilePosition[1] % 2 == 1)
+		if (Math.abs(tilePosition[1] % 2) == 1)
 			returnPosition[0] += configTileSize[0] * 0.5;		
 		returnPosition[1] = tilePosition[1] * configTileSize[1] * 0.5 -1;
 		return cast returnPosition;

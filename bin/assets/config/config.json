@@ -10,7 +10,13 @@
 		"testMapZig":{
 			"tiles":[
 				"tile.png",
-				"tile2.png"
+				"tile2.png",
+				"tile4.png"
+			],
+			"tilesPriority":[
+				0,
+				0,
+				2
 			]
 		}
 	},

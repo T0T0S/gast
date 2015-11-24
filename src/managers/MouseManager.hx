@@ -42,23 +42,25 @@ class MouseManager{
 		
 		++calledPerFrame;
 		
-		var clicPoint:Array<Float> = [e.layerX - Main.camera.offset[0], e.layerY -  Main.camera.offset[1]];
+		var clicPoint:Array<Float> = [e.layerX + Main.camera.offset[0], e.layerY + Main.camera.offset[1]];
 		Reflect.setField(gamehover,"layerX",e.layerX);
 		Reflect.setField(gamehover,"layerY",e.layerY);
 		Reflect.setField(gamehover,"tilePos",convertClicToTilePosition(clicPoint[0],clicPoint[1]));
+		Reflect.setField(gamehover,"gamePos",clicPoint);
 		
 		Browser.window.dispatchEvent(gamehover);
 	}
 
 	public function mouseUp (e:Event):Void {
 		var event = gameMouseUp;
-		var clicPoint:Array<Float> = [untyped e.layerX - Main.camera.offset[0], untyped e.layerY -  Main.camera.offset[1]];
-		
+		var clicPoint:Array<Float> = [untyped e.layerX + Main.camera.offset[0], untyped e.layerY + Main.camera.offset[1]];
+
 		Reflect.setField(event,"layerX",untyped e.layerX);
 		Reflect.setField(event,"layerY",untyped e.layerY);
 		Reflect.setField(event,"tilePos",convertClicToTilePosition(clicPoint[0],clicPoint[1]));
+		Reflect.setField(event,"gamePos",clicPoint);
 
-		createLilCubes([convertClicToTilePosition(clicPoint[0], clicPoint[1])]);
+		//createLilCubes([convertClicToTilePosition(clicPoint[0], clicPoint[1])]);
 		
 		//var contChildren:Array<Sprite>;
 		//var conts:Array<Container> = cast Main.getInstance().fullStage.children;
@@ -95,27 +97,14 @@ class MouseManager{
 	
 	public function mouseDown (e:Event):Void {
 		var event = gameMouseDown;
-		var clicPoint:Array<Float> = [untyped e.layerX - Main.camera.offset[0], untyped e.layerY -  Main.camera.offset[1]];
-		
+		var clicPoint:Array<Float> = [untyped e.layerX + Main.camera.offset[0], untyped e.layerY + Main.camera.offset[1]];
 		Reflect.setField(event,"layerX",untyped e.layerX);
 		Reflect.setField(event,"layerY",untyped e.layerY);
 		Reflect.setField(event,"tilePos",convertClicToTilePosition(clicPoint[0],clicPoint[1]));
-
-		//createLilCubes([convertClicToTilePosition(clicPoint[0], clicPoint[1])]);
-		//createNewTile(cast Misc.convertToAbsolutePosition(cast convertClicToTilePosition(clicPoint[0],clicPoint[1])));
+		Reflect.setField(event,"gamePos",clicPoint);
 		
 		Browser.window.dispatchEvent(event);
 	}
-	
-	private function createNewTile(pos:Array<Float>):Sprite{
-		var tileSprite = new Sprite(Texture.fromImage("tilehover.png"));
-		tileSprite.x = pos[0];
-		tileSprite.y = pos[1] + InitManager.data.config.tileSize[1] * 0.5;
-		tileSprite.anchor.set(0.5, 1);
-		Main.getInstance().debugCont.addChild(tileSprite);
-		return tileSprite;
-	}
-	
 	
 	// fonction de detection de tile clické, c'est sure a 99% qu'il y a plus simple mais ça passe et ça consomme pas trop vu que ya que des calculs simples.
 	public static function convertClicToTilePosition(absoluteX:Float,absoluteY:Float):Array<Float> {
@@ -138,6 +127,8 @@ class MouseManager{
 		return SelectedPos;
 	}
 	
+	
+	// A REFAIRE !
 	public static function getSquareTileAbove(posClicked:Array<Int>,size:Array<Int>):Array<Array<Int>> {
 		var ArrayOfPos:Array<Array<Int>> = [];
 		var height:Int = (size[0]-1) * 2;		
@@ -178,8 +169,8 @@ class MouseManager{
 		var iter:IntIterator = new IntIterator(0,position.length);
 		var tileSize = InitManager.data.config.tileSize;
 		for (i in iter) {
-			var displayX:Float = position[i][0] * tileSize[0] -1 + Main.camera.offset[0];
-			var displayY:Float = position[i][1] * tileSize[1] / 2 -1 + Main.camera.offset[1];
+			var displayX:Float = position[i][0] * tileSize[0] -1;
+			var displayY:Float = position[i][1] * tileSize[1] / 2 -1;
 			if (Math.abs(position[i][1] % 2) == 1)
 				displayX += tileSize[0] * 0.5;
 			displayY += tileSize[1] * 0.5;
@@ -187,11 +178,13 @@ class MouseManager{
 			var specialColor = color != null ? color: 0x00FF00;
 			redPoint.lineStyle(1, specialColor);
 			redPoint.beginFill(0xFF0000);
-			redPoint.drawRect(displayX -1,displayY - 1, 3, 3);
+			redPoint.drawRect(-1, - 1, 3, 3);
 			redPoint.endFill();
+			redPoint.y = displayY - 1;
+			redPoint.x = displayX - 1;
 			//Main.getInstance().tileCont.addChild(redPoint);
 			//Main.getInstance().tileCont.setChildIndex(redPoint,Main.getInstance().tileCont.children.length-1);
-			DrawManager.addToDisplay(redPoint,Main.getInstance().debugCont);
+			DrawManager.addToDisplay(redPoint,Main.getInstance().tileCont,100);
 		}
 	}
 	

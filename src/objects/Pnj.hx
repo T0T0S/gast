@@ -4,11 +4,10 @@ package objects;
  * ...
  * @author ToTos
  */
-class Player extends Character{
+class Pnj extends Character{
 
 	public function new() {
 		super();
-		
 	}
 	
 }

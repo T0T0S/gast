@@ -26,7 +26,7 @@ typedef Config = {
 class InitManager
 {
 	private static var instance: InitManager;
-	private static inline var CONFIG_PATH:String = "config.json";
+	private static inline var CONFIG_PATH:String = "assets/config/";
 	private static inline var ASSETS_PATH:String = "assets/";
 
 	public static var data:Dynamic;
@@ -34,7 +34,8 @@ class InitManager
 	public function new() 
 	{
 		var lConfig:Loader = new Loader();
-		lConfig.add("config", CONFIG_PATH);
+		lConfig.add("config", CONFIG_PATH + "config.json");
+		lConfig.add("hero_animations", "assets/animations/" + "hero.json");
 		
 		
 		/* maps */

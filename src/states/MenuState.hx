@@ -5,6 +5,7 @@ import js.Browser;
 import managers.DrawManager;
 import managers.MapManager;
 import managers.StateManager;
+import objects.Button;
 import objects.State;
 import pixi.core.sprites.Sprite;
 import pixi.core.math.shapes.Rectangle;
@@ -19,8 +20,7 @@ import utils.DeviceCapabilities;
  */
 class MenuState extends State{
 	
-	private var fond:Sprite;
-	private var sprite:Sprite;
+	private var playButton:Button;
 
 	public function new() {
 		super("Menu");
@@ -30,10 +30,14 @@ class MenuState extends State{
 	}
 	
 	public override function Start():Void {
-		sprite = new Sprite(Texture.fromImage("tile2.png"));
-		sprite.interactive = true;
-		sprite.on("mouseup", clickHandler);
-		DrawManager.addToDisplay(sprite, Main.getInstance().gameCont);
+		playButton = new Button("baseButton");
+		playButton.onUp(clickHandler);
+		playButton.x = Main.getInstance().renderer.width * 0.5;
+		playButton.y = Main.getInstance().renderer.height * 0.6;
+		playButton.scale.set(0.5, 0.5);
+		
+		playButton.setText("PLAY");
+		DrawManager.addToDisplay(playButton, Main.getInstance().hudCont);
 		
 	}
 	
