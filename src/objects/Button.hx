@@ -27,6 +27,9 @@ class Button extends MovieClip {
 		super(arrayTextures);
 		
 		interactive = true;
+		buttonMode = true;
+		defaultCursor = "pointer";
+		
 		anchor.set(0.5,0.5);
 		
 		arrayCallbacks.down 	= function():Void { };

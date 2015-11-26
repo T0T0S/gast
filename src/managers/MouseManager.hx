@@ -59,6 +59,7 @@ class MouseManager{
 		Reflect.setField(event,"layerY",untyped e.layerY);
 		Reflect.setField(event,"tilePos",convertClicToTilePosition(clicPoint[0],clicPoint[1]));
 		Reflect.setField(event,"gamePos",clicPoint);
+		Reflect.setField(event,"drag",Camera.getInstance().hasMovedEnough);
 
 		//createLilCubes([convertClicToTilePosition(clicPoint[0], clicPoint[1])]);
 		
@@ -152,7 +153,7 @@ class MouseManager{
 		centerPosition[1] += size[1];
 		var dx:Float;
 		var dy:Float;
-		var centerAbsolutePos:Array<Int> = Misc.convertToAbsolutePosition(cast centerPosition);
+		var centerAbsolutePos:Array<Float> = Misc.convertToAbsolutePosition(cast centerPosition);
 		for (i in GridAround.iterator()) {
 			var absolutePosPoint = Misc.convertToAbsolutePosition(i);
 			dx = (centerAbsolutePos[0] - absolutePosPoint[0]) / tileSize[0];

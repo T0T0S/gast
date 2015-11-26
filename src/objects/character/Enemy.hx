@@ -1,4 +1,5 @@
-package objects;
+package objects.character;
+import objects.character.Character;
 
 /**
  * ...

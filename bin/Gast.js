@@ -67,7 +67,12 @@ var Main = function() {
 	this.gameCont = new PIXI.Container();
 	this.tileCont = new PIXI.Container();
 	this.fullStage = new PIXI.Container();
-	this.Init = managers.InitManager.getInstance();
+	var font = new Font();
+	font.onload = function() {
+		window.requestAnimationFrame(managers.InitManager.getInstance);
+	};
+	font.fontFamily = "gastFont";
+	font.src = "assets/fonts/CharlemagneStd-Bold.otf";
 	this.renderer = PIXI.autoDetectRenderer(1280,720,{ });
 	this.renderer.backgroundColor = 1513508;
 	this.renderMask.beginFill();
@@ -100,27 +105,21 @@ Main.getInstance = function() {
 };
 Main.prototype = {
 	Start: function() {
-		var _g = this;
 		Main.drawManager = managers.DrawManager.getInstance();
+		Main.timeManager = managers.TimeManager.getInstance();
 		Main.mouseManager = managers.MouseManager.getInstance();
 		Main.camera = objects.Camera.getInstance();
 		Main.mapManager = managers.MapManager.getInstance();
 		Main.characterManager = managers.CharacterManager.getInstance();
-		Main.timeManager = managers.TimeManager.getInstance();
 		Main.stateManager = managers.StateManager.getInstance();
 		window.addEventListener("resize",$bind(this,this.resize));
-		var font = new Font();
-		font.onload = function() {
-			window.requestAnimationFrame($bind(_g,_g.Update));
-		};
-		font.fontFamily = "gastFont";
-		font.src = "assets/fonts/CharlemagneStd-Bold.otf";
+		window.requestAnimationFrame($bind(this,this.Update));
 	}
 	,resize: function(pEvent) {
 	}
 	,Update: function() {
 		window.requestAnimationFrame($bind(this,this.Update));
-		Main.timeManager.Update();
+		if(Main.timeManager != null) Main.timeManager.Update();
 		this.mouseUpdate();
 		Main.characterManager.update();
 		Main.stateManager.Update();
@@ -328,7 +327,7 @@ js.Boot.__cast = function(o,t) {
 };
 var managers = {};
 managers.CharacterManager = function() {
-	this.managedCharactersPosition = [];
+	this.positions = [];
 	this.managedCharacters = new haxe.ds.StringMap();
 };
 managers.CharacterManager.__name__ = true;
@@ -338,21 +337,21 @@ managers.CharacterManager.getInstance = function() {
 };
 managers.CharacterManager.prototype = {
 	findCharacterAtTilePos: function(position) {
-		if(this.managedCharactersPosition[position[0]] == null) return null;
-		if(this.managedCharactersPosition[position[0]][position[1]] != null) return this.managedCharacters.get(this.managedCharactersPosition[position[0]][position[1]]); else return null;
+		if(this.positions[position[0]] == null) return null;
+		if(this.positions[position[0]][position[1]] != null) return this.managedCharacters.get(this.positions[position[0]][position[1]]); else return null;
 	}
 	,updateCharacterCoordinatesFromTo: function(element,newPosition) {
-		if(this.managedCharactersPosition[element.tilePos[0]] == null) this.managedCharactersPosition[element.tilePos[0]] = [];
-		this.managedCharactersPosition[element.tilePos[0]][element.tilePos[1]] = null;
-		if(this.managedCharactersPosition[newPosition[0]] == null) this.managedCharactersPosition[newPosition[0]] = [];
-		this.managedCharactersPosition[newPosition[0]][newPosition[1]] = element.charaName;
+		if(this.positions[element.tilePos[0]] == null) this.positions[element.tilePos[0]] = [];
+		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
+		if(this.positions[newPosition[0]] == null) this.positions[newPosition[0]] = [];
+		this.positions[newPosition[0]][newPosition[1]] = element.charaName;
 	}
 	,addCharacter: function(element) {
 		this.managedCharacters.set(element.charaName,element);
 	}
 	,removeCharacter: function(element) {
 		this.managedCharacters.remove(element.charaName);
-		this.managedCharactersPosition[element.tilePos[0]][element.tilePos[1]] = null;
+		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
 	}
 	,update: function() {
 		var $it0 = this.managedCharacters.iterator();
@@ -367,7 +366,7 @@ managers.CharacterManager.prototype = {
 			var i = $it0.next();
 			this.managedCharacters.remove(i.charaName);
 		}
-		this.managedCharactersPosition = [[]];
+		this.positions = [[]];
 	}
 	,__class__: managers.CharacterManager
 };
@@ -382,10 +381,7 @@ managers.DrawManager.addToDisplay = function(element,newParent,layer) {
 	if(element.parent == null) newParent.addChild(element);
 };
 managers.DrawManager.removeFromDisplay = function(element) {
-	Main.getInstance().tileCont.removeChild(element);
-	Main.getInstance().gameCont.removeChild(element);
-	Main.getInstance().hudCont.removeChild(element);
-	Main.getInstance().effectCont.removeChild(element);
+	if(element.parent != null) element.parent.removeChild(element);
 };
 managers.DrawManager.switchState = function() {
 };
@@ -395,26 +391,17 @@ managers.DrawManager.getInstance = function() {
 };
 managers.DrawManager.prototype = {
 	isometricSort: function(cont,layerIndex) {
-		var array = cont.children;
-		array.sort(function(a,b) {
-			if(a.y > b.y) return 1; else if(a.y < b.y) return -1;
+		cont.children.sort(function(a,b) {
+			if(a.y > b.y) return 1; else if(a.y < b.y || a.Zindex == null) return -1;
 			return a.Zindex - b.Zindex;
 		});
-		var j = 0;
-		var iter = new IntIterator(0,layerIndex);
-		var $it0 = HxOverrides.iter(array);
-		while( $it0.hasNext() ) {
-			var i = $it0.next();
-			cont.setChildIndex(i,j);
-			j++;
-		}
 	}
 	,__class__: managers.DrawManager
 };
 managers.InitManager = function() {
 	var lConfig = new PIXI.loaders.Loader();
 	lConfig.add("config","assets/config/" + "config.json");
-	lConfig.add("hero_animations","assets/animations/" + "hero.json");
+	lConfig.add("hero","assets/animations/" + "hero.json");
 	lConfig.add("testMapZig","assets/" + "maps/testMapZig.json");
 	lConfig.once("complete",$bind(this,this.LoadedJson));
 	lConfig.load();
@@ -617,6 +604,7 @@ managers.MouseManager.prototype = {
 		event.layerY = e.layerY;
 		Reflect.setField(event,"tilePos",managers.MouseManager.convertClicToTilePosition(clicPoint[0],clicPoint[1]));
 		event.gamePos = clicPoint;
+		event.drag = objects.Camera.getInstance().hasMovedEnough;
 		window.dispatchEvent(event);
 	}
 	,mouseDown: function(e) {
@@ -646,6 +634,9 @@ managers.StateManager = function() {
 	this.fpsCounter.x = Main.getInstance().renderer.width - 50;
 	this.fpsCounter.y = Main.getInstance().renderer.height - 30;
 	Main.getInstance().debugCont.addChild(this.fpsCounter);
+	managers.StateManager.debugText.x = 200;
+	managers.StateManager.debugText.y = Main.getInstance().renderer.height - 30;
+	Main.getInstance().debugCont.addChild(managers.StateManager.debugText);
 	this.switchToState(this.activeState);
 };
 managers.StateManager.__name__ = true;
@@ -709,6 +700,28 @@ managers.TimeManager.prototype = {
 	,__class__: managers.TimeManager
 };
 var objects = {};
+objects.Animation = function(newName,newData,endCallback) {
+	this.direction = 0;
+	this.name = newName;
+	this.loop = newData.loop;
+	this.data = newData.frameData;
+	this.fps = newData.fps;
+	this.callback = endCallback;
+};
+objects.Animation.__name__ = true;
+objects.Animation.prototype = {
+	getFrames: function(newDirection) {
+		this.direction = newDirection;
+		return this.data[this.direction];
+	}
+	,getLastIndex: function() {
+		return this.data[this.direction][this.data[this.direction].length - 1];
+	}
+	,endAction: function() {
+		this.callback();
+	}
+	,__class__: objects.Animation
+};
 objects.Button = function(name) {
 	this.text = new PIXI.Text("",{ fill : "white", font : "60px gastFont"});
 	this.arrayCallbacks = { };
@@ -718,6 +731,8 @@ objects.Button = function(name) {
 	arrayTextures.push(PIXI.Texture.fromImage(name + "_down.png"));
 	PIXI.extras.MovieClip.call(this,arrayTextures);
 	this.interactive = true;
+	this.buttonMode = true;
+	this.defaultCursor = "pointer";
 	this.anchor.set(0.5,0.5);
 	this.arrayCallbacks.down = function() {
 	};
@@ -858,118 +873,6 @@ objects.Camera.prototype = {
 	}
 	,__class__: objects.Camera
 };
-objects.Character = function(newName) {
-	this.ass = 0;
-	this.animations = new haxe.ds.StringMap();
-	this.refreshSpeed = 1000;
-	this.stats = { health : 1000, strength : 100, endurance : 100, speed : 100, precision : 100, luck : 100};
-	this.directionFacing = 0;
-	this.tilePos = [0,0];
-	this.charaName = newName;
-	PIXI.extras.MovieClip.call(this,this.generateTextures(this.charaName));
-	this.loop = true;
-	this.anchor.set(0.5,1);
-	managers.CharacterManager.getInstance().addCharacter(this);
-};
-objects.Character.__name__ = true;
-objects.Character.__super__ = PIXI.extras.MovieClip;
-objects.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,{
-	generateTextures: function(newName) {
-		var returnArray = [];
-		var animData = managers.InitManager.data[newName + "_animations"];
-		window.ass = animData;
-		if(animData == null) window.console.warn("NO ANIMDATA FOUND FOR: " + newName);
-		var j = 0;
-		var k = 0;
-		var _g = 0;
-		var _g1 = Reflect.fields(animData);
-		while(_g < _g1.length) {
-			var i = _g1[_g];
-			++_g;
-			j = 0;
-			while(j < Reflect.field(animData,i).length) {
-				k = 0;
-				while(k < Reflect.field(animData,i)[j].length) {
-					returnArray.push(PIXI.Texture.fromImage(newName + "_" + i + "_" + j + ".png"));
-					++k;
-				}
-				++j;
-			}
-		}
-		this.generateAnimations(animData);
-		return returnArray;
-	}
-	,generateAnimations: function(animationData) {
-		var _g = 0;
-		var _g1 = Reflect.fields(animationData);
-		while(_g < _g1.length) {
-			var i = _g1[_g];
-			++_g;
-			var value = Reflect.field(animationData,i);
-			this.animations.set(i,value);
-		}
-		this.setAnimation("idle");
-	}
-	,damage: function(amount) {
-		this.stats.health -= amount;
-		if(this.stats.health <= 0) {
-			this.stats.health = 0;
-			this.kill();
-		}
-	}
-	,_update: function() {
-		this.manageAnim();
-		this.update();
-	}
-	,manageAnim: function() {
-		if(this.activeAnimation == null) return;
-		if(this.currentFrame == this.activeAnimation[this.activeAnimation.length - 1]) this.gotoAndPlay(this.activeAnimation[0]);
-	}
-	,setAnimation: function(animName) {
-		if(!this.animations.exists(animName)) {
-			window.console.warn("anim not found: " + animName);
-			return;
-		}
-		this.activeAnimationName = animName;
-		this.activeAnimation = this.animations.get(animName)[this.directionFacing];
-		this.gotoAndPlay(this.activeAnimation[0]);
-	}
-	,changeDirection: function(newDir) {
-		this.directionFacing = newDir % 4;
-		this.setAnimation(this.activeAnimationName);
-	}
-	,update: function() {
-		if(this.ass % 10 == 0) this.changeDirection(this.ass);
-		this.ass++;
-	}
-	,kill: function() {
-		console.log("TARGET '" + this.charaName + "' is dead !");
-		managers.CharacterManager.getInstance().removeCharacter(this);
-	}
-	,setTilePosition: function(position) {
-		managers.CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this,position);
-		this.tilePos[0] = position[0];
-		this.x = position[0] * managers.InitManager.data.config.tileSize[0] + managers.MapManager.getInstance().activeMap.OffsetX;
-		this.tilePos[1] = position[1];
-		this.y = position[1] * managers.InitManager.data.config.tileSize[1] * 0.5 + managers.MapManager.getInstance().activeMap.OffsetY;
-		if(Math.abs(this.tilePos[1] % 2) == 1) this.x += managers.InitManager.data.config.tileSize[0] * 0.5;
-	}
-	,getAbsolutePosition: function() {
-		var arrayToReturn = [];
-		arrayToReturn[0] = this.tilePos[0] * managers.InitManager.data.config.tileSize[0];
-		arrayToReturn[1] = this.tilePos[1] * managers.InitManager.data.config.tileSize[1] * 0.5;
-		if(Math.abs(this.tilePos[1] % 2) == 1) arrayToReturn[0] += managers.InitManager.data.config.tileSize[0] * 0.5;
-		return arrayToReturn;
-	}
-	,launchAttack: function(targetPosition) {
-		console.log("attacked tile: " + Std.string(targetPosition));
-		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)) {
-			console.log("found character");
-			managers.CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(this.stats.strength);
-		}
-	}
-	,__class__: objects.Character
-});
 objects.GameMap = function(datas,mapName) {
 	this.scrollable = false;
 	this.mapContainer = new PIXI.Container();
@@ -1009,6 +912,27 @@ objects.GameMap.prototype = {
 	}
 	,getColliAt: function(tilePosistion) {
 		return this.collisionData[tilePosistion[0]][tilePosistion[1]] != 0;
+	}
+	,InitPathfinding: function() {
+		console.log("init path");
+		var easystar = { };
+		easystar = new window.EasyStar.js();
+		var grid = this.collisionData;
+		easystar.setGrid(grid);
+		easystar.setAcceptableTiles([1]);
+		easystar.findPath(3,4,8,8,function(path) {
+			if(path == null) console.log("Path was not found."); else {
+				console.log(path);
+				var $it0 = HxOverrides.iter(path);
+				while( $it0.hasNext() ) {
+					var i = $it0.next();
+					if(i.y % 2 == 1) --i.x;
+					managers.MouseManager.createLilCubes([[i.x,i.y]]);
+				}
+			}
+		});
+		easystar.setIterationsPerCalculation(1000);
+		easystar.calculate();
 	}
 	,__class__: objects.GameMap
 };
@@ -1145,6 +1069,116 @@ objects.Tile.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 	}
 	,__class__: objects.Tile
 });
+objects.character = {};
+objects.character.Character = function(newName) {
+	this.animations = new haxe.ds.StringMap();
+	this.refreshSpeed = 1;
+	this.stats = { health : 1000, strength : 100, endurance : 100, speed : 100, precision : 100, luck : 100, AP : 10};
+	this.inFight = false;
+	this.directionFacing = 0;
+	this.tilePos = [0,0];
+	this.charaName = newName;
+	this.config = managers.InitManager.data[newName];
+	PIXI.extras.MovieClip.call(this,this.generateTextures(this.charaName));
+	this.generateAnimations();
+	this.loop = true;
+	this.anchor.set(0.5,1);
+	managers.CharacterManager.getInstance().addCharacter(this);
+};
+objects.character.Character.__name__ = true;
+objects.character.Character.__super__ = PIXI.extras.MovieClip;
+objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,{
+	generateTextures: function(newName) {
+		var returnArray = [];
+		var textureData = this.config.texturesUrls;
+		if(textureData == null) window.console.warn("NO TEXTUREDATA FOUND FOR: " + newName);
+		var $it0 = HxOverrides.iter(textureData);
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			returnArray.push(PIXI.Texture.fromImage(i));
+		}
+		return returnArray;
+	}
+	,generateAnimations: function() {
+		var _g = 0;
+		var _g1 = Reflect.fields(this.config.animations);
+		while(_g < _g1.length) {
+			var i = _g1[_g];
+			++_g;
+			this.addAnimation(i,Reflect.field(this.config.animations,i));
+		}
+		this.setAnimation("idle");
+	}
+	,addAnimation: function(newName,data,endCallback) {
+		var value = new objects.Animation(newName,data,endCallback);
+		this.animations.set(newName,value);
+	}
+	,damage: function(amount) {
+		this.stats.health -= amount;
+		if(this.stats.health <= 0) {
+			this.stats.health = 0;
+			this.kill();
+		}
+	}
+	,_update: function() {
+		this.manageAnim();
+		this.customUpdate();
+	}
+	,manageAnim: function() {
+		if(this.activeAnimation == null) return;
+		if(this.currentFrame - this.activeAnimation.getLastIndex() >= this.activeAnimation.getFrames(this.directionFacing).length - 1) {
+			if(!this.activeAnimation.loop) {
+				this.stop();
+				this.activeAnimation.endAction();
+			} else if(this.activeAnimation.getFrames(this.directionFacing).length == 1) this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[0]); else this.gotoAndPlay(this.activeAnimation.getFrames(this.directionFacing)[0]);
+		}
+	}
+	,customUpdate: function() {
+	}
+	,setAnimation: function(animName) {
+		if(!this.animations.exists(animName)) {
+			window.console.warn("anim not found: " + animName);
+			return;
+		}
+		this.activeAnimation = this.animations.get(animName);
+		this.activeAnimationName = this.activeAnimation.name;
+		this.gotoAndPlay(this.activeAnimation.getFrames(this.directionFacing)[0]);
+		this.animationSpeed = this.activeAnimation.fps / 60;
+	}
+	,setDirection: function(newDir) {
+		this.directionFacing = newDir % 4;
+		this.setAnimation(this.activeAnimationName);
+	}
+	,kill: function() {
+		console.log("TARGET '" + this.charaName + "' is dead !");
+		this.setAnimation("death");
+		this.Destroy();
+	}
+	,setTilePosition: function(position) {
+		managers.CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this,position);
+		this.tilePos[0] = position[0];
+		this.x = position[0] * managers.InitManager.data.config.tileSize[0] + managers.MapManager.getInstance().activeMap.OffsetX;
+		this.tilePos[1] = position[1];
+		this.y = position[1] * managers.InitManager.data.config.tileSize[1] * 0.5 + managers.MapManager.getInstance().activeMap.OffsetY;
+		if(Math.abs(this.tilePos[1] % 2) == 1) this.x += managers.InitManager.data.config.tileSize[0] * 0.5;
+	}
+	,getAbsolutePosition: function() {
+		var arrayToReturn = [];
+		arrayToReturn[0] = this.tilePos[0] * managers.InitManager.data.config.tileSize[0];
+		arrayToReturn[1] = this.tilePos[1] * managers.InitManager.data.config.tileSize[1] * 0.5;
+		if(Math.abs(this.tilePos[1] % 2) == 1) arrayToReturn[0] += managers.InitManager.data.config.tileSize[0] * 0.5;
+		return arrayToReturn;
+	}
+	,launchAttack: function(targetPosition) {
+		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)) managers.CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(this.stats.strength);
+	}
+	,Destroy: function() {
+		managers.CharacterManager.getInstance().removeCharacter(this);
+		managers.DrawManager.removeFromDisplay(this);
+		this.destroy();
+	}
+	,__class__: objects.character.Character
+});
 var states = {};
 states.DebugState = function() {
 	objects.State.call(this,"Debug");
@@ -1163,16 +1197,17 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 		this.hoverSprite.anchor.set(0.5,1);
 		managers.DrawManager.addToDisplay(this.hoverSprite,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		window.addEventListener("gameHover",$bind(this,this.mouseHover));
-		window.addEventListener("gameMouseDown",$bind(this,this.mouseClick));
-		this.hero = new objects.Character("hero");
+		window.addEventListener("gameMouseUp",$bind(this,this.mouseClick));
+		this.hero = new objects.character.Character("hero");
 		this.hero.setTilePosition([10,10]);
-		this.hero.scale.set(0.3,0.3);
+		this.hero.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(this.hero,Main.getInstance().gameCont);
+		managers.MapManager.getInstance().activeMap.InitPathfinding();
 	}
 	,Update: function() {
 	}
 	,mouseClick: function(e) {
-		this.hero.launchAttack(e.tilePos);
+		if(!e.drag) this.hero.setDirection(utils.Misc.convertAngleToDirection(utils.Misc.angleBetweenTiles(this.hero.tilePos,e.tilePos)));
 	}
 	,mouseHover: function(e) {
 		this.hoverSprite.x = utils.Misc.convertToAbsolutePosition(e.tilePos)[0];
@@ -1201,6 +1236,7 @@ states.IntroState.prototype = $extend(objects.State.prototype,{
 		this.loadJson.set("tileSh2","assets/spriteSheets/loadSpriteSheet.json");
 		this.loadJson.set("buttons","assets/spriteSheets/buttonSpriteSheet.json");
 		this.loadJson.set("hero","assets/spriteSheets/heroSpriteSheet.json");
+		this.loadJson.set("explosion","assets/spriteSheets/testExplosion.json");
 		Main.getInstance().hudCont.addChild(this.loadingRecangle);
 		Main.getInstance().hudCont.addChild(this.loadingFill);
 		this.LoadingText.text = "Loading asset: 0%";
@@ -1253,6 +1289,12 @@ states.MenuState.prototype = $extend(objects.State.prototype,{
 	,__class__: states.MenuState
 });
 var utils = {};
+utils.Debug = function() { };
+utils.Debug.__name__ = true;
+utils.Debug.log = function(message,color) {
+	if(color != null) window.console.log(message,color); else window.console.log(message);
+	managers.StateManager.debugText.text = message;
+};
 utils.DeviceCapabilities = function() { };
 utils.DeviceCapabilities.__name__ = true;
 utils.DeviceCapabilities.get_height = function() {
@@ -1295,8 +1337,16 @@ utils.Misc.getDistance = function(x1,y1,x2,y2) {
 	var dy = y1 - y2;
 	return Math.sqrt(dx * dx + dy * dy);
 };
-utils.Misc.angleBetween = function(sX,sY,tX,tY) {
-	return Math.atan2(tX - sX,tY - sY);
+utils.Misc.angleBetween = function(s,t) {
+	return Math.atan2(t[0] - s[0],t[1] - s[1]);
+};
+utils.Misc.convertAngleToDirection = function(angle) {
+	if(Math.abs(angle) > Math.PI * 0.5) {
+		if(angle > 0) return 2; else return 1;
+	} else if(angle > 0) return 3; else return 0;
+};
+utils.Misc.angleBetweenTiles = function(from,to) {
+	return utils.Misc.angleBetween(utils.Misc.convertToAbsolutePosition(from),utils.Misc.convertToAbsolutePosition(to));
 };
 utils.Misc.convertToAbsolutePosition = function(tilePosition) {
 	var configTileSize = managers.InitManager.data.config.tileSize;
@@ -2193,6 +2243,7 @@ managers.InitManager.ASSETS_PATH = "assets/";
 managers.MouseManager.gamehover = new CustomEvent("gameHover");
 managers.MouseManager.gameMouseUp = new CustomEvent("gameMouseUp");
 managers.MouseManager.gameMouseDown = new CustomEvent("gameMouseDown");
+managers.StateManager.debugText = new PIXI.Text("",{ fill : "white", font : "18px Arial"});
 managers.TimeManager.elapsedTime = 0;
 managers.TimeManager.deltaTime = 0;
 managers.TimeManager.FPS = 0;

@@ -3,6 +3,7 @@ import js.Browser;
 import js.Error;
 import managers.DrawManager;
 import managers.InitManager;
+import managers.MouseManager;
 import pixi.core.display.Container;
 import pixi.core.particles.ParticleContainer;
 import pixi.core.sprites.Sprite;
@@ -25,6 +26,7 @@ class GameMap{
 	public var mapContainer:Container = new Container();
 	
 	public var scrollable:Bool = false;
+	
 	
 	public function new(datas:Dynamic = null, mapName:String = null) {
 		if (datas == null)
@@ -73,6 +75,37 @@ class GameMap{
 	
 	public function getColliAt(tilePosistion:Array<Int>):Bool{
 		return collisionData[tilePosistion[0]][tilePosistion[1]] != 0;
+	}
+	
+	
+	public function InitPathfinding():Void {
+		trace("init path");	
+		var easystar:Dynamic = {};
+		untyped easystar = __new__(Browser.window.EasyStar.js);
+
+		var grid:Array<Array<Int>> = collisionData;
+		
+		easystar.setGrid(grid);
+		easystar.setAcceptableTiles([1]);
+		
+		easystar.findPath(3, 4, 8, 8, function( path:Array<Dynamic> ) {
+			if (path == null) {
+				trace("Path was not found.");
+			} else {
+				trace(path);
+				for (i in path.iterator()) {
+					if (i.y % 2 == 1){
+						--i.x;
+					}
+					MouseManager.createLilCubes([[i.x,i.y]]);
+				}
+			}
+		});
+		easystar.setIterationsPerCalculation(1000);
+		//easystar.enableDiagonals();
+		easystar.calculate();
+		
+		
 	}
 	
 	

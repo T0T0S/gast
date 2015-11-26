@@ -1,10 +1,12 @@
-package objects;
+package objects.character;
 import haxe.Constraints.Function;
 import haxe.Json;
 import js.Browser;
 import managers.CharacterManager;
+import managers.DrawManager;
 import managers.InitManager;
 import managers.MapManager;
+import objects.Animation;
 import pixi.core.textures.Texture;
 import pixi.extras.MovieClip;
 import utils.Id;
@@ -21,6 +23,7 @@ typedef Stats = {
 	var speed : Float;
 	var precision : Float;
 	var luck : Float;
+	var AP : Float;
 }
 
 
@@ -31,66 +34,67 @@ class Character extends MovieClip{
 	public var tilePos:Array<Int> = [0,0];
 	public var directionFacing:Int = 0;
 	
+	public var inFight:Bool = false;
+	
 	public var stats:Stats = {
 		health 		: 1000,
 		strength 	: 100,
 		endurance 	: 100,
 		speed 		: 100,
 		precision 	: 100,
-		luck 		: 100
+		luck 		: 100,
+		AP 			: 10
 	};
 	
-	public var refreshSpeed:Float = 1000;
+	
+	
+	public var refreshSpeed:Float = 1;
 	
 	public var charaName:String;
 	public var attacks:Map<String,Function>;
 	
-	public var animations:Map<String,Array<Array<Int>>> = new Map.Map();
-	public var activeAnimation:Array<Int>;
+	public var animations:Map<String,Animation> = new Map.Map();
+	public var activeAnimation:Animation;
 	public var activeAnimationName:String;
 	
 	public var config:Dynamic;
 
 	public function new(newName:String) {
 		charaName = newName;
+		config = InitManager.data[untyped newName];
 		super(generateTextures(charaName));
+		generateAnimations();
+		
 		loop = true;
 		
 		anchor.set(0.5, 1);
-		
 		CharacterManager.getInstance().addCharacter(this);
 	}
 	
+	
 	private function generateTextures(newName:String):Array<Texture>{
 		var returnArray:Array<Texture> = [];
-		var animData:Map<String,Array<Array<Int>>> = cast InitManager.data[untyped newName+"_animations"];
-		untyped Browser.window.ass = animData;
-		if (animData == null)
-			Browser.window.console.warn("NO ANIMDATA FOUND FOR: "+newName);
+		var textureData:Array<String> = config.texturesUrls;
+
+		if (textureData == null)
+			Browser.window.console.warn("NO TEXTUREDATA FOUND FOR: "+newName);
 		
-		var j:Int = 0;
-		var k:Int = 0;
-		for (i in Reflect.fields(animData)) {
-			j = 0;
-			while (j < Reflect.field(animData,i).length) {
-				k = 0;
-				while(k < Reflect.field(animData,i)[j].length){
-					returnArray.push(Texture.fromImage(newName+"_"+i+"_"+j+".png"));
-					++k;
-				}
-				++j;
-			}
+		for (i in textureData.iterator()) {
+			returnArray.push(Texture.fromImage(i));
 		}
-		generateAnimations(animData);
 		
 		return returnArray;
 	}
 	
-	private function generateAnimations(animationData:Map<String,Array<Array<Int>>>):Void {
-		for (i in Reflect.fields(animationData)) {
-			animations.set(i, Reflect.field(animationData,i));
+	private function generateAnimations():Void {
+		for (i in Reflect.fields(config.animations)) {
+			addAnimation(i, Reflect.field(config.animations,i));
 		}	
 		setAnimation("idle");
+	}
+	
+	public function addAnimation(newName:String, data:Dynamic, ?endCallback){
+		animations.set(newName, new Animation(newName,data, endCallback));
 	}
 		
 	public function damage(amount:Float):Void{
@@ -101,18 +105,36 @@ class Character extends MovieClip{
 		}
 	};
 	
-	public function _update():Void{
+	/**
+	 #################
+		  UPDATE
+	 #################
+	 * */
+	public function _update():Void {
 		manageAnim();
-		update();
+		customUpdate();
 	}
 	
 	private function manageAnim():Void {
-		if (activeAnimation == null)
+		if (activeAnimation == null) {
 			return;
-		
-		if(currentFrame == activeAnimation[activeAnimation.length - 1]){
-			gotoAndPlay(activeAnimation[0]);
+		}		
+		if (currentFrame - activeAnimation.getLastIndex() >= activeAnimation.getFrames(directionFacing).length -1) {
+			if (!activeAnimation.loop) {
+				stop();
+				activeAnimation.endAction();
+			}
+			else {
+				if (activeAnimation.getFrames(directionFacing).length == 1)
+					gotoAndStop(activeAnimation.getFrames(directionFacing)[0]);
+				else
+					gotoAndPlay(activeAnimation.getFrames(directionFacing)[0]);
+			}
 		}
+	}
+	
+	public function customUpdate():Void{
+	
 	}
 	
 	public function setAnimation(animName:String):Void {
@@ -120,28 +142,27 @@ class Character extends MovieClip{
 			Browser.window.console.warn("anim not found: "+animName);
 			return;
 		}
-		
-		activeAnimationName = animName;			
-		activeAnimation = animations.get(animName)[directionFacing];
-		gotoAndPlay(activeAnimation[0]);
+		activeAnimation = animations.get(animName);
+		activeAnimationName = activeAnimation.name;	
+		gotoAndPlay(activeAnimation.getFrames(directionFacing)[0]);
+		animationSpeed = activeAnimation.fps / 60;
 	}
 	
-	public function changeDirection(newDir:Int):Void{
+	public function setDirection(newDir:Int):Void{
 		directionFacing = newDir % 4;
 		setAnimation(activeAnimationName);
 	}
 	
 	
-	var ass:Int = 0;
-	public function update():Void {
-		if(ass % 10 == 0)
-			changeDirection(ass);
-		ass++;
-	}
 	
 	public function kill():Void{
 		trace("TARGET '" + charaName+"' is dead !");
-		CharacterManager.getInstance().removeCharacter(this);
+		setAnimation("death");
+		/* callback of death animation */  Destroy();
+		
+		
+		// penser a anim de mort
+		// penser aux callback sur les anims
 	}
 	
 	
@@ -173,12 +194,18 @@ class Character extends MovieClip{
 	}
 	
 	public function launchAttack(targetPosition:Array<Int>):Void{
-		trace("attacked tile: "+targetPosition);
 		if (CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)){
-			trace("found character");
 			CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(stats.strength);
 		}
 	};
+	/**
+	 * destroy to call for removing a character
+	 */
+	public function Destroy():Void{
+		CharacterManager.getInstance().removeCharacter(this);
+		DrawManager.removeFromDisplay(this);
+		destroy();
+	}
 
 		
 }

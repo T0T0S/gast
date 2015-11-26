@@ -15,6 +15,7 @@ import pixi.core.display.Container;
 import pixi.core.graphics.Graphics;
 import pixi.core.renderers.Detector;
 import pixi.core.renderers.webgl.WebGLRenderer;
+import pixi.core.text.Text;
 
 //import managers.ZoomManager;
 
@@ -27,7 +28,7 @@ class Main
 {
 	private static var instance: Main;
 	
-	private var Init:InitManager = InitManager.getInstance();
+	private var Init:InitManager;
 	public static var drawManager:DrawManager;	
 	public static var mouseManager:MouseManager;	
 	public static var stateManager:StateManager;
@@ -54,6 +55,11 @@ class Main
 	}
 	
 	private function new () {
+		var font = new Font();
+		font.onload = function() { Browser.window.requestAnimationFrame(cast InitManager.getInstance); };
+		font.fontFamily = "gastFont";
+		font.src = "assets/fonts/CharlemagneStd-Bold.otf";
+		
 		renderer = Detector.autoDetectRenderer(1280, 720, {});
 		renderer.backgroundColor = 0x171824;
 		renderMask.beginFill();
@@ -98,21 +104,15 @@ class Main
 	
 	public function Start() {
 		drawManager = DrawManager.getInstance();
+		timeManager = TimeManager.getInstance();
 		mouseManager = MouseManager.getInstance();
 		camera = Camera.getInstance();
 		mapManager = MapManager.getInstance();
 		characterManager = CharacterManager.getInstance();
-		timeManager = TimeManager.getInstance();
 		
 		stateManager = StateManager.getInstance();
 		Browser.window.addEventListener("resize", resize);
-
-		
-		var font = new Font();
-		font.onload = function() { Browser.window.requestAnimationFrame(cast Update); };
-		font.fontFamily = "gastFont";
-		font.src = "assets/fonts/CharlemagneStd-Bold.otf";
-		
+		Browser.window.requestAnimationFrame(cast Update);
 	}
 	
 	public function resize (pEvent:js.html.Event = null): Void {
@@ -121,7 +121,8 @@ class Main
 	
 	public function Update() {
 		Browser.window.requestAnimationFrame(cast Update);
-		timeManager.Update();
+		if(timeManager !=null)
+			timeManager.Update();
 		mouseUpdate();
 		characterManager.update();
 		stateManager.Update();

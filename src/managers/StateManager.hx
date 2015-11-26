@@ -24,7 +24,8 @@ class StateManager{
 	
 	public var debugActiveState:Text = new Text("Init", { "fill":"white", "font":"30px gastFont" } );
 	public var fpsCounter:Text = new Text("1", { "fill":"white", "font":"16px gastFont" } );
-	
+	public static var debugText:Text = new Text("", { "fill" :"white", "font":"18px Arial" } );
+
 	/**
 	 * Classe de gestion des états,
 	 * 
@@ -35,6 +36,7 @@ class StateManager{
 	 * - coder la fonction de changement d'état dans switchState() de chaque état: pour nettoyer une peu la mémoire 
 	 */
 	public function new() {
+	
 		addState(new IntroState());
 		addState(new MenuState());
 		addState(new DebugState());
@@ -46,6 +48,10 @@ class StateManager{
 		fpsCounter.x = Main.getInstance().renderer.width - 50;
 		fpsCounter.y = Main.getInstance().renderer.height - 30;
 		Main.getInstance().debugCont.addChild(fpsCounter);
+		
+		debugText.x = 200;
+		debugText.y = Main.getInstance().renderer.height - 30;
+		Main.getInstance().debugCont.addChild(debugText);
 		
 		switchToState(activeState);
 	}

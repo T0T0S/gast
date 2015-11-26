@@ -41,7 +41,7 @@ class MapManager{
 					if (newMap.json.tiles[tileIndex] == null)
 						throw new Error("[ERROR] tile index "+tileIndex+" not found in "+newMap.name+".json");
 					
-					var pos:Array<Int> = Misc.convertToAbsolutePosition([i, j]);
+					var pos:Array<Float> = Misc.convertToAbsolutePosition([i, j]);
 					tileSprite = new Sprite(Texture.fromImage(""+newMap.json.tiles[tileIndex]));
 					tileSprite.x = pos[0];
 					tileSprite.y = pos[1];

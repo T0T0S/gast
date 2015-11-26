@@ -3,10 +3,12 @@ import js.Browser;
 import managers.DrawManager;
 import managers.InitManager;
 import managers.MapManager;
-import objects.Character;
+import objects.character.Character;
 import objects.State;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
+import pixi.extras.MovieClip;
+import utils.Debug;
 import utils.Misc;
 
 /**
@@ -37,20 +39,26 @@ class DebugState extends State {
 		DrawManager.addToDisplay(hoverSprite, MapManager.getInstance().activeMap.mapContainer,1);
 		
 		Browser.window.addEventListener("gameHover", mouseHover);
-		Browser.window.addEventListener("gameMouseDown", mouseClick);
+		Browser.window.addEventListener("gameMouseUp", mouseClick);
 		
 		hero = new Character("hero");
 		hero.setTilePosition([10, 10]);
-		hero.scale.set(0.3,0.3);
+		hero.scale.set(0.4, 0.4);
 		DrawManager.addToDisplay(hero, Main.getInstance().gameCont);
+		
+		
+		MapManager.getInstance().activeMap.InitPathfinding();
 	}
 	
 	public override function Update() {
 	}
 	
 	
-	private function mouseClick(e):Void{
-		hero.launchAttack(e.tilePos);
+	private function mouseClick(e):Void {
+		if(! e.drag){
+			hero.setDirection(Misc.convertAngleToDirection(Misc.angleBetweenTiles(hero.tilePos, e.tilePos)));
+			//Debug.log(Misc.angleBetweenTiles(hero.tilePos, e.tilePos));
+		}
 	}
 	
 	private function mouseHover(e):Void {

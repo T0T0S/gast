@@ -33,27 +33,19 @@ class DrawManager
 	}
 	
 	public function isometricSort(cont:Container, ?layerIndex:Int):Void {
-		var array:Array<Tile> = cast cont.children;
-		array.sort(function (a:Tile,b:Tile):Int {
+		cast(cont.children).sort(function (a:DisplayObject,b:DisplayObject):Int {
 			if (a.y > b.y)
 				return 1;
-			else if (a.y < b.y)
+			else if (a.y < b.y || untyped a.Zindex == null)
 				return -1;
-			return a.Zindex - b.Zindex;
+				
+			return untyped a.Zindex - b.Zindex;
 		});
-		var j:Int = 0;
-		var iter:IntIterator = new IntIterator(0,layerIndex);
-		for (i in array.iterator()) {
-			cont.setChildIndex(i, j);
-			j++;
-		}
 	}
 	
 	public static function removeFromDisplay (element:DisplayObject):Void {
-		Main.getInstance().tileCont.removeChild(element);		
-		Main.getInstance().gameCont.removeChild(element);
-		Main.getInstance().hudCont.removeChild(element);
-		Main.getInstance().effectCont.removeChild(element);
+		if(element.parent != null)
+			element.parent.removeChild(element);	
 	}
 	
 	public static function switchState ():Void {

@@ -1,6 +1,7 @@
 package utils;
 import managers.InitManager;
 import objects.Camera;
+import pixi.core.display.DisplayObject;
 import pixi.core.sprites.Sprite;
 
 /**
@@ -31,18 +32,40 @@ class Misc {
 	}
 	
 	/**
-	 * Calcule l'angle an radian entre les objets S et T
+	 * Calcule l'angle en radian entre les objets S et T
 	 * @return angle in radian between S and T 
 	 */
-	public static function angleBetween (sX:Float,sY:Float, tX:Float,tY:Float):Float {
-		return Math.atan2(tX - sX, tY - sY);
+	public static function angleBetween (s:Array<Float>, t:Array<Float>):Float {
+		return Math.atan2(t[0] - s[0], t[1] - s[1]);
+	}
+	
+	/**
+	 * renvoie la direction 
+	 * @param	angle en radian
+	 * @return	la direction (0 => b-l / 1 => u-l / 2 => u-r / 3 => b-r)
+	 */
+	public static function convertAngleToDirection(angle:Float):Int{
+		if(Math.abs(angle) > Math.PI * 0.5)
+			if (angle > 0)
+				return 2;
+			else
+				return 1;
+		else
+			if (angle > 0)
+				return 3;
+			else
+				return 0;
+	}
+	
+	public static function angleBetweenTiles(from:Array<Int>,to:Array<Int>):Float{
+		return angleBetween(convertToAbsolutePosition(from), convertToAbsolutePosition(to));
 	}
 	
 	/**
 	 * convertie une position de tile de grid => en pixel
 	 * @return absolute position in PIXELS of tilePosition
 	 */
-	public static function convertToAbsolutePosition (tilePosition:Array<Int>):Array<Int> {
+	public static function convertToAbsolutePosition (tilePosition:Array<Int>):Array<Float> {
 		var configTileSize:Array<Int> = InitManager.data.config.tileSize;
 		var returnPosition:Array<Float> = [];
 		returnPosition[0] = tilePosition[0] * configTileSize[0] -1;		
