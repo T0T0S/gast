@@ -915,24 +915,44 @@ objects.GameMap.prototype = {
 	}
 	,InitPathfinding: function() {
 		console.log("init path");
-		var easystar = { };
-		easystar = new window.EasyStar.js();
-		var grid = this.collisionData;
-		easystar.setGrid(grid);
-		easystar.setAcceptableTiles([1]);
-		easystar.findPath(3,4,8,8,function(path) {
-			if(path == null) console.log("Path was not found."); else {
-				console.log(path);
-				var $it0 = HxOverrides.iter(path);
-				while( $it0.hasNext() ) {
-					var i = $it0.next();
-					if(i.y % 2 == 1) --i.x;
-					managers.MouseManager.createLilCubes([[i.x,i.y]]);
-				}
+		var pathfinding = { };
+		var grid = { };
+		var finder = { };
+		var path = { };
+		grid = new window.PF.Grid(this.collisionData.length * 2,this.collisionData[0].length);
+		var x = 0;
+		var y = 0;
+		var $it0 = HxOverrides.iter(this.collisionData);
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			y = 0;
+			var $it1 = HxOverrides.iter(i);
+			while( $it1.hasNext() ) {
+				var j = $it1.next();
+				grid.setWalkableAt(x * 2,y,j == 1);
+				grid.setWalkableAt(x * 2 + 1,y,j == 1);
+				y++;
 			}
-		});
-		easystar.setIterationsPerCalculation(1000);
-		easystar.calculate();
+			x++;
+		}
+		var source_0 = 3;
+		var source_1 = 4;
+		var target_0 = 8;
+		var target_1 = 15;
+		finder = new window.PF.AStarFinder({ allowDiagonal : true, dontCrossCorners : true});
+		path = finder.findPath(source_0 * 2 + source_1 % 2,source_1,target_0 * 2 + target_1 % 2,target_1,grid);
+		if(path.length == 0) console.log("no path found");
+		var _g = 0;
+		var _g1 = Reflect.fields(path);
+		while(_g < _g1.length) {
+			var pointName = _g1[_g];
+			++_g;
+			path[pointName][0] /= 2;
+			path[pointName][0] -= path[pointName][1] % 2 * 0.5;
+			path[pointName][0] = Math.floor(path[pointName][0]);
+			console.log(path[pointName]);
+		}
+		managers.MouseManager.createLilCubes(path);
 	}
 	,__class__: objects.GameMap
 };
@@ -1212,6 +1232,7 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 	,mouseHover: function(e) {
 		this.hoverSprite.x = utils.Misc.convertToAbsolutePosition(e.tilePos)[0];
 		this.hoverSprite.y = utils.Misc.convertToAbsolutePosition(e.tilePos)[1];
+		utils.Debug.log("" + Std.string(e.tilePos));
 	}
 	,__class__: states.DebugState
 });
@@ -1292,7 +1313,6 @@ var utils = {};
 utils.Debug = function() { };
 utils.Debug.__name__ = true;
 utils.Debug.log = function(message,color) {
-	if(color != null) window.console.log(message,color); else window.console.log(message);
 	managers.StateManager.debugText.text = message;
 };
 utils.DeviceCapabilities = function() { };

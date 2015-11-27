@@ -64,5 +64,6 @@ class DebugState extends State {
 	private function mouseHover(e):Void {
 		hoverSprite.x = Misc.convertToAbsolutePosition(e.tilePos)[0];
 		hoverSprite.y = Misc.convertToAbsolutePosition(e.tilePos)[1];
+		Debug.log("" + e.tilePos);
 	}
 }

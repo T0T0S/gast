@@ -80,30 +80,78 @@ class GameMap{
 	
 	public function InitPathfinding():Void {
 		trace("init path");	
-		var easystar:Dynamic = {};
-		untyped easystar = __new__(Browser.window.EasyStar.js);
-
-		var grid:Array<Array<Int>> = collisionData;
 		
-		easystar.setGrid(grid);
-		easystar.setAcceptableTiles([1]);
+		var pathfinding:Dynamic = {};
+		var grid:Dynamic = { };
+		var finder:Dynamic = { };
+		var path:Dynamic = { };
+		untyped grid = __new__(Browser.window.PF.Grid, collisionData.length * 2, collisionData[0].length);
 		
-		easystar.findPath(3, 4, 8, 8, function( path:Array<Dynamic> ) {
-			if (path == null) {
-				trace("Path was not found.");
-			} else {
-				trace(path);
-				for (i in path.iterator()) {
-					if (i.y % 2 == 1){
-						--i.x;
-					}
-					MouseManager.createLilCubes([[i.x,i.y]]);
-				}
+		var x:Int = 0;
+		var y:Int = 0;
+		for (i in collisionData.iterator()) {
+			y = 0;		
+			for (j in i.iterator()) {
+				grid.setWalkableAt(x*2, y, j == 1);
+				grid.setWalkableAt((x*2)+1, y, j == 1);
+				y ++;
 			}
+			x ++;
+		}
+		
+		var source = [3, 4];
+		var target = [8, 15];
+		
+		untyped finder = __new__(Browser.window.PF.AStarFinder, {
+			allowDiagonal: true,
+			dontCrossCorners: true
+			//heuristic: PF.Heuristic.chebyshev
+			//heuristic: PF.Heuristic.euclidean
+			//heuristic: PF.Heuristic.octile
 		});
-		easystar.setIterationsPerCalculation(1000);
-		//easystar.enableDiagonals();
-		easystar.calculate();
+		
+		path = finder.findPath(source[0] * 2 + source[1]%2 ,source[1] , target[0]* 2 + target[1]%2 , target[1] , grid);
+		
+		
+		if (path.length == 0)
+		{
+			trace("no path found");
+		}
+		for (pointName in Reflect.fields(path))
+		{
+			path[untyped pointName][0]  /= 2;
+			path[untyped pointName][0] -= (path[untyped pointName][1] % 2) * 0.5;
+			path[untyped pointName][0] = Math.floor(path[untyped pointName][0]);
+			trace(path[untyped pointName]);
+		}
+		
+		MouseManager.createLilCubes(cast path);
+		
+		
+		//var easystar:Dynamic = {};
+		//untyped easystar = __new__(Browser.window.EasyStar.js);
+//
+		//var grid:Array<Array<Int>> = collisionData;
+		//
+		//easystar.setGrid(grid);
+		//easystar.setAcceptableTiles([1]);
+		//
+		//easystar.findPath(3, 4, 8, 8, function( path:Array<Dynamic> ) {
+			//if (path == null) {
+				//trace("Path was not found.");
+			//} else {
+				//trace(path);
+				//for (i in path.iterator()) {
+					//if (i.y % 2 == 1){
+						//--i.x;
+					//}
+					//MouseManager.createLilCubes([[i.x,i.y]]);
+				//}
+			//}
+		//});
+		//easystar.setIterationsPerCalculation(1000);
+		////easystar.enableDiagonals();
+		//easystar.calculate();
 		
 		
 	}
