@@ -47,7 +47,6 @@ class DebugState extends State {
 		DrawManager.addToDisplay(hero, Main.getInstance().gameCont);
 		
 		
-		MapManager.getInstance().activeMap.InitPathfinding();
 	}
 	
 	public override function Update() {
@@ -57,6 +56,8 @@ class DebugState extends State {
 	private function mouseClick(e):Void {
 		if(! e.drag){
 			hero.setDirection(Misc.convertAngleToDirection(Misc.angleBetweenTiles(hero.tilePos, e.tilePos)));
+			MapManager.getInstance().activeMap.findPath([hero.tilePos[0],hero.tilePos[1]],e.tilePos);
+
 			//Debug.log(Misc.angleBetweenTiles(hero.tilePos, e.tilePos));
 		}
 	}

@@ -189,6 +189,21 @@ class MouseManager{
 		}
 	}
 	
+	public static function displayMap (nodes:Array<Array<Int>>):Void {
+		for(x in Reflect.fields(nodes)){
+	untyped for(y in Reflect.fields(nodes[x])){
+	untyped		if (nodes[x][y] < 2)
+				{
+		 	untyped	MouseManager.createLilCubes([[cast x,cast y]], 0x0000FF);
+				}
+				else{
+		 	untyped	MouseManager.createLilCubes([[cast x,cast y]], 0xFF0000);
+				}
+			}
+		}
+	}
+	
+	
 	public static function getInstance (): MouseManager {
 		if (instance == null) instance = new MouseManager();
 		return instance;

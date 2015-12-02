@@ -1,8 +1,10 @@
 package objects;
 import js.Browser;
 import js.Error;
+import js.JQuery;
 import managers.DrawManager;
 import managers.InitManager;
+import managers.MapManager;
 import managers.MouseManager;
 import pixi.core.display.Container;
 import pixi.core.particles.ParticleContainer;
@@ -27,7 +29,6 @@ class GameMap{
 	
 	public var scrollable:Bool = false;
 	
-	
 	public function new(datas:Dynamic = null, mapName:String = null) {
 		if (datas == null)
 			return;
@@ -45,6 +46,7 @@ class GameMap{
 		json.tilesPriority.unshift(null);
 		
 		setMapData(datas.graphics, datas.collisions);
+		generatePathfinding();
 	}
 	
 	public function setMapData(newGraphicalData:Array<Array<Int>>, newCollisionData:Array<Array<Int>>):Void{
@@ -61,6 +63,7 @@ class GameMap{
 			DrawManager.addToDisplay(mapContainer, Main.getInstance().tileCont);
 		
 		mapContainer.visible = true;
+		MouseManager.displayMap(MapManager.finder.getGrid());
 	}
 	
 	public function hideMap(remove:Bool = false):Void {
@@ -69,91 +72,69 @@ class GameMap{
 			DrawManager.removeFromDisplay(mapContainer);
 	}
 
-	public function getTileAt(tilePosistion:Array<Int>):String{
-		return json.tiles[graphicalData[tilePosistion[0]][tilePosistion[1]]];
+	public function getTileAt(tilePosition:Array<Int>):String{
+		return json.tiles[graphicalData[tilePosition[0]][tilePosition[1]]];
 	}
 	
-	public function getColliAt(tilePosistion:Array<Int>):Bool{
-		return collisionData[tilePosistion[0]][tilePosistion[1]] != 0;
+	public function getColliAt(tilePosition:Array<Int>):Bool{
+		return collisionData[tilePosition[0]][tilePosition[1]] != 0;
 	}
 	
-	
-	public function InitPathfinding():Void {
-		trace("init path");	
-		
-		var pathfinding:Dynamic = {};
-		var grid:Dynamic = { };
-		var finder:Dynamic = { };
-		var path:Dynamic = { };
-		untyped grid = __new__(Browser.window.PF.Grid, collisionData.length * 2, collisionData[0].length);
-		
-		var x:Int = 0;
-		var y:Int = 0;
-		for (i in collisionData.iterator()) {
-			y = 0;		
-			for (j in i.iterator()) {
-				grid.setWalkableAt(x*2, y, j == 1);
-				grid.setWalkableAt((x*2)+1, y, j == 1);
-				y ++;
-			}
-			x ++;
-		}
-		
-		var source = [3, 4];
-		var target = [8, 15];
-		
-		untyped finder = __new__(Browser.window.PF.AStarFinder, {
-			allowDiagonal: true,
-			dontCrossCorners: true
-			//heuristic: PF.Heuristic.chebyshev
-			//heuristic: PF.Heuristic.euclidean
-			//heuristic: PF.Heuristic.octile
-		});
-		
-		path = finder.findPath(source[0] * 2 + source[1]%2 ,source[1] , target[0]* 2 + target[1]%2 , target[1] , grid);
-		
-		
-		if (path.length == 0)
-		{
-			trace("no path found");
-		}
-		for (pointName in Reflect.fields(path))
-		{
-			path[untyped pointName][0]  /= 2;
-			path[untyped pointName][0] -= (path[untyped pointName][1] % 2) * 0.5;
-			path[untyped pointName][0] = Math.floor(path[untyped pointName][0]);
-			trace(path[untyped pointName]);
-		}
-		
-		MouseManager.createLilCubes(cast path);
-		
-		
-		//var easystar:Dynamic = {};
-		//untyped easystar = __new__(Browser.window.EasyStar.js);
-//
-		//var grid:Array<Array<Int>> = collisionData;
-		//
-		//easystar.setGrid(grid);
-		//easystar.setAcceptableTiles([1]);
-		//
-		//easystar.findPath(3, 4, 8, 8, function( path:Array<Dynamic> ) {
-			//if (path == null) {
-				//trace("Path was not found.");
-			//} else {
-				//trace(path);
-				//for (i in path.iterator()) {
-					//if (i.y % 2 == 1){
-						//--i.x;
-					//}
-					//MouseManager.createLilCubes([[i.x,i.y]]);
-				//}
+	public function generatePathfinding():Void{
+		var finder:Dynamic = MapManager.finder;
+		//gridOriginal = untyped __new__(Browser.window.PF.Grid, collisionData.length * 2, collisionData[0].length);
+		//var x:Int = 0;
+		//var y:Int = 0;
+		//while(y < gridOriginal.height){
+			//x = 0;		
+			//while (x < gridOriginal.width)
+			//{
+				//gridOriginal.setWalkableAt(x, y, collisionData[untyped x*0.5][y] == 1);
+				//gridOriginal.setWalkableAt(x+1,y,false);
+				//untyped gridOriginal.nodes[y][x].x *= 0.5;
+				//untyped gridOriginal.nodes[y][x + 1].x *= 0.50;
+				//
+				//x+=2;
 			//}
-		//});
-		//easystar.setIterationsPerCalculation(1000);
-		////easystar.enableDiagonals();
-		//easystar.calculate();
+			//y++;
+		//}
+		finder.setGrid(collisionData);
+		finder.setAcceptableTiles([1]);
+		finder.enableDiagonals();
+		finder.enableSync();
 		
+		untyped Browser.window.finder = finder;
 		
+		trace(finder);
+	}
+	
+	public function findPath(source:Array<Int>, target:Array<Int>):Array<Array<Int>> {
+		var finder:Dynamic = MapManager.finder;
+		var path:Array<Dynamic> = [];
+		trace(target);
+		
+		/*
+		 * MAP IS NOT GOOD ! 
+		 * pathfinding does weird shit
+		 * 
+		 * */
+		
+		finder.findPath(source[0], source[1], target[0], target[1], function( newpath ) {
+			if (newpath == null) {
+				trace("XXX  NO PATH FOUND !. XXX");
+			} else {
+				trace("Path found. ");
+				trace(newpath);
+				untyped path = newpath;
+				for(point in path.iterator()){
+					MouseManager.createLilCubes([[point.x,point.y]]);
+				}
+			}
+		});
+		finder.calculate();
+
+		
+		untyped return path;
 	}
 	
 	

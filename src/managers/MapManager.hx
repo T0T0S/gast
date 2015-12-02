@@ -19,7 +19,9 @@ class MapManager{
 	private var mapSpriteSheet:Sprite;
 	
 	public var maps:Map<String,GameMap> = new Map.Map();
-		
+	
+	public static var finder:Dynamic = untyped  __new__("EasyStar.js");
+
 	public function new() {
 		activeMap = new GameMap();
 		maps.set("testMapZig", new GameMap(formatMap("testMapZig"), "testMapZig"));

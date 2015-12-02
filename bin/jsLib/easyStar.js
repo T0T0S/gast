@@ -464,6 +464,10 @@ EasyStar.js = function() {
 		instances.push(instance);
 	};
 
+	this.getGrid = function(){
+		return collisionGrid;
+	}
+
 	/**
 	* This method steps through the A* Algorithm in an attempt to
 	* find your path(s). It will search 4-8 tiles (depending on diagonals) for every calculation.
@@ -495,6 +499,7 @@ EasyStar.js = function() {
 			var searchNode = instances[0].openList.shiftHighestPriorityElement();
 
 			var tilesToSearch = [];
+			var yImpair = searchNode.y % 2 == 1;
 			searchNode.list = EasyStar.Node.CLOSED_LIST;
 
 			if (searchNode.y > 0) {
@@ -514,7 +519,7 @@ EasyStar.js = function() {
 					x: -1, y: 0, cost: STRAIGHT_COST * getTileCost(searchNode.x-1, searchNode.y)});
 			}
 			if (diagonalsEnabled) {
-				if (searchNode.x > 0 && searchNode.y > 0) {
+				if (searchNode.x > 0 && searchNode.y > 0 && !yImpair) {
 
 					if (allowCornerCutting ||
 						(isTileWalkable(collisionGrid, acceptableTiles, searchNode.x, searchNode.y-1) &&
@@ -524,7 +529,7 @@ EasyStar.js = function() {
 							x: -1, y: -1, cost: DIAGONAL_COST * getTileCost(searchNode.x-1, searchNode.y-1)});
 					}
 				}
-				if (searchNode.x < collisionGrid[0].length-1 && searchNode.y < collisionGrid.length-1) {
+				if (searchNode.x < collisionGrid[0].length-1 && searchNode.y < collisionGrid.length-1 && yImpair) {
 
 					if (allowCornerCutting ||
 						(isTileWalkable(collisionGrid, acceptableTiles, searchNode.x, searchNode.y+1) &&
@@ -534,7 +539,7 @@ EasyStar.js = function() {
 							x: 1, y: 1, cost: DIAGONAL_COST * getTileCost(searchNode.x+1, searchNode.y+1)});
 					}
 				}
-				if (searchNode.x < collisionGrid[0].length-1 && searchNode.y > 0) {
+				if (searchNode.x < collisionGrid[0].length-1 && searchNode.y > 0  && yImpair) {
 
 					if (allowCornerCutting ||
 						(isTileWalkable(collisionGrid, acceptableTiles, searchNode.x, searchNode.y-1) &&
@@ -545,7 +550,7 @@ EasyStar.js = function() {
 							x: 1, y: -1, cost: DIAGONAL_COST * getTileCost(searchNode.x+1, searchNode.y-1)});
 					}
 				}
-				if (searchNode.x > 0 && searchNode.y < collisionGrid.length-1) {
+				if (searchNode.x > 0 && searchNode.y < collisionGrid.length-1 && !yImpair) {
 
 					if (allowCornerCutting ||
 						(isTileWalkable(collisionGrid, acceptableTiles, searchNode.x, searchNode.y+1) &&

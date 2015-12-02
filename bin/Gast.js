@@ -582,6 +582,21 @@ managers.MouseManager.createLilCubes = function(position,color) {
 		managers.DrawManager.addToDisplay(redPoint,Main.getInstance().tileCont,100);
 	}
 };
+managers.MouseManager.displayMap = function(nodes) {
+	var _g = 0;
+	var _g1 = Reflect.fields(nodes);
+	while(_g < _g1.length) {
+		var x = _g1[_g];
+		++_g;
+		var _g2 = 0;
+		var _g3 = Reflect.fields(nodes[x]);
+		while(_g2 < _g3.length) {
+			var y = _g3[_g2];
+			++_g2;
+			if(nodes[x][y] < 2) managers.MouseManager.createLilCubes([[x,y]],255); else managers.MouseManager.createLilCubes([[x,y]],16711680);
+		}
+	}
+};
 managers.MouseManager.getInstance = function() {
 	if(managers.MouseManager.instance == null) managers.MouseManager.instance = new managers.MouseManager();
 	return managers.MouseManager.instance;
@@ -888,6 +903,7 @@ objects.GameMap = function(datas,mapName) {
 	this.json.tiles.unshift(null);
 	this.json.tilesPriority.unshift(null);
 	this.setMapData(datas.graphics,datas.collisions);
+	this.generatePathfinding();
 };
 objects.GameMap.__name__ = true;
 objects.GameMap.prototype = {
@@ -901,58 +917,46 @@ objects.GameMap.prototype = {
 	,displayMap: function() {
 		if(this.mapContainer.parent == null) managers.DrawManager.addToDisplay(this.mapContainer,Main.getInstance().tileCont);
 		this.mapContainer.visible = true;
+		managers.MouseManager.displayMap(managers.MapManager.finder.getGrid());
 	}
 	,hideMap: function(remove) {
 		if(remove == null) remove = false;
 		this.mapContainer.visible = false;
 		if(remove) managers.DrawManager.removeFromDisplay(this.mapContainer);
 	}
-	,getTileAt: function(tilePosistion) {
-		return this.json.tiles[this.graphicalData[tilePosistion[0]][tilePosistion[1]]];
+	,getTileAt: function(tilePosition) {
+		return this.json.tiles[this.graphicalData[tilePosition[0]][tilePosition[1]]];
 	}
-	,getColliAt: function(tilePosistion) {
-		return this.collisionData[tilePosistion[0]][tilePosistion[1]] != 0;
+	,getColliAt: function(tilePosition) {
+		return this.collisionData[tilePosition[0]][tilePosition[1]] != 0;
 	}
-	,InitPathfinding: function() {
-		console.log("init path");
-		var pathfinding = { };
-		var grid = { };
-		var finder = { };
-		var path = { };
-		grid = new window.PF.Grid(this.collisionData.length * 2,this.collisionData[0].length);
-		var x = 0;
-		var y = 0;
-		var $it0 = HxOverrides.iter(this.collisionData);
-		while( $it0.hasNext() ) {
-			var i = $it0.next();
-			y = 0;
-			var $it1 = HxOverrides.iter(i);
-			while( $it1.hasNext() ) {
-				var j = $it1.next();
-				grid.setWalkableAt(x * 2,y,j == 1);
-				grid.setWalkableAt(x * 2 + 1,y,j == 1);
-				y++;
+	,generatePathfinding: function() {
+		var finder = managers.MapManager.finder;
+		finder.setGrid(this.collisionData);
+		finder.setAcceptableTiles([1]);
+		finder.enableDiagonals();
+		finder.enableSync();
+		window.finder = finder;
+		console.log(finder);
+	}
+	,findPath: function(source,target) {
+		var finder = managers.MapManager.finder;
+		var path = [];
+		console.log(target);
+		finder.findPath(source[0],source[1],target[0],target[1],function(newpath) {
+			if(newpath == null) console.log("XXX  NO PATH FOUND !. XXX"); else {
+				console.log("Path found. ");
+				console.log(newpath);
+				path = newpath;
+				var $it0 = HxOverrides.iter(path);
+				while( $it0.hasNext() ) {
+					var point = $it0.next();
+					managers.MouseManager.createLilCubes([[point.x,point.y]]);
+				}
 			}
-			x++;
-		}
-		var source_0 = 3;
-		var source_1 = 4;
-		var target_0 = 8;
-		var target_1 = 15;
-		finder = new window.PF.AStarFinder({ allowDiagonal : true, dontCrossCorners : true});
-		path = finder.findPath(source_0 * 2 + source_1 % 2,source_1,target_0 * 2 + target_1 % 2,target_1,grid);
-		if(path.length == 0) console.log("no path found");
-		var _g = 0;
-		var _g1 = Reflect.fields(path);
-		while(_g < _g1.length) {
-			var pointName = _g1[_g];
-			++_g;
-			path[pointName][0] /= 2;
-			path[pointName][0] -= path[pointName][1] % 2 * 0.5;
-			path[pointName][0] = Math.floor(path[pointName][0]);
-			console.log(path[pointName]);
-		}
-		managers.MouseManager.createLilCubes(path);
+		});
+		finder.calculate();
+		return path;
 	}
 	,__class__: objects.GameMap
 };
@@ -1222,12 +1226,14 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 		this.hero.setTilePosition([10,10]);
 		this.hero.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(this.hero,Main.getInstance().gameCont);
-		managers.MapManager.getInstance().activeMap.InitPathfinding();
 	}
 	,Update: function() {
 	}
 	,mouseClick: function(e) {
-		if(!e.drag) this.hero.setDirection(utils.Misc.convertAngleToDirection(utils.Misc.angleBetweenTiles(this.hero.tilePos,e.tilePos)));
+		if(!e.drag) {
+			this.hero.setDirection(utils.Misc.convertAngleToDirection(utils.Misc.angleBetweenTiles(this.hero.tilePos,e.tilePos)));
+			managers.MapManager.getInstance().activeMap.findPath([this.hero.tilePos[0],this.hero.tilePos[1]],e.tilePos);
+		}
 	}
 	,mouseHover: function(e) {
 		this.hoverSprite.x = utils.Misc.convertToAbsolutePosition(e.tilePos)[0];
@@ -1428,6 +1434,8 @@ var Bool = Boolean;
 Bool.__ename__ = ["Bool"];
 var Class = { __name__ : ["Class"]};
 var Enum = { };
+var q = window.jQuery;
+js.JQuery = q;
 (function()
 {
 var Uint8Array = window.Uint8Array;
@@ -2260,6 +2268,7 @@ var Uint8Array = window.Uint8Array;
 Main.DEBUGMODE = true;
 managers.InitManager.CONFIG_PATH = "assets/config/";
 managers.InitManager.ASSETS_PATH = "assets/";
+managers.MapManager.finder = new EasyStar.js();
 managers.MouseManager.gamehover = new CustomEvent("gameHover");
 managers.MouseManager.gameMouseUp = new CustomEvent("gameMouseUp");
 managers.MouseManager.gameMouseDown = new CustomEvent("gameMouseDown");
