@@ -124,7 +124,8 @@ class Main
 		if(timeManager !=null)
 			timeManager.Update();
 		mouseUpdate();
-		characterManager.update();
+		characterManager.Update();
+		camera.Update();
 		stateManager.Update();
 	}
 	

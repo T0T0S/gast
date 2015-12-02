@@ -1,5 +1,9 @@
 {
 	"tileSize": [64,32],
+	"tileCollisions": {
+		"walkable" : 1,
+		"collision" : 2
+	},
 	"tileTypes":{
 		"tile":{
 			"image":"tile.png"
@@ -24,4 +28,5 @@
 		"sensitivity": 1,
 		"minimumMovement": 25
 	}
+
 }

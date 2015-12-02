@@ -43,9 +43,10 @@ class MouseManager{
 		++calledPerFrame;
 		
 		var clicPoint:Array<Float> = [e.layerX + Main.camera.offset[0], e.layerY + Main.camera.offset[1]];
+		var tilePos:Array<Int> = convertClicToTilePosition(clicPoint[0],clicPoint[1]);
 		Reflect.setField(gamehover,"layerX",e.layerX);
 		Reflect.setField(gamehover,"layerY",e.layerY);
-		Reflect.setField(gamehover,"tilePos",convertClicToTilePosition(clicPoint[0],clicPoint[1]));
+		Reflect.setField(gamehover,"tilePos",tilePos);
 		Reflect.setField(gamehover,"gamePos",clicPoint);
 		
 		Browser.window.dispatchEvent(gamehover);
@@ -108,7 +109,7 @@ class MouseManager{
 	}
 	
 	// fonction de detection de tile clické, c'est sure a 99% qu'il y a plus simple mais ça passe et ça consomme pas trop vu que ya que des calculs simples.
-	public static function convertClicToTilePosition(absoluteX:Float,absoluteY:Float):Array<Float> {
+	public static function convertClicToTilePosition(absoluteX:Float,absoluteY:Float):Array<Int> {
 		var tileSize = InitManager.data.config.tileSize;
 		var halfMousePosX:Float = Math.floor((absoluteX) / (tileSize[0]/2))/2;
 		var halfMousePosY:Float = Math.floor((absoluteY) / (tileSize[1] / 2)) / 2;
@@ -120,7 +121,7 @@ class MouseManager{
 
 		var dx = (absoluteX - halfMousePosX * tileSize[0]) / tileSize[0]*2;
 		var dy = (absoluteY - halfMousePosY * tileSize[1]) / tileSize[1] *2;
-		var SelectedPos:Array<Float> = (Math.abs(dx)+ Math.abs(dy) <= 1) ? [halfMousePosX, halfMousePosY] : [halfMousePosX + ((dx / Math.abs(dx)) * 0.5), halfMousePosY + ((dy / Math.abs(dy))*0.5)]; 
+		var SelectedPos:Array<Int> = (Math.abs(dx)+ Math.abs(dy) <= 1) ? cast [halfMousePosX, halfMousePosY] : cast [halfMousePosX + ((dx / Math.abs(dx)) * 0.5), halfMousePosY + ((dy / Math.abs(dy))*0.5)]; 
 		SelectedPos[0] = Math.floor(SelectedPos[0]);
 		SelectedPos[1] *= 2;
 		
@@ -130,14 +131,18 @@ class MouseManager{
 	
 	
 	// A REFAIRE !
-	public static function getSquareTileAbove(posClicked:Array<Int>,size:Array<Int>):Array<Array<Int>> {
+	public static function getSquareTileAround(posClicked:Array<Int>, size:Int = 1):Array<Array<Int>> {
+		if (size == 0)
+			return [posClicked];
+		
+		
+		
 		var ArrayOfPos:Array<Array<Int>> = [];
-		var height:Int = (size[0]-1) * 2;		
-		var tileSize:Array<Int> = [64,32];
+		var tileSize:Array<Int> = cast InitManager.data.config.tileSize;
 		var GridAround:Array<Array<Int>> = [];
-		var iter:IntIterator = new IntIterator(Math.floor(-height * 0.5),Math.floor(1 + height * 0.5));
+		var iter:IntIterator = new IntIterator(Math.floor(-size),Math.floor(1 + size));
 		for (i in iter) {
-			var iter2:IntIterator = new IntIterator(- height,height * 2);
+			var iter2:IntIterator = new IntIterator(- size *2,size * 4);
 			for (j in iter2) {
 				GridAround.push([posClicked[0] + i, posClicked[1] - j]);
 			}
@@ -147,10 +152,10 @@ class MouseManager{
 		var centerPosition:Array<Float> = cast posClicked;	
 		ArrayOfPos.push(cast [centerPosition[0], centerPosition[1]]);
 		
-		if (size[0] % 2 == 0){
-			centerPosition[0] += centerPosition[1] % 2 == 1 ? 0.5 : -0.5;
-		}
-		centerPosition[1] += size[1];
+		//if (size % 2 == 0){
+			//centerPosition[0] += centerPosition[1] % 2 == 1 ? 0.5 : -0.5;
+		//}
+		
 		var dx:Float;
 		var dy:Float;
 		var centerAbsolutePos:Array<Float> = Misc.convertToAbsolutePosition(cast centerPosition);
@@ -158,7 +163,7 @@ class MouseManager{
 			var absolutePosPoint = Misc.convertToAbsolutePosition(i);
 			dx = (centerAbsolutePos[0] - absolutePosPoint[0]) / tileSize[0];
 			dy = (centerAbsolutePos[1] - absolutePosPoint[1]) / tileSize[1];
-			if (Math.abs(dx) + Math.abs(dy) <= 0.5 * (size[0] -1) && ArrayOfPos.indexOf(i) == -1)
+			if (Math.abs(dx) + Math.abs(dy) <= (size) && ArrayOfPos.indexOf(i) == -1)
 				ArrayOfPos.push(i);
 		}
 		//createLilCubes(cast ArrayOfPos,0xFFFF00);
@@ -188,22 +193,7 @@ class MouseManager{
 			DrawManager.addToDisplay(redPoint,Main.getInstance().tileCont,100);
 		}
 	}
-	
-	public static function displayMap (nodes:Array<Array<Int>>):Void {
-		for(x in Reflect.fields(nodes)){
-	untyped for(y in Reflect.fields(nodes[x])){
-	untyped		if (nodes[x][y] < 2)
-				{
-		 	untyped	MouseManager.createLilCubes([[cast x,cast y]], 0x0000FF);
-				}
-				else{
-		 	untyped	MouseManager.createLilCubes([[cast x,cast y]], 0xFF0000);
-				}
-			}
-		}
-	}
-	
-	
+
 	public static function getInstance (): MouseManager {
 		if (instance == null) instance = new MouseManager();
 		return instance;

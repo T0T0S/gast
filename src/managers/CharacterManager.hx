@@ -8,7 +8,7 @@ import objects.character.Character;
 class CharacterManager{
 	private static var instance: CharacterManager;
 
-	public var managedCharacters:Map<String,Character> = new Map.Map();
+	private var managedCharacters:Map<String,Character> = new Map.Map();
 	public var positions:Array<Array<String>> = [];
 
 	public function new() {
@@ -25,12 +25,17 @@ class CharacterManager{
 	}
 	
 	public function updateCharacterCoordinatesFromTo(element:Character, newPosition:Array<Int>):Void{
+		var oldGrid:Array<Array<Int>> = MapManager.finder.getGrid();
+		
 		if (positions[element.tilePos[0]] == null)
 			positions[element.tilePos[0]] = [];
 		positions[element.tilePos[0]][element.tilePos[1]] = null;
+		oldGrid[element.tilePos[1]][element.tilePos[0]] = InitManager.data.config.tileCollisions.walkable;
+		
 		if (positions[newPosition[0]] == null)
 			positions[newPosition[0]] = [];
 		positions[newPosition[0]][newPosition[1]] = element.charaName;
+		oldGrid[newPosition[1]][newPosition[0]] = InitManager.data.config.tileCollisions.collision;
 	}
 	
 	public function addCharacter(element:Character):Void{
@@ -40,11 +45,14 @@ class CharacterManager{
 	public function removeCharacter(element:Character):Void{
 		managedCharacters.remove(element.charaName);
 		positions[element.tilePos[0]][element.tilePos[1]] = null;
+		var oldGrid:Array<Array<Int>> = MapManager.finder.getGrid();
+		oldGrid[element.tilePos[1]][element.tilePos[0]] = 1;
+		MapManager.finder.setGrid(oldGrid);
 	}
 	
-	public function update():Void{
+	public function Update():Void{
 		for (i in managedCharacters.iterator()){
-			i._update();
+			i._selfUpdate();
 		}
 	}
 	

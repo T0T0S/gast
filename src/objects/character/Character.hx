@@ -10,6 +10,7 @@ import objects.Animation;
 import pixi.core.textures.Texture;
 import pixi.extras.MovieClip;
 import utils.Id;
+import utils.Misc;
 
 /**
  * ...
@@ -17,13 +18,14 @@ import utils.Id;
  */
 
 typedef Stats = {
-	var health : Float;
-	var strength : Float;
-	var endurance : Float;
-	var speed : Float;
-	var precision : Float;
-	var luck : Float;
-	var AP : Float;
+	var health 			: Float;
+	var strength 		: Float;
+	var endurance 		: Float;
+	var moveSpeed 		: Float;
+	var regeneration 	: Float;
+	var precision 		: Float;
+	var luck 			: Float;
+	var AP 				: Float;
 }
 
 
@@ -37,16 +39,18 @@ class Character extends MovieClip{
 	public var inFight:Bool = false;
 	
 	public var stats:Stats = {
-		health 		: 1000,
-		strength 	: 100,
-		endurance 	: 100,
-		speed 		: 100,
-		precision 	: 100,
-		luck 		: 100,
+		health 		: 100,
+		strength 	: 10,
+		endurance 	: 10,
+		regeneration: 10,
+		moveSpeed	: 5,
+		precision 	: 10,
+		luck 		: 10,
 		AP 			: 10
 	};
 	
-	
+	private var activePath:Array<Dynamic> = [];
+	private var activePathPoint:Dynamic;
 	
 	public var refreshSpeed:Float = 1;
 	
@@ -58,7 +62,10 @@ class Character extends MovieClip{
 	public var activeAnimationName:String;
 	
 	public var config:Dynamic;
-
+	
+	/*#################
+	*		NEW	 
+	* ################# */
 	public function new(newName:String) {
 		charaName = newName;
 		config = InitManager.data[untyped newName];
@@ -105,13 +112,12 @@ class Character extends MovieClip{
 		}
 	};
 	
-	/**
-	 #################
-		  UPDATE
-	 #################
-	 * */
-	public function _update():Void {
+	/*#################
+			UPDATE
+	  #################*/
+	public function _selfUpdate():Void {
 		manageAnim();
+		managePathFinding();
 		customUpdate();
 	}
 	
@@ -129,6 +135,32 @@ class Character extends MovieClip{
 					gotoAndStop(activeAnimation.getFrames(directionFacing)[0]);
 				else
 					gotoAndPlay(activeAnimation.getFrames(directionFacing)[0]);
+			}
+		}
+	}
+	
+	private function managePathFinding():Void {
+		if (activePath.length != 0) {
+			if (tilePos[0] != activePath[activePath.length - 1].x || tilePos[1] != activePath[activePath.length - 1].y){
+				var arrayPos = [activePathPoint.x, activePathPoint.y];
+				
+				//trace(Misc.getDistance(x,y,Misc.convertToAbsolutePosition(arrayPos)[0],Misc.convertToAbsolutePosition(arrayPos)[1]));
+				x += Math.cos(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed;
+				y -= Math.sin(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed;
+				if(Misc.getDistance(x,y,Misc.convertToAbsolutePosition(arrayPos)[0],Misc.convertToAbsolutePosition(arrayPos)[1] + InitManager.data.config.tileSize[1] * 0.5) < stats.moveSpeed)
+				{
+					// new Point
+					setTilePosition(arrayPos);
+					if(activePath.indexOf(activePathPoint) != activePath.length -1){
+						activePathPoint = activePath[activePath.indexOf(activePathPoint) + 1];
+						setDirection(Misc.getDirectionToPoint(tilePos, [activePathPoint.x,activePathPoint.y]));
+					}
+					else
+					{
+						trace("end Path");
+						activePath = [];
+					}
+				}
 			}
 		}
 	}
@@ -193,8 +225,18 @@ class Character extends MovieClip{
 		return arrayToReturn;
 	}
 	
+	public function followPath(path:Array<Dynamic>):Void{
+		if (path.length == 0)
+			return;
+		activePath = path;
+		setTilePosition([activePath[0].x,activePath[0].y]);
+		activePathPoint = activePath[1];
+		setAnimation("run");
+	}
+	
 	public function launchAttack(targetPosition:Array<Int>):Void{
-		if (CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)){
+		if (CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)) {
+			// launch attack	
 			CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(stats.strength);
 		}
 	};

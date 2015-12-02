@@ -229,6 +229,7 @@ EasyStar.js = function() {
 	var acceptableTiles;
 	var diagonalsEnabled = false;
 
+
 	/**
 	* Sets the collision grid that EasyStar uses.
 	* 
@@ -502,32 +503,15 @@ EasyStar.js = function() {
 			var yImpair = searchNode.y % 2 == 1;
 			searchNode.list = EasyStar.Node.CLOSED_LIST;
 
-			if (searchNode.y > 0) {
-				tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
-					x: 0, y: -1, cost: STRAIGHT_COST * getTileCost(searchNode.x, searchNode.y-1)});
-			}
-			if (searchNode.x < collisionGrid[0].length-1) {
-				tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
-					x: 1, y: 0, cost: STRAIGHT_COST * getTileCost(searchNode.x+1, searchNode.y)});
-			}
-			if (searchNode.y < collisionGrid.length-1) {
-				tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
-					x: 0, y: 1, cost: STRAIGHT_COST * getTileCost(searchNode.x, searchNode.y+1)});
-			}
-			if (searchNode.x > 0) {
-				tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
-					x: -1, y: 0, cost: STRAIGHT_COST * getTileCost(searchNode.x-1, searchNode.y)});
-			}
-			if (diagonalsEnabled) {
-				if (searchNode.x > 0 && searchNode.y > 0 && !yImpair) {
-
-					if (allowCornerCutting ||
-						(isTileWalkable(collisionGrid, acceptableTiles, searchNode.x, searchNode.y-1) &&
-						isTileWalkable(collisionGrid, acceptableTiles, searchNode.x-1, searchNode.y))) {
-						
-						tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
-							x: -1, y: -1, cost: DIAGONAL_COST * getTileCost(searchNode.x-1, searchNode.y-1)});
-					}
+			if (yImpair) 
+			{
+				if (searchNode.y > 0) {
+					tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
+						x: 0, y: -1, cost: STRAIGHT_COST * getTileCost(searchNode.x, searchNode.y-1)});
+				}
+				if (searchNode.y < collisionGrid.length-1) {
+					tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
+						x: 0, y: 1, cost: STRAIGHT_COST * getTileCost(searchNode.x, searchNode.y+1)});
 				}
 				if (searchNode.x < collisionGrid[0].length-1 && searchNode.y < collisionGrid.length-1 && yImpair) {
 
@@ -550,6 +534,28 @@ EasyStar.js = function() {
 							x: 1, y: -1, cost: DIAGONAL_COST * getTileCost(searchNode.x+1, searchNode.y-1)});
 					}
 				}
+			}
+			else
+			{
+				if (searchNode.y > 0) {
+					tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
+						x: 0, y: -1, cost: STRAIGHT_COST * getTileCost(searchNode.x, searchNode.y-1)});
+				}
+				if (searchNode.y < collisionGrid.length-1) {
+					tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
+						x: 0, y: 1, cost: STRAIGHT_COST * getTileCost(searchNode.x, searchNode.y+1)});
+				}
+				if (searchNode.x > 0 && searchNode.y > 0 && !yImpair) {
+
+					if (allowCornerCutting ||
+						(isTileWalkable(collisionGrid, acceptableTiles, searchNode.x, searchNode.y-1) &&
+						isTileWalkable(collisionGrid, acceptableTiles, searchNode.x-1, searchNode.y))) {
+						
+						tilesToSearch.push({ instance: instances[0], searchNode: searchNode, 
+							x: -1, y: -1, cost: DIAGONAL_COST * getTileCost(searchNode.x-1, searchNode.y-1)});
+					}
+				}
+				
 				if (searchNode.x > 0 && searchNode.y < collisionGrid.length-1 && !yImpair) {
 
 					if (allowCornerCutting ||
@@ -674,4 +680,7 @@ EasyStar.js = function() {
 	var getDistance = function(x1,y1,x2,y2) {
 		return Math.sqrt( (x2-=x1)*x2 + (y2-=y1)*y2 );
 	};
+
+	this.isTileWalkable = isTileWalkable;
+
 }

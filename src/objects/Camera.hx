@@ -2,6 +2,7 @@ package objects;
 import js.Browser;
 import managers.InitManager;
 import managers.MapManager;
+import pixi.core.display.DisplayObject;
 import pixi.core.math.shapes.Rectangle;
 import utils.Misc;
 
@@ -18,16 +19,18 @@ class Camera{
 	private static var instance: Camera;
 	
 	public var offset:Array<Float> = [0, 0];
-	public var size:Array<Float> = [0, 0];
+	private var size:Array<Float> = [0, 0];
 	
-	public var minimumMovement:Float = 10;
-	public var dragSensitivity:Float = 2;
+	private var minimumMovement:Float = 10;
+	private var dragSensitivity:Float = 2;
 	
 	private var mouseDownPosition:Array<Float> = [];
 	private var oldCameraPosition:Array<Float> = [];
 	private var clicked:Bool = false;
 	public var hasMovedEnough:Bool = false;
-	private var configTileSize:Array<Int>;
+	
+	private var targetToFollow:DisplayObject;
+	private var clampedCam:Bool = true;
 	
 	public var mapSize:Rectangle;
 	
@@ -36,7 +39,6 @@ class Camera{
 	 * initialisation des events receivers et variables de la cam
 	 */
 	public function new() {
-		configTileSize = InitManager.data.config.tileSize;
 		minimumMovement = Reflect.field(InitManager.data.config.camera, "minimumMovement");
 		dragSensitivity = Reflect.field(InitManager.data.config.camera, "sensitivity");
 		Browser.window.addEventListener("gameMouseDown", mouseDownListener);
@@ -60,7 +62,7 @@ class Camera{
  * 3 - change l'offset de la caméra pour "suivre la souris" et clamp les valeurs pour qu'elle reste sur le terrain
  * */
 	private function mouseMoveListener (e):Void {
-		if(!MapManager.getInstance().activeMap.scrollable)
+		if(!MapManager.getInstance().activeMap.scrollable || targetToFollow != null)
 			return;
 		if (!clicked)
 			return;
@@ -74,8 +76,10 @@ class Camera{
 		
 		offset = [oldCameraPosition[0] - (e.layerX - mouseDownPosition[0]) * dragSensitivity, oldCameraPosition[1] - (e.layerY - mouseDownPosition[1])*dragSensitivity];
 		
-		offset[0] = Misc.clamp(offset[0],0,Math.max(mapSize.width - size[0],0));
-		offset[1] = Misc.clamp(offset[1],0,Math.max(mapSize.height - size[1],0));
+		if (clampedCam)
+		{
+			constrainCam();
+		}
 		
 		translateOffsetToConts();
 	}
@@ -102,12 +106,39 @@ class Camera{
 	}
 	
 	public function updateMapSize(newMap:GameMap):Void{
-		mapSize.width = newMap.graphicalData.length * InitManager.data.config.tileSize[0];
-		mapSize.height = newMap.graphicalData[0].length * InitManager.data.config.tileSize[1] * 0.5;
+		mapSize.width = newMap.graphicalData[0].length * InitManager.data.config.tileSize[0];
+		mapSize.height = newMap.graphicalData.length * InitManager.data.config.tileSize[1] * 0.5;
+	}
+	
+	public function Update():Void
+	{
+		if (targetToFollow != null)
+		{
+			offset[0] = targetToFollow.x - size[0] * 0.5;
+			offset[1] = targetToFollow.y - size[1] * 0.5;
+			if (clampedCam)
+				constrainCam();
+			translateOffsetToConts();
+		}
+	}
+	
+	private function constrainCam():Void{
+		offset[0] = Misc.clamp(offset[0],0,Math.max(mapSize.width - size[0] - InitManager.data.config.tileSize[0],0));
+		offset[1] = Misc.clamp(offset[1],0,Math.max(mapSize.height - size[1] - InitManager.data.config.tileSize[1] * 1.5,0));
+	}
+	
+	public function clampCam():Void { clampedCam = true; }
+	public function unClampCam():Void { clampedCam = false; }
+	
+	public function setFollowTarget(target:DisplayObject, absolutePos:Bool = false)
+	{
+		targetToFollow = target;
+		clampedCam = !absolutePos;
 	}
 	
 	public function switchState ():Void {
-		setCameraPosition([0,0]);
+		setCameraPosition([0, 0]);
+		targetToFollow = null;
 	}
 		
 	public static function getInstance (): Camera {

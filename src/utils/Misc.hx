@@ -23,7 +23,7 @@ class Misc {
 
 	/**
 	 * Fonction de calcul de distance entre 2 objects
-	 * @return distance beteween obj1 / obj2
+	 * @return distance between obj1 / obj2
 	 */ 
 	public static function getDistance (x1:Float, y1:Float, x2:Float, y2:Float):Float {
 		var dx:Float = x1 - x2;
@@ -32,11 +32,11 @@ class Misc {
 	}
 	
 	/**
-	 * Calcule l'angle en radian entre les objets S et T
+	 * Calcule l'angle en radian entre les objets S et T en absolute
 	 * @return angle in radian between S and T 
 	 */
 	public static function angleBetween (s:Array<Float>, t:Array<Float>):Float {
-		return Math.atan2(t[0] - s[0], t[1] - s[1]);
+		return - Math.atan2(t[1] - s[1], t[0] - s[0]);
 	}
 	
 	/**
@@ -44,19 +44,28 @@ class Misc {
 	 * @param	angle en radian
 	 * @return	la direction (0 => b-l / 1 => u-l / 2 => u-r / 3 => b-r)
 	 */
-	public static function convertAngleToDirection(angle:Float):Int{
-		if(Math.abs(angle) > Math.PI * 0.5)
+	public static function convertAngleToDirection(angle:Float):Int {
+		trace(angle / Math.PI);
+		if(Math.abs(angle) / Math.PI  > 0.5)
+			if (angle > 0)
+				return 1;
+			else
+				return 0;
+		else
 			if (angle > 0)
 				return 2;
 			else
-				return 1;
-		else
-			if (angle > 0)
 				return 3;
-			else
-				return 0;
 	}
 	
+	public static function getDirectionToPoint(source:Array<Int>, target:Array<Int>):Int{
+		return convertAngleToDirection(angleBetweenTiles(source, target));
+	}
+	
+	/**
+	 * Calcule l'angle en radian entre les objets from et to en tilePos
+	 * @return angle in radian between from and to 
+	 */
 	public static function angleBetweenTiles(from:Array<Int>,to:Array<Int>):Float{
 		return angleBetween(convertToAbsolutePosition(from), convertToAbsolutePosition(to));
 	}
@@ -68,10 +77,10 @@ class Misc {
 	public static function convertToAbsolutePosition (tilePosition:Array<Int>):Array<Float> {
 		var configTileSize:Array<Int> = InitManager.data.config.tileSize;
 		var returnPosition:Array<Float> = [];
-		returnPosition[0] = tilePosition[0] * configTileSize[0] -1;		
+		returnPosition[0] = tilePosition[0] * configTileSize[0];		
 		if (Math.abs(tilePosition[1] % 2) == 1)
 			returnPosition[0] += configTileSize[0] * 0.5;		
-		returnPosition[1] = tilePosition[1] * configTileSize[1] * 0.5 -1;
+		returnPosition[1] = tilePosition[1] * configTileSize[1] * 0.5;
 		return cast returnPosition;
 	}
 	

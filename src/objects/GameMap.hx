@@ -39,7 +39,6 @@ class GameMap{
 		
 		mapContainer.y = OffsetY;
 		mapContainer.x = OffsetX;
-		
 		if (json == null)
 			Browser.window.console.warn("%c[WARNING] no data json found for map '" + mapName+"' ", "color:red;");
 		json.tiles.unshift(null);
@@ -63,7 +62,7 @@ class GameMap{
 			DrawManager.addToDisplay(mapContainer, Main.getInstance().tileCont);
 		
 		mapContainer.visible = true;
-		MouseManager.displayMap(MapManager.finder.getGrid());
+		MapManager.displayDebugColliMap(MapManager.finder.getGrid());
 	}
 	
 	public function hideMap(remove:Bool = false):Void {
@@ -73,58 +72,39 @@ class GameMap{
 	}
 
 	public function getTileAt(tilePosition:Array<Int>):String{
-		return json.tiles[graphicalData[tilePosition[0]][tilePosition[1]]];
+		return json.tiles[graphicalData[tilePosition[1]][tilePosition[0]]];
 	}
 	
 	public function getColliAt(tilePosition:Array<Int>):Bool{
-		return collisionData[tilePosition[0]][tilePosition[1]] != 0;
+		return collisionData[tilePosition[1]][tilePosition[0]] != 0;
 	}
 	
 	public function generatePathfinding():Void{
 		var finder:Dynamic = MapManager.finder;
-		//gridOriginal = untyped __new__(Browser.window.PF.Grid, collisionData.length * 2, collisionData[0].length);
-		//var x:Int = 0;
-		//var y:Int = 0;
-		//while(y < gridOriginal.height){
-			//x = 0;		
-			//while (x < gridOriginal.width)
-			//{
-				//gridOriginal.setWalkableAt(x, y, collisionData[untyped x*0.5][y] == 1);
-				//gridOriginal.setWalkableAt(x+1,y,false);
-				//untyped gridOriginal.nodes[y][x].x *= 0.5;
-				//untyped gridOriginal.nodes[y][x + 1].x *= 0.50;
-				//
-				//x+=2;
-			//}
-			//y++;
-		//}
+
 		finder.setGrid(collisionData);
-		finder.setAcceptableTiles([1]);
+		finder.setAcceptableTiles(InitManager.data.config.tileCollisions.walkable);
 		finder.enableDiagonals();
 		finder.enableSync();
 		
 		untyped Browser.window.finder = finder;
-		
-		trace(finder);
+	}
+	
+	public function getWalkableAt(target:Array<Int>):Bool {
+		return MapManager.finder.isTileWalkable(MapManager.finder.getGrid() , [InitManager.data.config.tileCollisions.walkable], target[0], target[1]);
 	}
 	
 	public function findPath(source:Array<Int>, target:Array<Int>):Array<Array<Int>> {
 		var finder:Dynamic = MapManager.finder;
 		var path:Array<Dynamic> = [];
-		trace(target);
-		
 		/*
-		 * MAP IS NOT GOOD ! 
 		 * pathfinding does weird shit
-		 * 
 		 * */
 		
 		finder.findPath(source[0], source[1], target[0], target[1], function( newpath ) {
 			if (newpath == null) {
-				trace("XXX  NO PATH FOUND !. XXX");
+				trace("XXX  NO PATH FOUND ! XXX");
 			} else {
-				trace("Path found. ");
-				trace(newpath);
 				untyped path = newpath;
 				for(point in path.iterator()){
 					MouseManager.createLilCubes([[point.x,point.y]]);

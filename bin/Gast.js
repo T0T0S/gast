@@ -121,7 +121,8 @@ Main.prototype = {
 		window.requestAnimationFrame($bind(this,this.Update));
 		if(Main.timeManager != null) Main.timeManager.Update();
 		this.mouseUpdate();
-		Main.characterManager.update();
+		Main.characterManager.Update();
+		Main.camera.Update();
 		Main.stateManager.Update();
 	}
 	,Render: function() {
@@ -341,10 +342,13 @@ managers.CharacterManager.prototype = {
 		if(this.positions[position[0]][position[1]] != null) return this.managedCharacters.get(this.positions[position[0]][position[1]]); else return null;
 	}
 	,updateCharacterCoordinatesFromTo: function(element,newPosition) {
+		var oldGrid = managers.MapManager.finder.getGrid();
 		if(this.positions[element.tilePos[0]] == null) this.positions[element.tilePos[0]] = [];
 		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
+		oldGrid[element.tilePos[1]][element.tilePos[0]] = managers.InitManager.data.config.tileCollisions.walkable;
 		if(this.positions[newPosition[0]] == null) this.positions[newPosition[0]] = [];
 		this.positions[newPosition[0]][newPosition[1]] = element.charaName;
+		oldGrid[newPosition[1]][newPosition[0]] = managers.InitManager.data.config.tileCollisions.collision;
 	}
 	,addCharacter: function(element) {
 		this.managedCharacters.set(element.charaName,element);
@@ -352,12 +356,15 @@ managers.CharacterManager.prototype = {
 	,removeCharacter: function(element) {
 		this.managedCharacters.remove(element.charaName);
 		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
+		var oldGrid = managers.MapManager.finder.getGrid();
+		oldGrid[element.tilePos[1]][element.tilePos[0]] = 1;
+		managers.MapManager.finder.setGrid(oldGrid);
 	}
-	,update: function() {
+	,Update: function() {
 		var $it0 = this.managedCharacters.iterator();
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
-			i._update();
+			i._selfUpdate();
 		}
 	}
 	,switchState: function() {
@@ -434,6 +441,21 @@ managers.MapManager = function() {
 	this.maps.set("testMapZig",value);
 };
 managers.MapManager.__name__ = true;
+managers.MapManager.displayDebugColliMap = function(nodes) {
+	var _g = 0;
+	var _g1 = Reflect.fields(nodes);
+	while(_g < _g1.length) {
+		var y = _g1[_g];
+		++_g;
+		var _g2 = 0;
+		var _g3 = Reflect.fields(nodes[x]);
+		while(_g2 < _g3.length) {
+			var x = _g3[_g2];
+			++_g2;
+			if(nodes[y][x] < 2) managers.MouseManager.createLilCubes([[x,y]],255); else managers.MouseManager.createLilCubes([[x,y]],16711680);
+		}
+	}
+};
 managers.MapManager.getInstance = function() {
 	if(managers.MapManager.instance == null) managers.MapManager.instance = new managers.MapManager();
 	return managers.MapManager.instance;
@@ -447,14 +469,14 @@ managers.MapManager.prototype = {
 		var tileSprite;
 		var $it0 = HxOverrides.iter(newMap.graphicalData);
 		while( $it0.hasNext() ) {
-			var arrayY = $it0.next();
+			var arrayX = $it0.next();
 			j = 0;
-			var $it1 = HxOverrides.iter(arrayY);
+			var $it1 = HxOverrides.iter(arrayX);
 			while( $it1.hasNext() ) {
 				var tileIndex = $it1.next();
 				if(tileIndex != 0) {
 					if(newMap.json.tiles[tileIndex] == null) throw new Error("[ERROR] tile index " + tileIndex + " not found in " + newMap.name + ".json");
-					var pos = utils.Misc.convertToAbsolutePosition([i,j]);
+					var pos = utils.Misc.convertToAbsolutePosition([j,i]);
 					tileSprite = new PIXI.Sprite(PIXI.Texture.fromImage("" + newMap.json.tiles[tileIndex]));
 					tileSprite.x = pos[0];
 					tileSprite.y = pos[1];
@@ -488,8 +510,8 @@ managers.MapManager.prototype = {
 			j = 0;
 			var map = newMap.layers[i].data;
 			while(j < newMap.layers[i].data.length) {
-				if(mapLayer[j % newMap.width] == null) mapLayer[j % newMap.width] = [];
-				mapLayer[j % newMap.width][Math.floor(j / newMap.width)] = newMap.layers[i].data[j];
+				if(mapLayer[Math.floor(j / newMap.width)] == null) mapLayer[Math.floor(j / newMap.width)] = [];
+				mapLayer[Math.floor(j / newMap.width)][j % newMap.width] = newMap.layers[i].data[j];
 				j++;
 			}
 			returnObject[newMap.layers[i].name] = mapLayer.slice();
@@ -529,16 +551,16 @@ managers.MouseManager.convertClicToTilePosition = function(absoluteX,absoluteY) 
 	SelectedPos[1] *= 2;
 	return SelectedPos;
 };
-managers.MouseManager.getSquareTileAbove = function(posClicked,size) {
+managers.MouseManager.getSquareTileAround = function(posClicked,size) {
+	if(size == null) size = 1;
+	if(size == 0) return [posClicked];
 	var ArrayOfPos = [];
-	var height = (size[0] - 1) * 2;
-	var tileSize_0 = 64;
-	var tileSize_1 = 32;
+	var tileSize = managers.InitManager.data.config.tileSize;
 	var GridAround = [];
-	var iter = new IntIterator(Math.floor(-height * 0.5),Math.floor(1 + height * 0.5));
+	var iter = new IntIterator(Math.floor(-size),Math.floor(1 + size));
 	while( iter.hasNext() ) {
 		var i = iter.next();
-		var iter2 = new IntIterator(-height,height * 2);
+		var iter2 = new IntIterator(-size * 2,size * 4);
 		while( iter2.hasNext() ) {
 			var j = iter2.next();
 			GridAround.push([posClicked[0] + i,posClicked[1] - j]);
@@ -546,8 +568,6 @@ managers.MouseManager.getSquareTileAbove = function(posClicked,size) {
 	}
 	var centerPosition = posClicked;
 	ArrayOfPos.push([centerPosition[0],centerPosition[1]]);
-	if(size[0] % 2 == 0) if(centerPosition[1] % 2 == 1) centerPosition[0] += 0.5; else centerPosition[0] += -0.5;
-	centerPosition[1] += size[1];
 	var dx;
 	var dy;
 	var centerAbsolutePos = utils.Misc.convertToAbsolutePosition(centerPosition);
@@ -555,9 +575,9 @@ managers.MouseManager.getSquareTileAbove = function(posClicked,size) {
 	while( $it0.hasNext() ) {
 		var i1 = $it0.next();
 		var absolutePosPoint = utils.Misc.convertToAbsolutePosition(i1);
-		dx = (centerAbsolutePos[0] - absolutePosPoint[0]) / tileSize_0;
-		dy = (centerAbsolutePos[1] - absolutePosPoint[1]) / tileSize_1;
-		if(Math.abs(dx) + Math.abs(dy) <= 0.5 * (size[0] - 1) && HxOverrides.indexOf(ArrayOfPos,i1,0) == -1) ArrayOfPos.push(i1);
+		dx = (centerAbsolutePos[0] - absolutePosPoint[0]) / tileSize[0];
+		dy = (centerAbsolutePos[1] - absolutePosPoint[1]) / tileSize[1];
+		if(Math.abs(dx) + Math.abs(dy) <= size && HxOverrides.indexOf(ArrayOfPos,i1,0) == -1) ArrayOfPos.push(i1);
 	}
 	return ArrayOfPos;
 };
@@ -582,21 +602,6 @@ managers.MouseManager.createLilCubes = function(position,color) {
 		managers.DrawManager.addToDisplay(redPoint,Main.getInstance().tileCont,100);
 	}
 };
-managers.MouseManager.displayMap = function(nodes) {
-	var _g = 0;
-	var _g1 = Reflect.fields(nodes);
-	while(_g < _g1.length) {
-		var x = _g1[_g];
-		++_g;
-		var _g2 = 0;
-		var _g3 = Reflect.fields(nodes[x]);
-		while(_g2 < _g3.length) {
-			var y = _g3[_g2];
-			++_g2;
-			if(nodes[x][y] < 2) managers.MouseManager.createLilCubes([[x,y]],255); else managers.MouseManager.createLilCubes([[x,y]],16711680);
-		}
-	}
-};
 managers.MouseManager.getInstance = function() {
 	if(managers.MouseManager.instance == null) managers.MouseManager.instance = new managers.MouseManager();
 	return managers.MouseManager.instance;
@@ -606,9 +611,10 @@ managers.MouseManager.prototype = {
 		if(this.calledPerFrame > this.refreshPerFrame) return;
 		++this.calledPerFrame;
 		var clicPoint = [e.layerX + Main.camera.offset[0],e.layerY + Main.camera.offset[1]];
+		var tilePos = managers.MouseManager.convertClicToTilePosition(clicPoint[0],clicPoint[1]);
 		managers.MouseManager.gamehover.layerX = e.layerX;
 		managers.MouseManager.gamehover.layerY = e.layerY;
-		Reflect.setField(managers.MouseManager.gamehover,"tilePos",managers.MouseManager.convertClicToTilePosition(clicPoint[0],clicPoint[1]));
+		managers.MouseManager.gamehover.tilePos = tilePos;
 		managers.MouseManager.gamehover.gamePos = clicPoint;
 		window.dispatchEvent(managers.MouseManager.gamehover);
 	}
@@ -820,6 +826,7 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 	,__class__: objects.Button
 });
 objects.Camera = function() {
+	this.clampedCam = true;
 	this.hasMovedEnough = false;
 	this.clicked = false;
 	this.oldCameraPosition = [];
@@ -828,7 +835,6 @@ objects.Camera = function() {
 	this.minimumMovement = 10;
 	this.size = [0,0];
 	this.offset = [0,0];
-	this.configTileSize = managers.InitManager.data.config.tileSize;
 	this.minimumMovement = Reflect.field(managers.InitManager.data.config.camera,"minimumMovement");
 	this.dragSensitivity = Reflect.field(managers.InitManager.data.config.camera,"sensitivity");
 	window.addEventListener("gameMouseDown",$bind(this,this.mouseDownListener));
@@ -850,7 +856,7 @@ objects.Camera.prototype = {
 		this.oldCameraPosition = this.offset;
 	}
 	,mouseMoveListener: function(e) {
-		if(!managers.MapManager.getInstance().activeMap.scrollable) return;
+		if(!managers.MapManager.getInstance().activeMap.scrollable || this.targetToFollow != null) return;
 		if(!this.clicked) return;
 		if(this.hasMovedEnough == false && Math.abs(this.mouseDownPosition[0] - e.layerX) < this.minimumMovement && Math.abs(this.mouseDownPosition[1] - e.layerY) < this.minimumMovement) return; else if(!this.hasMovedEnough) {
 			this.mouseDownPosition[0] = e.layerX;
@@ -858,8 +864,7 @@ objects.Camera.prototype = {
 		}
 		this.hasMovedEnough = true;
 		this.offset = [this.oldCameraPosition[0] - (e.layerX - this.mouseDownPosition[0]) * this.dragSensitivity,this.oldCameraPosition[1] - (e.layerY - this.mouseDownPosition[1]) * this.dragSensitivity];
-		this.offset[0] = utils.Misc.clamp(this.offset[0],0,Math.max(this.mapSize.width - this.size[0],0));
-		this.offset[1] = utils.Misc.clamp(this.offset[1],0,Math.max(this.mapSize.height - this.size[1],0));
+		if(this.clampedCam) this.constrainCam();
 		this.translateOffsetToConts();
 	}
 	,mouseUpListener: function(e) {
@@ -880,11 +885,35 @@ objects.Camera.prototype = {
 		this.size = [Main.getInstance().renderer.width,Main.getInstance().renderer.height];
 	}
 	,updateMapSize: function(newMap) {
-		this.mapSize.width = newMap.graphicalData.length * managers.InitManager.data.config.tileSize[0];
-		this.mapSize.height = newMap.graphicalData[0].length * managers.InitManager.data.config.tileSize[1] * 0.5;
+		this.mapSize.width = newMap.graphicalData[0].length * managers.InitManager.data.config.tileSize[0];
+		this.mapSize.height = newMap.graphicalData.length * managers.InitManager.data.config.tileSize[1] * 0.5;
+	}
+	,Update: function() {
+		if(this.targetToFollow != null) {
+			this.offset[0] = this.targetToFollow.x - this.size[0] * 0.5;
+			this.offset[1] = this.targetToFollow.y - this.size[1] * 0.5;
+			if(this.clampedCam) this.constrainCam();
+			this.translateOffsetToConts();
+		}
+	}
+	,constrainCam: function() {
+		this.offset[0] = utils.Misc.clamp(this.offset[0],0,Math.max(this.mapSize.width - this.size[0] - managers.InitManager.data.config.tileSize[0],0));
+		this.offset[1] = utils.Misc.clamp(this.offset[1],0,Math.max(this.mapSize.height - this.size[1] - managers.InitManager.data.config.tileSize[1] * 1.5,0));
+	}
+	,clampCam: function() {
+		this.clampedCam = true;
+	}
+	,unClampCam: function() {
+		this.clampedCam = false;
+	}
+	,setFollowTarget: function(target,absolutePos) {
+		if(absolutePos == null) absolutePos = false;
+		this.targetToFollow = target;
+		this.clampedCam = !absolutePos;
 	}
 	,switchState: function() {
 		this.setCameraPosition([0,0]);
+		this.targetToFollow = null;
 	}
 	,__class__: objects.Camera
 };
@@ -917,7 +946,7 @@ objects.GameMap.prototype = {
 	,displayMap: function() {
 		if(this.mapContainer.parent == null) managers.DrawManager.addToDisplay(this.mapContainer,Main.getInstance().tileCont);
 		this.mapContainer.visible = true;
-		managers.MouseManager.displayMap(managers.MapManager.finder.getGrid());
+		managers.MapManager.displayDebugColliMap(managers.MapManager.finder.getGrid());
 	}
 	,hideMap: function(remove) {
 		if(remove == null) remove = false;
@@ -925,28 +954,27 @@ objects.GameMap.prototype = {
 		if(remove) managers.DrawManager.removeFromDisplay(this.mapContainer);
 	}
 	,getTileAt: function(tilePosition) {
-		return this.json.tiles[this.graphicalData[tilePosition[0]][tilePosition[1]]];
+		return this.json.tiles[this.graphicalData[tilePosition[1]][tilePosition[0]]];
 	}
 	,getColliAt: function(tilePosition) {
-		return this.collisionData[tilePosition[0]][tilePosition[1]] != 0;
+		return this.collisionData[tilePosition[1]][tilePosition[0]] != 0;
 	}
 	,generatePathfinding: function() {
 		var finder = managers.MapManager.finder;
 		finder.setGrid(this.collisionData);
-		finder.setAcceptableTiles([1]);
+		finder.setAcceptableTiles(managers.InitManager.data.config.tileCollisions.walkable);
 		finder.enableDiagonals();
 		finder.enableSync();
 		window.finder = finder;
-		console.log(finder);
+	}
+	,getWalkableAt: function(target) {
+		return managers.MapManager.finder.isTileWalkable(managers.MapManager.finder.getGrid(),[managers.InitManager.data.config.tileCollisions.walkable],target[0],target[1]);
 	}
 	,findPath: function(source,target) {
 		var finder = managers.MapManager.finder;
 		var path = [];
-		console.log(target);
 		finder.findPath(source[0],source[1],target[0],target[1],function(newpath) {
-			if(newpath == null) console.log("XXX  NO PATH FOUND !. XXX"); else {
-				console.log("Path found. ");
-				console.log(newpath);
+			if(newpath == null) console.log("XXX  NO PATH FOUND ! XXX"); else {
 				path = newpath;
 				var $it0 = HxOverrides.iter(path);
 				while( $it0.hasNext() ) {
@@ -1097,7 +1125,8 @@ objects.character = {};
 objects.character.Character = function(newName) {
 	this.animations = new haxe.ds.StringMap();
 	this.refreshSpeed = 1;
-	this.stats = { health : 1000, strength : 100, endurance : 100, speed : 100, precision : 100, luck : 100, AP : 10};
+	this.activePath = [];
+	this.stats = { health : 100, strength : 10, endurance : 10, regeneration : 10, moveSpeed : 5, precision : 10, luck : 10, AP : 10};
 	this.inFight = false;
 	this.directionFacing = 0;
 	this.tilePos = [0,0];
@@ -1144,8 +1173,9 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 			this.kill();
 		}
 	}
-	,_update: function() {
+	,_selfUpdate: function() {
 		this.manageAnim();
+		this.managePathFinding();
 		this.customUpdate();
 	}
 	,manageAnim: function() {
@@ -1155,6 +1185,35 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 				this.stop();
 				this.activeAnimation.endAction();
 			} else if(this.activeAnimation.getFrames(this.directionFacing).length == 1) this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[0]); else this.gotoAndPlay(this.activeAnimation.getFrames(this.directionFacing)[0]);
+		}
+	}
+	,managePathFinding: function() {
+		if(this.activePath.length != 0) {
+			if(this.tilePos[0] != this.activePath[this.activePath.length - 1].x || this.tilePos[1] != this.activePath[this.activePath.length - 1].y) {
+				var arrayPos = [this.activePathPoint.x,this.activePathPoint.y];
+				this.x += Math.cos(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed;
+				this.y -= Math.sin(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed;
+				if(utils.Misc.getDistance(this.x,this.y,utils.Misc.convertToAbsolutePosition(arrayPos)[0],utils.Misc.convertToAbsolutePosition(arrayPos)[1] + managers.InitManager.data.config.tileSize[1] * 0.5) < this.stats.moveSpeed) {
+					this.setTilePosition(arrayPos);
+					if((function($this) {
+						var $r;
+						var x = $this.activePathPoint;
+						$r = HxOverrides.indexOf($this.activePath,x,0);
+						return $r;
+					}(this)) != this.activePath.length - 1) {
+						this.activePathPoint = this.activePath[(function($this) {
+							var $r;
+							var x1 = $this.activePathPoint;
+							$r = HxOverrides.indexOf($this.activePath,x1,0);
+							return $r;
+						}(this)) + 1];
+						this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,[this.activePathPoint.x,this.activePathPoint.y]));
+					} else {
+						console.log("end Path");
+						this.activePath = [];
+					}
+				}
+			}
 		}
 	}
 	,customUpdate: function() {
@@ -1193,6 +1252,13 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		if(Math.abs(this.tilePos[1] % 2) == 1) arrayToReturn[0] += managers.InitManager.data.config.tileSize[0] * 0.5;
 		return arrayToReturn;
 	}
+	,followPath: function(path) {
+		if(path.length == 0) return;
+		this.activePath = path;
+		this.setTilePosition([this.activePath[0].x,this.activePath[0].y]);
+		this.activePathPoint = this.activePath[1];
+		this.setAnimation("run");
+	}
 	,launchAttack: function(targetPosition) {
 		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)) managers.CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(this.stats.strength);
 	}
@@ -1223,21 +1289,24 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 		window.addEventListener("gameHover",$bind(this,this.mouseHover));
 		window.addEventListener("gameMouseUp",$bind(this,this.mouseClick));
 		this.hero = new objects.character.Character("hero");
-		this.hero.setTilePosition([10,10]);
+		this.hero.setTilePosition([13,30]);
 		this.hero.scale.set(0.4,0.4);
-		managers.DrawManager.addToDisplay(this.hero,Main.getInstance().gameCont);
+		managers.DrawManager.addToDisplay(this.hero,Main.getInstance().tileCont);
+		objects.Camera.getInstance().setFollowTarget(this.hero);
 	}
 	,Update: function() {
 	}
 	,mouseClick: function(e) {
 		if(!e.drag) {
-			this.hero.setDirection(utils.Misc.convertAngleToDirection(utils.Misc.angleBetweenTiles(this.hero.tilePos,e.tilePos)));
-			managers.MapManager.getInstance().activeMap.findPath([this.hero.tilePos[0],this.hero.tilePos[1]],e.tilePos);
+			this.hero.setDirection(utils.Misc.getDirectionToPoint(this.hero.tilePos,e.tilePos));
+			this.hero.followPath(managers.MapManager.getInstance().activeMap.findPath([this.hero.tilePos[0],this.hero.tilePos[1]],e.tilePos));
+			managers.MouseManager.getSquareTileAround(e.tilePos,2);
 		}
 	}
 	,mouseHover: function(e) {
 		this.hoverSprite.x = utils.Misc.convertToAbsolutePosition(e.tilePos)[0];
 		this.hoverSprite.y = utils.Misc.convertToAbsolutePosition(e.tilePos)[1];
+		if(managers.MapManager.getInstance().activeMap.getWalkableAt(e.tilePos)) this.hoverSprite.tint = 65280; else this.hoverSprite.tint = 16711680;
 		utils.Debug.log("" + Std.string(e.tilePos));
 	}
 	,__class__: states.DebugState
@@ -1364,12 +1433,16 @@ utils.Misc.getDistance = function(x1,y1,x2,y2) {
 	return Math.sqrt(dx * dx + dy * dy);
 };
 utils.Misc.angleBetween = function(s,t) {
-	return Math.atan2(t[0] - s[0],t[1] - s[1]);
+	return -Math.atan2(t[1] - s[1],t[0] - s[0]);
 };
 utils.Misc.convertAngleToDirection = function(angle) {
-	if(Math.abs(angle) > Math.PI * 0.5) {
-		if(angle > 0) return 2; else return 1;
-	} else if(angle > 0) return 3; else return 0;
+	console.log(angle / Math.PI);
+	if(Math.abs(angle) / Math.PI > 0.5) {
+		if(angle > 0) return 1; else return 0;
+	} else if(angle > 0) return 2; else return 3;
+};
+utils.Misc.getDirectionToPoint = function(source,target) {
+	return utils.Misc.convertAngleToDirection(utils.Misc.angleBetweenTiles(source,target));
 };
 utils.Misc.angleBetweenTiles = function(from,to) {
 	return utils.Misc.angleBetween(utils.Misc.convertToAbsolutePosition(from),utils.Misc.convertToAbsolutePosition(to));
@@ -1377,9 +1450,9 @@ utils.Misc.angleBetweenTiles = function(from,to) {
 utils.Misc.convertToAbsolutePosition = function(tilePosition) {
 	var configTileSize = managers.InitManager.data.config.tileSize;
 	var returnPosition = [];
-	returnPosition[0] = tilePosition[0] * configTileSize[0] - 1;
+	returnPosition[0] = tilePosition[0] * configTileSize[0];
 	if(Math.abs(tilePosition[1] % 2) == 1) returnPosition[0] += configTileSize[0] * 0.5;
-	returnPosition[1] = tilePosition[1] * configTileSize[1] * 0.5 - 1;
+	returnPosition[1] = tilePosition[1] * configTileSize[1] * 0.5;
 	return returnPosition;
 };
 utils.Misc.convertToGridPosition = function(pixelPosition) {

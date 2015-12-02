@@ -3,6 +3,8 @@ import js.Browser;
 import managers.DrawManager;
 import managers.InitManager;
 import managers.MapManager;
+import managers.MouseManager;
+import objects.Camera;
 import objects.character.Character;
 import objects.State;
 import pixi.core.sprites.Sprite;
@@ -42,11 +44,11 @@ class DebugState extends State {
 		Browser.window.addEventListener("gameMouseUp", mouseClick);
 		
 		hero = new Character("hero");
-		hero.setTilePosition([10, 10]);
+		hero.setTilePosition([13, 30]);
 		hero.scale.set(0.4, 0.4);
-		DrawManager.addToDisplay(hero, Main.getInstance().gameCont);
+		DrawManager.addToDisplay(hero, Main.getInstance().tileCont);
 		
-		
+		Camera.getInstance().setFollowTarget(hero);	
 	}
 	
 	public override function Update() {
@@ -55,9 +57,9 @@ class DebugState extends State {
 	
 	private function mouseClick(e):Void {
 		if(! e.drag){
-			hero.setDirection(Misc.convertAngleToDirection(Misc.angleBetweenTiles(hero.tilePos, e.tilePos)));
-			MapManager.getInstance().activeMap.findPath([hero.tilePos[0],hero.tilePos[1]],e.tilePos);
-
+			hero.setDirection(Misc.getDirectionToPoint(hero.tilePos, e.tilePos));
+			hero.followPath(MapManager.getInstance().activeMap.findPath([hero.tilePos[0],hero.tilePos[1]],e.tilePos));
+			MouseManager.getSquareTileAround(e.tilePos, 2);
 			//Debug.log(Misc.angleBetweenTiles(hero.tilePos, e.tilePos));
 		}
 	}
@@ -65,6 +67,11 @@ class DebugState extends State {
 	private function mouseHover(e):Void {
 		hoverSprite.x = Misc.convertToAbsolutePosition(e.tilePos)[0];
 		hoverSprite.y = Misc.convertToAbsolutePosition(e.tilePos)[1];
+		if (MapManager.getInstance().activeMap.getWalkableAt(e.tilePos))
+			hoverSprite.tint = 0x00FF00;
+		else
+			hoverSprite.tint = 0xFF0000;
+			
 		Debug.log("" + e.tilePos);
 	}
 }
