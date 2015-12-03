@@ -170,17 +170,18 @@ class MouseManager{
 		return ArrayOfPos;
 	}
 	
-	public static function createLilCubes (position:Array<Array<Float>>, ?color:Int):Void {
+	public static function createLilCubes (position:Array<Array<Float>>, ?color:Int):Dynamic {
 	
 		var iter:IntIterator = new IntIterator(0,position.length);
 		var tileSize = InitManager.data.config.tileSize;
+		var redPoint;
 		for (i in iter) {
 			var displayX:Float = position[i][0] * tileSize[0] -1;
 			var displayY:Float = position[i][1] * tileSize[1] / 2 -1;
 			if (Math.abs(position[i][1] % 2) == 1)
 				displayX += tileSize[0] * 0.5;
 			displayY += tileSize[1] * 0.5;
-			var redPoint = new Graphics();
+			redPoint = new Graphics();
 			var specialColor = color != null ? color: 0x00FF00;
 			redPoint.lineStyle(1, specialColor);
 			redPoint.beginFill(0xFF0000);
@@ -190,8 +191,9 @@ class MouseManager{
 			redPoint.x = displayX - 1;
 			//Main.getInstance().tileCont.addChild(redPoint);
 			//Main.getInstance().tileCont.setChildIndex(redPoint,Main.getInstance().tileCont.children.length-1);
-			DrawManager.addToDisplay(redPoint,Main.getInstance().tileCont,100);
+			DrawManager.addToDisplay(redPoint, Main.getInstance().tileCont, 100);
 		}
+		return redPoint;
 	}
 
 	public static function getInstance (): MouseManager {

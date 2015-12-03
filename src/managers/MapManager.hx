@@ -48,8 +48,6 @@ class MapManager{
 					tileSprite.x = pos[0];
 					tileSprite.y = pos[1];
 					tileSprite.anchor.set(0.5, 1);
-					Reflect.setField(tileSprite,"tilePositionX",pos[0]);
-					Reflect.setField(tileSprite, "tilePositionY", pos[1]);
 					newMap.addTileToMap(tileSprite, newMap.json.tilesPriority[tileIndex]);
 				}
 				++j;

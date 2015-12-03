@@ -20,7 +20,6 @@ class DrawManager
 	}
 	
 	public static function Update ():Void {
-		
 	}
 	
 	
@@ -34,9 +33,9 @@ class DrawManager
 	
 	public function isometricSort(cont:Container, ?layerIndex:Int):Void {
 		cast(cont.children).sort(function (a:DisplayObject,b:DisplayObject):Int {
-			if (a.y > b.y)
+			if (a.y > b.y || untyped b.Zindex == null)
 				return 1;
-			else if (a.y < b.y || untyped a.Zindex == null)
+			else if (a.y < b.y || untyped a.Zindex == null )
 				return -1;
 				
 			return untyped a.Zindex - b.Zindex;

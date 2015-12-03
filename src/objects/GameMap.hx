@@ -37,8 +37,6 @@ class GameMap{
 		
 		OffsetY = InitManager.data.config.tileSize[1] * 0.5;
 		
-		mapContainer.y = OffsetY;
-		mapContainer.x = OffsetX;
 		if (json == null)
 			Browser.window.console.warn("%c[WARNING] no data json found for map '" + mapName+"' ", "color:red;");
 		json.tiles.unshift(null);
@@ -53,7 +51,9 @@ class GameMap{
 		collisionData = newCollisionData;
 	}
 	
-	public function addTileToMap(tile:Sprite,layer:Int):Void{
+	public function addTileToMap(tile:Sprite, layer:Int):Void {
+		tile.x += OffsetX;
+		tile.y += OffsetY;
 		DrawManager.addToDisplay(tile,mapContainer,layer);
 	}
 	
@@ -106,6 +106,7 @@ class GameMap{
 				trace("XXX  NO PATH FOUND ! XXX");
 			} else {
 				untyped path = newpath;
+				Main.getInstance().hudCont.removeChildren();
 				for(point in path.iterator()){
 					MouseManager.createLilCubes([[point.x,point.y]]);
 				}

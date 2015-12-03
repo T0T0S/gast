@@ -45,8 +45,8 @@ class DebugState extends State {
 		
 		hero = new Character("hero");
 		hero.setTilePosition([13, 30]);
-		hero.scale.set(0.4, 0.4);
-		DrawManager.addToDisplay(hero, Main.getInstance().tileCont);
+		hero.scale.set(1, 0.4);
+		DrawManager.addToDisplay(hero, MapManager.getInstance().activeMap.mapContainer,1);
 		
 		Camera.getInstance().setFollowTarget(hero);	
 	}

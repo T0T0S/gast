@@ -45,7 +45,6 @@ class Misc {
 	 * @return	la direction (0 => b-l / 1 => u-l / 2 => u-r / 3 => b-r)
 	 */
 	public static function convertAngleToDirection(angle:Float):Int {
-		trace(angle / Math.PI);
 		if(Math.abs(angle) / Math.PI  > 0.5)
 			if (angle > 0)
 				return 1;

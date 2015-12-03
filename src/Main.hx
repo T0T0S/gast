@@ -131,7 +131,7 @@ class Main
 	
 	public function Render():Void {
 		drawManager.isometricSort(MapManager.getInstance().activeMap.mapContainer);
-		drawManager.isometricSort(gameCont);
+		drawManager.isometricSort(tileCont);
 		renderer.render(fullStage);
 	}
 	

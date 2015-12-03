@@ -6,7 +6,9 @@ import managers.CharacterManager;
 import managers.DrawManager;
 import managers.InitManager;
 import managers.MapManager;
+import managers.MouseManager;
 import objects.Animation;
+import pixi.core.graphics.Graphics;
 import pixi.core.textures.Texture;
 import pixi.extras.MovieClip;
 import utils.Id;
@@ -43,7 +45,7 @@ class Character extends MovieClip{
 		strength 	: 10,
 		endurance 	: 10,
 		regeneration: 10,
-		moveSpeed	: 5,
+		moveSpeed	: 0.5,
 		precision 	: 10,
 		luck 		: 10,
 		AP 			: 10
@@ -63,6 +65,11 @@ class Character extends MovieClip{
 	
 	public var config:Dynamic;
 	
+	public var OffsetX:Float = 0;
+	public var OffsetY:Float = 0;
+	
+	private var positionPoint:Graphics;
+	
 	/*#################
 	*		NEW	 
 	* ################# */
@@ -71,7 +78,8 @@ class Character extends MovieClip{
 		config = InitManager.data[untyped newName];
 		super(generateTextures(charaName));
 		generateAnimations();
-		
+		positionPoint = MouseManager.createLilCubes([[0, 0]]);
+		DrawManager.addToDisplay(positionPoint, MapManager.getInstance().activeMap.mapContainer, 10);
 		loop = true;
 		
 		anchor.set(0.5, 1);
@@ -119,6 +127,8 @@ class Character extends MovieClip{
 		manageAnim();
 		managePathFinding();
 		customUpdate();
+		positionPoint.x = x;
+		positionPoint.y = y + 16;
 	}
 	
 	private function manageAnim():Void {
@@ -240,6 +250,7 @@ class Character extends MovieClip{
 			CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(stats.strength);
 		}
 	};
+	
 	/**
 	 * destroy to call for removing a character
 	 */
