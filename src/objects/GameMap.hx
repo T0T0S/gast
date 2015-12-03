@@ -29,18 +29,20 @@ class GameMap{
 	
 	public var scrollable:Bool = false;
 	
+	public var tileMap:Array < Array<Tile> > = [];
+	
 	public function new(datas:Dynamic = null, mapName:String = null) {
 		if (datas == null)
 			return;
 		name = mapName;
-		json = InitManager.data.config.mapsData[untyped name];
+		json = InitManager.data.config.mapJson[untyped name];
 		
 		OffsetY = InitManager.data.config.tileSize[1] * 0.5;
 		
 		if (json == null)
 			Browser.window.console.warn("%c[WARNING] no data json found for map '" + mapName+"' ", "color:red;");
 		json.tiles.unshift(null);
-		json.tilesPriority.unshift(null);
+		json.tilesHeight.unshift(null);
 		
 		setMapData(datas.graphics, datas.collisions);
 		generatePathfinding();
@@ -52,8 +54,6 @@ class GameMap{
 	}
 	
 	public function addTileToMap(tile:Sprite, layer:Int):Void {
-		tile.x += OffsetX;
-		tile.y += OffsetY;
 		DrawManager.addToDisplay(tile,mapContainer,layer);
 	}
 	
@@ -71,11 +71,12 @@ class GameMap{
 			DrawManager.removeFromDisplay(mapContainer);
 	}
 
-	public function getTileAt(tilePosition:Array<Int>):String{
+	public function getTileAt(tilePosition:Array<Int>):String {
 		return json.tiles[graphicalData[tilePosition[1]][tilePosition[0]]];
 	}
 	
 	public function getColliAt(tilePosition:Array<Int>):Bool{
+		trace(mapContainer.y);	
 		return collisionData[tilePosition[1]][tilePosition[0]] != 0;
 	}
 	
@@ -106,10 +107,10 @@ class GameMap{
 				trace("XXX  NO PATH FOUND ! XXX");
 			} else {
 				untyped path = newpath;
-				Main.getInstance().hudCont.removeChildren();
-				for(point in path.iterator()){
-					MouseManager.createLilCubes([[point.x,point.y]]);
-				}
+				//Main.getInstance().hudCont.removeChildren();
+				//for(point in path.iterator()){
+					//MouseManager.createLilCubes([[point.x,point.y]]);
+				//}
 			}
 		});
 		finder.calculate();

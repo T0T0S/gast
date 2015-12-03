@@ -118,6 +118,8 @@ class Misc {
 		return true;
 	} 
 	
+	public static function sign(number):Int { return number > 0 ? 1 : -1; }
+	
 	/**
 	 * Clamps the value of Number between min and max,
 	 * notes that it doesn't change the value straight away

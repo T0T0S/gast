@@ -25,6 +25,8 @@ class StateManager{
 	public var debugActiveState:Text = new Text("Init", { "fill":"white", "font":"30px gastFont" } );
 	public var fpsCounter:Text = new Text("1", { "fill":"white", "font":"16px gastFont" } );
 	public static var debugText:Text = new Text("", { "fill" :"white", "font":"18px Arial" } );
+	
+	public static var loadingState:Bool = false;
 
 	/**
 	 * Classe de gestion des états,
@@ -61,6 +63,7 @@ class StateManager{
 	}
 	
 	public function switchToState(newState:String) {
+		loadingState = true;
 		if(!firstLoop)
 			statesArray[activeState].switchState();
 		firstLoop = false;

@@ -3,6 +3,7 @@ package ;
 import js.Browser;
 import js.html.Event;
 import js.html.Font;
+import js.html.KeyboardEvent;
 import managers.CharacterManager;
 import managers.DrawManager;
 import managers.InitManager;
@@ -49,6 +50,7 @@ class Main
 	public var renderMask:Graphics = new Graphics();
 	
 	public static var DEBUGMODE:Bool = true;
+	public static var GAMESTOPPED:Bool = false;
 	
 	static function main ():Void {
 		Main.getInstance();
@@ -90,7 +92,9 @@ class Main
 		renderer.view.className = "gastCanvas";
 		
 		Browser.document.body.appendChild(renderer.view);
+		Browser.window.addEventListener("keydown", keyDownListener);
 	}
+	
 
 	public static function getInstance (): Main {
 		if (instance == null) instance = new Main();
@@ -123,6 +127,9 @@ class Main
 		Browser.window.requestAnimationFrame(cast Update);
 		if(timeManager !=null)
 			timeManager.Update();
+		
+		if (GAMESTOPPED && DEBUGMODE)
+			return;
 		mouseUpdate();
 		characterManager.Update();
 		camera.Update();
@@ -131,13 +138,20 @@ class Main
 	
 	public function Render():Void {
 		drawManager.isometricSort(MapManager.getInstance().activeMap.mapContainer);
-		drawManager.isometricSort(tileCont);
 		renderer.render(fullStage);
 	}
 	
 	public function mouseUpdate() {
 		mouseManager.calledPerFrame = 0;
 	}
+	
+	public function keyDownListener (e:KeyboardEvent):Void
+	{
+		if (String.fromCharCode(e.keyCode) == "A" && e.altKey) {
+			GAMESTOPPED = !GAMESTOPPED;
+		}
+	}
+
 	
 	public function destroy (): Void {
 		instance = null;

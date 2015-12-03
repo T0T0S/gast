@@ -30,12 +30,12 @@ class CharacterManager{
 		if (positions[element.tilePos[0]] == null)
 			positions[element.tilePos[0]] = [];
 		positions[element.tilePos[0]][element.tilePos[1]] = null;
-		oldGrid[element.tilePos[1]][element.tilePos[0]] = InitManager.data.config.tileCollisions.walkable;
+		MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
 		
 		if (positions[newPosition[0]] == null)
 			positions[newPosition[0]] = [];
 		positions[newPosition[0]][newPosition[1]] = element.charaName;
-		oldGrid[newPosition[1]][newPosition[0]] = InitManager.data.config.tileCollisions.collision;
+		MapManager.finder.setColliTile(newPosition[0],newPosition[1],false);
 	}
 	
 	public function addCharacter(element:Character):Void{
@@ -45,9 +45,7 @@ class CharacterManager{
 	public function removeCharacter(element:Character):Void{
 		managedCharacters.remove(element.charaName);
 		positions[element.tilePos[0]][element.tilePos[1]] = null;
-		var oldGrid:Array<Array<Int>> = MapManager.finder.getGrid();
-		oldGrid[element.tilePos[1]][element.tilePos[0]] = 1;
-		MapManager.finder.setGrid(oldGrid);
+		MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
 	}
 	
 	public function Update():Void{

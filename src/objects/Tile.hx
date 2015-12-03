@@ -12,12 +12,13 @@ import pixi.core.textures.Texture;
  */
 class Tile extends Sprite{
 
-	public var Zindex:Int = 0;
-	public var tileHeight:Int = 0;
-	public var tilePos:Array<Int>;
+	public var z:Float = 0;
+	public var depth:Float;
+	public var tilePos:Array<Int> = [0,0];
 
 	public function new(texture:Texture) {
 		super(texture);
+		anchor.set(0.5, 1);
 	}
 	
 	public function setTilePosition(position:Array<Int>):Void {
@@ -28,8 +29,20 @@ class Tile extends Sprite{
 		y = position[1] * InitManager.data.config.tileSize[1] * 0.5 + MapManager.getInstance().activeMap.OffsetY;
 		if (Math.abs(tilePos[1] % 2) == 1)
 			x += InitManager.data.config.tileSize[0] * 0.5;
+		
+		setZ(z);
 	}
 	
+	public function setAbsolutePosition (newX:Float, newY:Float):Void {
+		x = newX;
+		y = newY;
+		setZ(z);
+	}
+	
+	public function setZ(newZ:Float):Void{
+		z = newZ;
+		depth = y + z;
+	}
 
 	public function getAbsolutePosition ():Array<Float> {
 		var arrayToReturn:Array<Float> = [];

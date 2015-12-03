@@ -2,6 +2,7 @@ package managers;
 import js.Browser;
 import js.Error;
 import objects.GameMap;
+import objects.Tile;
 import pixi.core.math.Point;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
@@ -34,7 +35,7 @@ class MapManager{
 		
 		var i:Int = 0;
 		var j:Int = 0;
-		var tileSprite:Sprite;
+		var tileSprite:Tile;
 		for (arrayX in newMap.graphicalData.iterator()) {
 			j = 0;
 			for(tileIndex in arrayX.iterator()){
@@ -43,12 +44,15 @@ class MapManager{
 					if (newMap.json.tiles[tileIndex] == null)
 						throw new Error("[ERROR] tile index "+tileIndex+" not found in "+newMap.name+".json");
 					
-					var pos:Array<Float> = Misc.convertToAbsolutePosition([j, i]);
-					tileSprite = new Sprite(Texture.fromImage(""+newMap.json.tiles[tileIndex]));
-					tileSprite.x = pos[0];
-					tileSprite.y = pos[1];
-					tileSprite.anchor.set(0.5, 1);
-					newMap.addTileToMap(tileSprite, newMap.json.tilesPriority[tileIndex]);
+					tileSprite = new Tile(Texture.fromImage(""+newMap.json.tiles[tileIndex]));
+					tileSprite.setTilePosition([j, i]);
+					tileSprite.x += activeMap.OffsetX;
+					tileSprite.y += 16;
+					tileSprite.setZ(newMap.json.tilesHeight[tileIndex]);
+					newMap.addTileToMap(tileSprite, newMap.json.tilesHeight[tileIndex]);
+					if (newMap.tileMap[j] == null)
+						newMap.tileMap[j] = [];
+					newMap.tileMap[j][i] = tileSprite;
 				}
 				++j;
 			}

@@ -45,13 +45,14 @@ class Character extends MovieClip{
 		strength 	: 10,
 		endurance 	: 10,
 		regeneration: 10,
-		moveSpeed	: 0.5,
+		moveSpeed	: 2.5,
 		precision 	: 10,
 		luck 		: 10,
 		AP 			: 10
 	};
 	
 	private var activePath:Array<Dynamic> = [];
+	private var pathIndex:Int = 1;
 	private var activePathPoint:Dynamic;
 	
 	public var refreshSpeed:Float = 1;
@@ -65,10 +66,8 @@ class Character extends MovieClip{
 	
 	public var config:Dynamic;
 	
-	public var OffsetX:Float = 0;
-	public var OffsetY:Float = 0;
-	
-	private var positionPoint:Graphics;
+	public var z:Float = 0;
+	public var depth:Float = 0;
 	
 	/*#################
 	*		NEW	 
@@ -78,8 +77,6 @@ class Character extends MovieClip{
 		config = InitManager.data[untyped newName];
 		super(generateTextures(charaName));
 		generateAnimations();
-		positionPoint = MouseManager.createLilCubes([[0, 0]]);
-		DrawManager.addToDisplay(positionPoint, MapManager.getInstance().activeMap.mapContainer, 10);
 		loop = true;
 		
 		anchor.set(0.5, 1);
@@ -127,15 +124,13 @@ class Character extends MovieClip{
 		manageAnim();
 		managePathFinding();
 		customUpdate();
-		positionPoint.x = x;
-		positionPoint.y = y + 16;
 	}
 	
 	private function manageAnim():Void {
 		if (activeAnimation == null) {
 			return;
 		}		
-		if (currentFrame - activeAnimation.getLastIndex() >= activeAnimation.getFrames(directionFacing).length -1) {
+		if (currentFrame - activeAnimation.getLastIndex() >= activeAnimation.getFrames(directionFacing).length - 1) {
 			if (!activeAnimation.loop) {
 				stop();
 				activeAnimation.endAction();
@@ -151,28 +146,34 @@ class Character extends MovieClip{
 	
 	private function managePathFinding():Void {
 		if (activePath.length != 0) {
+			if (activePathPoint == null)
+				getNextPathPoint();
 			if (tilePos[0] != activePath[activePath.length - 1].x || tilePos[1] != activePath[activePath.length - 1].y){
 				var arrayPos = [activePathPoint.x, activePathPoint.y];
 				
 				//trace(Misc.getDistance(x,y,Misc.convertToAbsolutePosition(arrayPos)[0],Misc.convertToAbsolutePosition(arrayPos)[1]));
-				x += Math.cos(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed;
-				y -= Math.sin(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed;
+				setAbsolutePosition(x + Math.cos(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed, y - Math.sin(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed);
 				if(Misc.getDistance(x,y,Misc.convertToAbsolutePosition(arrayPos)[0],Misc.convertToAbsolutePosition(arrayPos)[1] + InitManager.data.config.tileSize[1] * 0.5) < stats.moveSpeed)
 				{
 					// new Point
 					setTilePosition(arrayPos);
-					if(activePath.indexOf(activePathPoint) != activePath.length -1){
-						activePathPoint = activePath[activePath.indexOf(activePathPoint) + 1];
-						setDirection(Misc.getDirectionToPoint(tilePos, [activePathPoint.x,activePathPoint.y]));
-					}
+					pathIndex++;
+					if(pathIndex <= activePath.length -1)
+						getNextPathPoint();
 					else
 					{
 						trace("end Path");
 						activePath = [];
+						activePathPoint = null;
 					}
 				}
 			}
 		}
+	}
+	
+	private function getNextPathPoint():Void{
+		activePathPoint = activePath[pathIndex];
+		setDirection(Misc.getDirectionToPoint(tilePos, [activePathPoint.x,activePathPoint.y]));
 	}
 	
 	public function customUpdate():Void{
@@ -186,7 +187,11 @@ class Character extends MovieClip{
 		}
 		activeAnimation = animations.get(animName);
 		activeAnimationName = activeAnimation.name;	
-		gotoAndPlay(activeAnimation.getFrames(directionFacing)[0]);
+		
+		if (activeAnimation.getFrames(directionFacing).length == 1)
+			gotoAndStop(activeAnimation.getFrames(directionFacing)[0]);
+		else
+			gotoAndPlay(activeAnimation.getFrames(directionFacing)[0]);
 		animationSpeed = activeAnimation.fps / 60;
 	}
 	
@@ -223,6 +228,8 @@ class Character extends MovieClip{
 		y = position[1] * InitManager.data.config.tileSize[1] * 0.5 + MapManager.getInstance().activeMap.OffsetY;
 		if (Math.abs(tilePos[1] % 2) == 1)
 			x += InitManager.data.config.tileSize[0] * 0.5;
+			
+		setZ(z);
 	}
 	
 
@@ -235,12 +242,30 @@ class Character extends MovieClip{
 		return arrayToReturn;
 	}
 	
+	public function setAbsolutePosition (newX:Float, newY:Float):Void {
+		x = newX;
+		y = newY;
+		setZ(z);
+	}
+	
+	public function setZ(newZ:Float):Void{
+		z = newZ;
+		depth = y + z;
+	}
+	
+	public function findPathTo(target:Array<Int>):Void
+	{
+		MapManager.finder.setColliTile(tilePos[0], tilePos[1], true);
+		followPath(MapManager.getInstance().activeMap.findPath(getPathFindingPoint(), target));
+		MapManager.finder.setColliTile(tilePos[0], tilePos[1], false);
+	}
+	
 	public function followPath(path:Array<Dynamic>):Void{
 		if (path.length == 0)
 			return;
 		activePath = path;
-		setTilePosition([activePath[0].x,activePath[0].y]);
-		activePathPoint = activePath[1];
+		
+		pathIndex = activePathPoint != null ? 0 : 1;
 		setAnimation("run");
 	}
 	
@@ -251,6 +276,12 @@ class Character extends MovieClip{
 		}
 	};
 	
+	public function getPathFindingPoint():Array<Int> {
+		if(activePathPoint != null)
+			return [activePathPoint.x, activePathPoint.y];
+		return tilePos;
+	}
+
 	/**
 	 * destroy to call for removing a character
 	 */

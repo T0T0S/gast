@@ -247,6 +247,11 @@ EasyStar.js = function() {
 		}
 	};
 
+	this.setColliTile = function(x,y,walkable){
+		if (collisionGrid[y])
+			collisionGrid[y][x] = walkable ? acceptableTiles[0] : 32762;
+	}
+
 	/**
 	* Enables sync mode for this EasyStar instance..
 	* if you're into that sort of thing.

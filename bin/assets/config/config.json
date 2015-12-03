@@ -10,21 +10,18 @@
 
 		}
 	},
-	"mapsData":{
+	"mapJson":{
 		"testMapZig":{
 			"tiles":[
 				"tile.png",
 				"tile2.png",
-				"tile4.png"
-			],
-			"tilesPriority":[
-				0,
-				0,
-				1
+				"tile4.png",
+				"tile6.png"
 			],
 			"tilesHeight":[
 				0,
 				0,
+				1,
 				1
 			]
 			

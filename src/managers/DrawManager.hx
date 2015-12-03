@@ -6,6 +6,7 @@ import pixi.core.display.DisplayObject;
 import pixi.core.sprites.Sprite;
 import js.Browser;
 import pixi.core.math.Point;
+import utils.Misc;
 
 /**
  * ...
@@ -25,7 +26,8 @@ class DrawManager
 	
 	
 	public static function addToDisplay(element:DisplayObject, newParent:Container, layer:Int = 0):Void {
-		Reflect.setField(element,"Zindex",layer);
+		if (untyped element.setZ != null && layer != 0)
+			untyped element.setZ(layer);
 		if (element.parent == null) {
 			newParent.addChild(element);
 		}
@@ -33,12 +35,10 @@ class DrawManager
 	
 	public function isometricSort(cont:Container, ?layerIndex:Int):Void {
 		cast(cont.children).sort(function (a:DisplayObject,b:DisplayObject):Int {
-			if (a.y > b.y || untyped b.Zindex == null)
-				return 1;
-			else if (a.y < b.y || untyped a.Zindex == null )
-				return -1;
-				
-			return untyped a.Zindex - b.Zindex;
+			untyped if (b.z == a.z)
+			untyped 	return a.depth - b.depth;
+					else
+			untyped 	return a.z - b.z;
 		});
 	}
 	

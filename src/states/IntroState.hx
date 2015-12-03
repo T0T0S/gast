@@ -31,6 +31,7 @@ class IntroState extends State{
 	
 	public override function Preload():Void {
 
+		loadJson.set("hud_bottom", "assets/spriteSheets/hud_bottom.json");
 		loadJson.set("tileSpriteSheet", "assets/spriteSheets/mapSpriteSheet.json");
 		loadJson.set("tileSh2", "assets/spriteSheets/loadSpriteSheet.json");
 		loadJson.set("buttons", "assets/spriteSheets/buttonSpriteSheet.json");

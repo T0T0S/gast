@@ -28,6 +28,8 @@ class MouseManager{
 	public var calledPerFrame:Int = 0;
 	private var refreshPerFrame:Int = 1;
 	
+	public static var lockedMouseEvents:Bool = false;
+	
 	var arrayPoints:Array<Array<Float>> = [];
 	
 	public function new() {
@@ -37,7 +39,7 @@ class MouseManager{
 	}
 	
 	public function mouseMoveHandler (e){
-		if (calledPerFrame > refreshPerFrame)
+		if (calledPerFrame > refreshPerFrame || StateManager.loadingState || lockedMouseEvents)
 			return;
 		
 		++calledPerFrame;
@@ -53,6 +55,8 @@ class MouseManager{
 	}
 
 	public function mouseUp (e:Event):Void {
+		if(StateManager.loadingState || lockedMouseEvents)
+			return;
 		var event = gameMouseUp;
 		var clicPoint:Array<Float> = [untyped e.layerX + Main.camera.offset[0], untyped e.layerY + Main.camera.offset[1]];
 
@@ -98,6 +102,8 @@ class MouseManager{
 	}
 	
 	public function mouseDown (e:Event):Void {
+		if(StateManager.loadingState || lockedMouseEvents)
+			return;
 		var event = gameMouseDown;
 		var clicPoint:Array<Float> = [untyped e.layerX + Main.camera.offset[0], untyped e.layerY + Main.camera.offset[1]];
 		Reflect.setField(event,"layerX",untyped e.layerX);
