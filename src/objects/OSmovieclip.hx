@@ -9,15 +9,19 @@ import pixi.core.textures.Texture;
  */
 class OSmovieclip extends MovieClip{
 	
-	private var callback;
-	public function new(textures:Array<Texture>,newCallback) {
+	private var callback:Dynamic = function(){};
+	public function new(textures:Array<Texture>,newCallback = null) {
 		super(textures);
-		callback = newCallback;
+		if(newCallback != null)
+			callback = newCallback;
 		onComplete = complete;
+		loop = false;
+		gotoAndPlay(0);
 	}
 	
-	private function complete():Void{
+	private function complete():Void {
 		callback();
-		destroy();
+		if (parent != null)
+			parent.removeChild(this);
 	}
 }

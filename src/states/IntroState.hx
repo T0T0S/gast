@@ -30,13 +30,15 @@ class IntroState extends State{
 	}
 	
 	public override function Preload():Void {
-
+	
+		loadJson.set("buttonAttack", "assets/spriteSheets/buttonAttack.json");
+		loadJson.set("buttonMove", "assets/spriteSheets/buttonMove.json");
 		loadJson.set("hud_bottom", "assets/spriteSheets/hud_bottom.json");
-		loadJson.set("tileSpriteSheet", "assets/spriteSheets/mapSpriteSheet.json");
 		loadJson.set("tileSh2", "assets/spriteSheets/loadSpriteSheet.json");
 		loadJson.set("buttons", "assets/spriteSheets/buttonSpriteSheet.json");
 		loadJson.set("hero", "assets/spriteSheets/heroSpriteSheet.json");
 		loadJson.set("explosion", "assets/spriteSheets/testExplosion.json");
+		loadJson.set("camShader","assets/effects/camShade.json");
 		
 		
 		Main.getInstance().hudCont.addChild(loadingRecangle);

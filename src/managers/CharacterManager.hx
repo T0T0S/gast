@@ -8,7 +8,7 @@ import objects.character.Character;
 class CharacterManager{
 	private static var instance: CharacterManager;
 
-	private var managedCharacters:Map<String,Character> = new Map.Map();
+	public var managedCharacters:Map<String,Character> = new Map.Map();
 	public var positions:Array<Array<String>> = [];
 
 	public function new() {

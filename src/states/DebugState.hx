@@ -7,6 +7,7 @@ import managers.MapManager;
 import managers.MouseManager;
 import objects.Camera;
 import objects.character.Character;
+import objects.character.Player;
 import objects.State;
 import objects.Tile;
 import pixi.core.sprites.Sprite;
@@ -23,7 +24,7 @@ import utils.Misc;
 class DebugState extends State {
 	
 	private var hoverSprite:Tile;
-	private var hero:Character;
+	private var hero:Player;
 	
 	public function new() {
 		super("Debug");
@@ -34,48 +35,28 @@ class DebugState extends State {
 	
 	}
 	public override function Start() {
-	
+		Main.FIGHTMODE = true;
 		HudManager.generateFightHud();
 	
 		MapManager.getInstance().generateMapDisplay("testMapZig", true);
-		MapManager.getInstance().activeMap.scrollable = true;
 		
-		hoverSprite = new Tile(Texture.fromImage("tilehover.png"));
-		hoverSprite.setTilePosition([0,0]);
-		DrawManager.addToDisplay(hoverSprite, MapManager.getInstance().activeMap.mapContainer,1);
+		//hoverSprite = new Tile(Texture.fromImage("tilehover.png"));
+		//hoverSprite.setTilePosition([0,0]);
+		//DrawManager.addToDisplay(hoverSprite, MapManager.getInstance().activeMap.mapContainer,1);
 		
-		//Main.getInstance().tileCont.on("mousemove", mouseHover);
-		//Main.getInstance().tileCont.on("mouseup", mouseClick);
-		Browser.window.addEventListener("gameHover", mouseHover);
-		Browser.window.addEventListener("gameMouseUp", mouseClick);
-		
-		hero = new Character("hero");
+		hero = new Player("hero");
 		hero.setTilePosition([13, 30]);
 		hero.scale.set(0.4, 0.4);
 		DrawManager.addToDisplay(hero, MapManager.getInstance().activeMap.mapContainer,1);
 		
 		Camera.getInstance().setFollowTarget(hero);	
+		var camShader:Sprite = new Sprite(Texture.fromImage("camShader.png"));
+		camShader.scale.set(Main.screenRatio[0], Main.screenRatio[1]);
+		
+		DrawManager.addToDisplay(camShader, Main.getInstance().effectCont);
 	}
 	
 	public override function Update() {
-	
-	}
-	
-	
-	private function mouseClick(e):Void {
-		if(!e.drag){
-			hero.findPathTo(e.tilePos);
-		}
-	}
-	
-	private function mouseHover(e):Void {
-		hoverSprite.setTilePosition(e.tilePos);
-		hoverSprite.setAbsolutePosition(hoverSprite.x, hoverSprite.y - 1);
-		if (MapManager.getInstance().activeMap.getWalkableAt(e.tilePos))
-			hoverSprite.tint = 0x00FF00;
-		else
-			hoverSprite.tint = 0xFF0000;
-			
-		Debug.log("" + e.tilePos);
+		
 	}
 }

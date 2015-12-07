@@ -419,20 +419,48 @@ managers.HudManager.generateFightHud = function() {
 	rightHud.anchor.set(1,1);
 	rightHud.x = Main.getInstance().renderer.width;
 	rightHud.y = Main.getInstance().renderer.height;
+	rightHud.name = "right_bottom";
 	var attackHud = new PIXI.Sprite(PIXI.Texture.fromImage("hud_bottom_center.png"));
 	attackHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
 	attackHud.anchor.set(1,1);
 	attackHud.x = rightHud.x - (rightHud.width + 20);
 	attackHud.y = Main.getInstance().renderer.height;
+	var moveButton = new objects.Button("button_move");
+	moveButton.anchor.set(0.5,0.5);
+	moveButton.x = -695;
+	moveButton.y = -73;
+	moveButton.onUp(function() {
+		if(objects.character.Player.selectedAction == null) objects.character.Player.selectedAction = "move"; else objects.character.Player.selectedAction = null;
+	});
+	var attackButton = new objects.Button("button_attack");
+	attackButton.anchor.set(0.5,0.5);
+	attackButton.x = -570;
+	attackButton.y = -73;
+	attackButton.onUp(function() {
+		if(objects.character.Player.selectedAction == null) objects.character.Player.selectedAction = "attack"; else objects.character.Player.selectedAction = null;
+	});
 	var tickTimer = new PIXI.Sprite(PIXI.Texture.fromImage("timerFill.png"));
-	tickTimer.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
 	tickTimer.anchor.set(0.5,0.5);
-	tickTimer.x = rightHud.x - (tickTimer.width * 0.5 + 49 * Main.screenRatio[0]);
-	tickTimer.y = Main.getInstance().renderer.height - (tickTimer.height * 0.5 + 48 * Main.screenRatio[1]);
+	tickTimer.x = -(tickTimer.width * 0.5 + 50);
+	tickTimer.y = -(tickTimer.height * 0.5 + 48);
 	tickTimer.name = "tickTimer";
+	var APText = new PIXI.Text("",{ fill : "white", font : "35px gastFont", stroke : "black", strokeThickness : 5});
+	APText.anchor.set(0.5,0.5);
+	APText.name = "HP";
+	APText.x = -342;
+	APText.y = -65;
+	var HPText = new PIXI.Text("",{ fill : "white", font : "35px gastFont", stroke : "black", strokeThickness : 5});
+	HPText.anchor.set(0.5,0.5);
+	HPText.name = "AP";
+	HPText.x = -342;
+	HPText.y = -175;
 	managers.DrawManager.addToDisplay(attackHud,Main.getInstance().hudCont);
+	managers.DrawManager.addToDisplay(moveButton,attackHud);
+	managers.DrawManager.addToDisplay(attackButton,attackHud);
 	managers.DrawManager.addToDisplay(rightHud,Main.getInstance().hudCont);
-	managers.DrawManager.addToDisplay(tickTimer,Main.getInstance().hudCont);
+	managers.DrawManager.addToDisplay(tickTimer,rightHud);
+	managers.DrawManager.addToDisplay(APText,rightHud);
+	managers.DrawManager.addToDisplay(HPText,rightHud);
 };
 managers.HudManager.getInstance = function() {
 	if(managers.HudManager.instance == null) managers.HudManager.instance = new managers.HudManager();
@@ -658,7 +686,7 @@ managers.MouseManager.prototype = {
 		event.layerY = e.data.global.y;
 		Reflect.setField(event,"tilePos",utils.Misc.convertToGridPosition(clicPoint[0],clicPoint[1]));
 		event.gamePos = clicPoint;
-		event.drag = objects.Camera.getInstance().hasMovedEnough;
+		event.drag = objects.Camera.getInstance().isDragged;
 		window.dispatchEvent(event);
 	}
 	,mouseDown: function(e) {
@@ -730,9 +758,8 @@ managers.StateManager.prototype = {
 	,__class__: managers.StateManager
 };
 managers.TimeManager = function() {
-	this.managedElements = [];
 	this.numberOfTicks = 0;
-	this.tickInterval = 60;
+	this.tickInterval = 120;
 	this.frameElapsed = 0;
 	this.timeNow = new Date().getTime();
 };
@@ -746,23 +773,25 @@ managers.TimeManager.prototype = {
 		managers.TimeManager.elapsedTime += new Date().getTime() - this.timeNow;
 		managers.TimeManager.deltaTime = (new Date().getTime() - this.timeNow) / 1000;
 		this.timeNow = new Date().getTime();
+		if(Main.FIGHTMODE) this.combatTick();
+		if(3600 * managers.TimeManager.deltaTime > 60) managers.TimeManager.FPS = 60; else managers.TimeManager.FPS = Math.floor(3600 * managers.TimeManager.deltaTime);
+	}
+	,combatTick: function() {
 		++this.frameElapsed;
 		if(this.frameElapsed % this.tickInterval == 0) {
 			++this.numberOfTicks;
 			this.newTick();
 		}
-		if(managers.HudManager.mode == "fight") Main.getInstance().hudCont.getChildByName("tickTimer").rotation = 2 * Math.PI * (this.frameElapsed % this.tickInterval / this.tickInterval);
-		if(3600 * managers.TimeManager.deltaTime > 60) managers.TimeManager.FPS = 60; else managers.TimeManager.FPS = Math.floor(3600 * managers.TimeManager.deltaTime);
+		if(managers.HudManager.mode == "fight") (js.Boot.__cast(Main.getInstance().hudCont.getChildByName("right_bottom") , PIXI.Container)).getChildByName("tickTimer").rotation = 2 * Math.PI * (this.frameElapsed % this.tickInterval / this.tickInterval);
 	}
 	,newTick: function() {
-		var $it0 = HxOverrides.iter(this.managedElements);
+		var $it0 = managers.CharacterManager.getInstance().managedCharacters.iterator();
 		while( $it0.hasNext() ) {
 			var element = $it0.next();
 			element.newTick(this.numberOfTicks);
 		}
 	}
 	,switchState: function() {
-		this.managedElements = [];
 	}
 	,__class__: managers.TimeManager
 };
@@ -808,8 +837,6 @@ objects.Button = function(name) {
 	this.arrayCallbacks.up = function() {
 	};
 	this.arrayCallbacks.hover = function() {
-	};
-	this.arrayCallbacks.out = function() {
 	};
 	this.on("mousedown",$bind(this,this.p_onDown));
 	this.on("mouseup",$bind(this,this.p_onUp));
@@ -875,7 +902,7 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 });
 objects.Camera = function() {
 	this.clampedCam = true;
-	this.hasMovedEnough = false;
+	this.isDragged = false;
 	this.clicked = false;
 	this.oldCameraPosition = [];
 	this.mouseDownPosition = [];
@@ -906,18 +933,18 @@ objects.Camera.prototype = {
 	,mouseMoveListener: function(e) {
 		if(!managers.MapManager.getInstance().activeMap.scrollable || this.targetToFollow != null) return;
 		if(!this.clicked) return;
-		if(this.hasMovedEnough == false && Math.abs(this.mouseDownPosition[0] - e.layerX) < this.minimumMovement && Math.abs(this.mouseDownPosition[1] - e.layerY) < this.minimumMovement) return; else if(!this.hasMovedEnough) {
+		if(this.isDragged == false && Math.abs(this.mouseDownPosition[0] - e.layerX) < this.minimumMovement && Math.abs(this.mouseDownPosition[1] - e.layerY) < this.minimumMovement) return; else if(!this.isDragged) {
 			this.mouseDownPosition[0] = e.layerX;
 			this.mouseDownPosition[1] = e.layerY;
 		}
-		this.hasMovedEnough = true;
+		this.isDragged = true;
 		this.offset = [this.oldCameraPosition[0] - (e.layerX - this.mouseDownPosition[0]) * this.dragSensitivity,this.oldCameraPosition[1] - (e.layerY - this.mouseDownPosition[1]) * this.dragSensitivity];
 		if(this.clampedCam) this.constrainCam();
 		this.translateOffsetToConts();
 	}
 	,mouseUpListener: function(e) {
 		this.clicked = false;
-		this.hasMovedEnough = false;
+		this.isDragged = false;
 	}
 	,setCameraPosition: function(newPosition) {
 		this.offset = newPosition;
@@ -1023,29 +1050,30 @@ objects.GameMap.prototype = {
 		var path = [];
 		if(source[0] > this.collisionData[0].length - 1 || target[0] > this.collisionData[0].length - 1 || source[1] > this.collisionData.length - 1 || target[1] > this.collisionData.length - 1 || source[0] < 0 || source[1] < 0 || target[0] < 0 || target[1] < 0) return [];
 		finder.findPath(source[0],source[1],target[0],target[1],function(newpath) {
-			if(newpath == null) console.log("XXX  NO PATH FOUND ! XXX"); else path = newpath;
+			if(newpath != null) path = newpath;
 		});
 		finder.calculate();
 		return path;
 	}
 	,__class__: objects.GameMap
 };
-objects.HudElement = function(texture) {
-	PIXI.Sprite.call(this,texture);
-	this.on("mousedown",$bind(this,this.p_onDown));
-	this.on("mouseup",$bind(this,this.p_onUp));
+objects.OSmovieclip = function(textures,newCallback) {
+	this.callback = function() {
+	};
+	PIXI.extras.MovieClip.call(this,textures);
+	if(newCallback != null) this.callback = newCallback;
+	this.onComplete = $bind(this,this.complete);
+	this.loop = false;
+	this.gotoAndPlay(0);
 };
-objects.HudElement.__name__ = true;
-objects.HudElement.__super__ = PIXI.Sprite;
-objects.HudElement.prototype = $extend(PIXI.Sprite.prototype,{
-	mouseIsAbove: function(e) {
-		return utils.Misc.colliSquarePoint(this,[e.layerX,e.layerY]);
+objects.OSmovieclip.__name__ = true;
+objects.OSmovieclip.__super__ = PIXI.extras.MovieClip;
+objects.OSmovieclip.prototype = $extend(PIXI.extras.MovieClip.prototype,{
+	complete: function() {
+		this.callback();
+		if(this.parent != null) this.parent.removeChild(this);
 	}
-	,p_onDown: function(e) {
-	}
-	,p_onUp: function(e) {
-	}
-	,__class__: objects.HudElement
+	,__class__: objects.OSmovieclip
 });
 objects.State = function(newName) {
 	this.loaderReady = 0;
@@ -1157,14 +1185,14 @@ objects.Tile.prototype = $extend(PIXI.Sprite.prototype,{
 });
 objects.character = {};
 objects.character.Character = function(newName) {
+	this.lastTickRegistered = 0;
 	this.depth = 0;
 	this.z = 0;
 	this.animations = new haxe.ds.StringMap();
 	this.refreshSpeed = 1;
 	this.pathIndex = 1;
 	this.activePath = [];
-	this.stats = { health : 100, strength : 10, endurance : 10, regeneration : 10, moveSpeed : 2.5, precision : 10, luck : 10, AP : 10};
-	this.inFight = false;
+	this.stats = { health : 100, strength : 10, endurance : 10, regeneration : 10, moveSpeed : 2.5, precision : 10, luck : 10, AP : 10, MaxAP : 10};
 	this.directionFacing = 0;
 	this.tilePos = [0,0];
 	this.charaName = newName;
@@ -1225,7 +1253,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		}
 	}
 	,managePathFinding: function() {
-		if(this.activePath.length != 0) {
+		if(this.activePath.length != 0 && this.stats.AP > 0) {
 			if(this.activePathPoint == null) this.getNextPathPoint();
 			if(this.tilePos[0] != this.activePath[this.activePath.length - 1].x || this.tilePos[1] != this.activePath[this.activePath.length - 1].y) {
 				var arrayPos = [this.activePathPoint.x,this.activePathPoint.y];
@@ -1233,8 +1261,8 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 				if(utils.Misc.getDistance(this.x,this.y,utils.Misc.convertToAbsolutePosition(arrayPos)[0],utils.Misc.convertToAbsolutePosition(arrayPos)[1] + Main.tileSize[1] * 0.5) < this.stats.moveSpeed) {
 					this.setTilePosition(arrayPos);
 					this.pathIndex++;
+					this.useAp(1);
 					if(this.pathIndex <= this.activePath.length - 1) this.getNextPathPoint(); else {
-						console.log("end Path");
 						this.activePath = [];
 						this.activePathPoint = null;
 					}
@@ -1292,13 +1320,16 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.z = newZ;
 		this.depth = this.y + this.z;
 	}
-	,findPathTo: function(target) {
+	,findPathTo: function(target,follow) {
+		if(follow == null) follow = false;
 		managers.MapManager.finder.setColliTile(this.tilePos[0],this.tilePos[1],true);
-		this.followPath(managers.MapManager.getInstance().activeMap.findPath(this.getPathFindingPoint(),target));
+		var returnPath = managers.MapManager.getInstance().activeMap.findPath(this.getPathFindingPoint(),target);
 		managers.MapManager.finder.setColliTile(this.tilePos[0],this.tilePos[1],false);
+		if(follow) this.followPath(returnPath);
+		return returnPath;
 	}
 	,followPath: function(path) {
-		if(path.length == 0) return;
+		if(path.length == 0 || path.length - 1 > this.stats.AP) return;
 		this.activePath = path;
 		if(this.activePathPoint != null) this.pathIndex = 0; else this.pathIndex = 1;
 		this.setAnimation("run");
@@ -1311,6 +1342,11 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		return this.tilePos;
 	}
 	,newTick: function(tickNumber) {
+		if(this.stats.AP < this.stats.MaxAP) this.stats.AP += tickNumber - this.lastTickRegistered;
+		this.lastTickRegistered = tickNumber;
+	}
+	,useAp: function(amount) {
+		this.stats.AP -= amount;
 	}
 	,Destroy: function() {
 		managers.CharacterManager.getInstance().removeCharacter(this);
@@ -1318,6 +1354,97 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.destroy();
 	}
 	,__class__: objects.character.Character
+});
+objects.character.Player = function(newName) {
+	this.movementTile = [];
+	objects.character.Character.call(this,newName);
+	Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("HP").text = this.stats.health;
+	Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = this.stats.AP;
+	var _g1 = 0;
+	var _g = this.stats.MaxAP + 1;
+	while(_g1 < _g) {
+		var i = _g1++;
+		this.movementTile.push(new objects.Tile(PIXI.Texture.fromImage("tile.png")));
+		this.movementTile[i].visible = false;
+		this.movementTile[i].tint = 65280;
+	}
+	this.targetTile = new objects.Tile(PIXI.Texture.fromImage("tile.png"));
+	this.targetTile.visible = false;
+	Main.getInstance().tileCont.on("mousemove",$bind(this,this.mouseHover));
+	Main.getInstance().tileCont.on("mouseup",$bind(this,this.mapClick));
+	this.APFlash = new objects.OSmovieclip([PIXI.Texture.fromFrame("y_explo_0"),PIXI.Texture.fromFrame("y_explo_1"),PIXI.Texture.fromFrame("y_explo_2"),PIXI.Texture.fromFrame("y_explo_3"),PIXI.Texture.fromFrame("y_explo_4"),PIXI.Texture.fromFrame("y_explo_5"),PIXI.Texture.fromFrame("y_explo_6")]);
+	this.APFlash.anchor.set(0.5,0.5);
+	this.APFlash.animationSpeed = 0.5;
+};
+objects.character.Player.__name__ = true;
+objects.character.Player.__super__ = objects.character.Character;
+objects.character.Player.prototype = $extend(objects.character.Character.prototype,{
+	mapClick: function(e) {
+		var tilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y,true);
+		if(objects.character.Player.selectedAction == "move") {
+			if(!objects.Camera.getInstance().isDragged) this.findPathTo(tilePos,true); else if(objects.character.Player.selectedAction == "attack") this.launchAttack(tilePos);
+		}
+		this.hideHoverTile();
+		this.hidePathMovement();
+		objects.character.Player.selectedAction = null;
+	}
+	,mouseHover: function(e) {
+		var tilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y,true);
+		if(objects.character.Player.selectedAction == "move") this.showPathMovement(this.findPathTo(tilePos)); else if(objects.character.Player.selectedAction == "attack") this.showHoverTile(tilePos,16711680);
+		utils.Debug.log("" + Std.string(tilePos));
+	}
+	,newTick: function(tickNumber) {
+		objects.character.Character.prototype.newTick.call(this,tickNumber);
+		Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = this.stats.AP;
+		if(this.APFlash.parent == null) {
+			managers.DrawManager.addToDisplay(this.APFlash,Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP"));
+			this.APFlash.scale.set(2 * (1 / this.APFlash.parent.parent.scale.x),2 * (1 / this.APFlash.parent.parent.scale.y));
+		}
+		this.APFlash.gotoAndPlay(0);
+	}
+	,damage: function(amount) {
+		objects.character.Character.prototype.damage.call(this,amount);
+		Main.getInstance().hudCont.getChildByName("HP").text = this.stats.health;
+	}
+	,showPathMovement: function(path) {
+		this.hidePathMovement();
+		path.shift();
+		if(path.length == 0 || path.length > this.stats.AP) return;
+		var j = 0;
+		var $it0 = HxOverrides.iter(path);
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			this.movementTile[j].visible = true;
+			this.movementTile[j].setTilePosition([i.x,i.y]);
+			if(this.movementTile[j].parent == null) {
+				if(this.parent != null) managers.DrawManager.addToDisplay(this.movementTile[j],this.parent,0.5);
+			}
+			j++;
+		}
+	}
+	,hidePathMovement: function() {
+		var $it0 = HxOverrides.iter(this.movementTile);
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			i.visible = false;
+		}
+	}
+	,showHoverTile: function(tilePos,newTint) {
+		if(this.targetTile.parent == null) managers.DrawManager.addToDisplay(this.targetTile,managers.MapManager.getInstance().activeMap.mapContainer,0.5);
+		this.targetTile.setTilePosition(tilePos);
+		this.targetTile.visible = true;
+		if(newTint != null) this.targetTile.tint = newTint; else this.targetTile.tint = null;
+	}
+	,hideHoverTile: function(remove) {
+		if(remove == null) remove = false;
+		this.targetTile.visible = false;
+		if(remove) managers.DrawManager.removeFromDisplay(this.targetTile);
+	}
+	,useAp: function(amount) {
+		objects.character.Character.prototype.useAp.call(this,amount);
+		Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = this.stats.AP;
+	}
+	,__class__: objects.character.Player
 });
 var states = {};
 states.DebugState = function() {
@@ -1329,30 +1456,19 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 	Preload: function() {
 	}
 	,Start: function() {
+		Main.FIGHTMODE = true;
 		managers.HudManager.generateFightHud();
 		managers.MapManager.getInstance().generateMapDisplay("testMapZig",true);
-		managers.MapManager.getInstance().activeMap.scrollable = true;
-		this.hoverSprite = new objects.Tile(PIXI.Texture.fromImage("tilehover.png"));
-		this.hoverSprite.setTilePosition([0,0]);
-		managers.DrawManager.addToDisplay(this.hoverSprite,managers.MapManager.getInstance().activeMap.mapContainer,1);
-		window.addEventListener("gameHover",$bind(this,this.mouseHover));
-		window.addEventListener("gameMouseUp",$bind(this,this.mouseClick));
-		this.hero = new objects.character.Character("hero");
+		this.hero = new objects.character.Player("hero");
 		this.hero.setTilePosition([13,30]);
 		this.hero.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(this.hero,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		objects.Camera.getInstance().setFollowTarget(this.hero);
+		var camShader = new PIXI.Sprite(PIXI.Texture.fromImage("camShader.png"));
+		camShader.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+		managers.DrawManager.addToDisplay(camShader,Main.getInstance().effectCont);
 	}
 	,Update: function() {
-	}
-	,mouseClick: function(e) {
-		if(!e.drag) this.hero.findPathTo(e.tilePos);
-	}
-	,mouseHover: function(e) {
-		this.hoverSprite.setTilePosition(e.tilePos);
-		this.hoverSprite.setAbsolutePosition(this.hoverSprite.x,this.hoverSprite.y - 1);
-		if(managers.MapManager.getInstance().activeMap.getWalkableAt(e.tilePos)) this.hoverSprite.tint = 65280; else this.hoverSprite.tint = 16711680;
-		utils.Debug.log("" + Std.string(e.tilePos));
 	}
 	,__class__: states.DebugState
 });
@@ -1373,12 +1489,14 @@ states.IntroState.__name__ = true;
 states.IntroState.__super__ = objects.State;
 states.IntroState.prototype = $extend(objects.State.prototype,{
 	Preload: function() {
+		this.loadJson.set("buttonAttack","assets/spriteSheets/buttonAttack.json");
+		this.loadJson.set("buttonMove","assets/spriteSheets/buttonMove.json");
 		this.loadJson.set("hud_bottom","assets/spriteSheets/hud_bottom.json");
-		this.loadJson.set("tileSpriteSheet","assets/spriteSheets/mapSpriteSheet.json");
 		this.loadJson.set("tileSh2","assets/spriteSheets/loadSpriteSheet.json");
 		this.loadJson.set("buttons","assets/spriteSheets/buttonSpriteSheet.json");
 		this.loadJson.set("hero","assets/spriteSheets/heroSpriteSheet.json");
 		this.loadJson.set("explosion","assets/spriteSheets/testExplosion.json");
+		this.loadJson.set("camShader","assets/effects/camShade.json");
 		Main.getInstance().hudCont.addChild(this.loadingRecangle);
 		Main.getInstance().hudCont.addChild(this.loadingFill);
 		this.LoadingText.text = "Loading asset: 0%";
@@ -1519,10 +1637,11 @@ utils.Misc.convertToGridPosition = function(absoluteX,absoluteY,withCamera) {
 utils.Misc.colliSquarePoint = function(obj,point,cameraAffected) {
 	var offset;
 	if(cameraAffected) offset = objects.Camera.getInstance().offset; else offset = [0,0];
-	if(obj.x - obj.width * obj.anchor.x > point[0] + offset[0]) return false;
-	if(obj.y - obj.height * obj.anchor.y > point[1] + offset[1]) return false;
-	if(obj.x + obj.width - obj.width * obj.anchor.x < point[0] + offset[0]) return false;
-	if(obj.y + obj.height - obj.height * obj.anchor.y < point[1] + offset[1]) return false;
+	var target = obj.getGlobalPosition(null);
+	if(target.x - obj.width * obj.anchor.x > point[0] + offset[0]) return false;
+	if(target.y - obj.height * obj.anchor.y > point[1] + offset[1]) return false;
+	if(target.x + obj.width - obj.width * obj.anchor.x < point[0] + offset[0]) return false;
+	if(target.y + obj.height - obj.height * obj.anchor.y < point[1] + offset[1]) return false;
 	return true;
 };
 utils.Misc.colliSquareSquare = function(obj1,obj2) {
@@ -2403,6 +2522,7 @@ Main.tileSize = [0,0];
 Main.screenRatio = [1,1];
 Main.DEBUGMODE = true;
 Main.GAMESTOPPED = false;
+Main.FIGHTMODE = false;
 managers.HudManager.mode = "none";
 managers.InitManager.CONFIG_PATH = "assets/config/";
 managers.InitManager.ASSETS_PATH = "assets/";

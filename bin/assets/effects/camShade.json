@@ -1,0 +1,21 @@
+{"frames": {
+
+"camShader.png":
+{
+	"frame": {"x":0,"y":0,"w":1920,"h":1080},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":1920,"h":1080},
+	"sourceSize": {"w":1920,"h":1080},
+	"pivot": {"x":0.5,"y":0.5}
+}},
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "camShade.png",
+	"format": "RGBA8888",
+	"size": {"w":1920,"h":1080},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:0c8f69dc63cdbab5fe258b340247f2e4:bb716fa0b7dec8224a01e33fec2de85d:9230b38f290d3061fd5397f4750214b6$"
+}
+}

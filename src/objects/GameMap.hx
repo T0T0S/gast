@@ -95,7 +95,7 @@ class GameMap{
 		return MapManager.finder.isTileWalkable(MapManager.finder.getGrid() , [InitManager.data.config.tileCollisions.walkable], target[0], target[1]);
 	}
 	
-	public function findPath(source:Array<Int>, target:Array<Int>):Array<Array<Int>> {
+	public function findPath(source:Array<Int>, target:Array<Int>):Array<Dynamic> {
 		var finder:Dynamic = MapManager.finder;
 		var path:Array<Dynamic> = [];
 		
@@ -107,15 +107,8 @@ class GameMap{
 			return [];
 		
 		finder.findPath(source[0], source[1], target[0], target[1], function( newpath ) {
-			if (newpath == null) {
-				trace("XXX  NO PATH FOUND ! XXX");
-			} else {
+			if (newpath != null) 
 				untyped path = newpath;
-				//Main.getInstance().hudCont.removeChildren();
-				//for(point in path.iterator()){
-					//MouseManager.createLilCubes([[point.x,point.y]]);
-				//}
-			}
 		});
 		finder.calculate();
 

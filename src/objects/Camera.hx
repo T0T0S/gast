@@ -27,7 +27,7 @@ class Camera{
 	private var mouseDownPosition:Array<Float> = [];
 	private var oldCameraPosition:Array<Float> = [];
 	private var clicked:Bool = false;
-	public var hasMovedEnough:Bool = false;
+	public var isDragged:Bool = false;
 	
 	private var targetToFollow:DisplayObject;
 	private var clampedCam:Bool = true;
@@ -66,13 +66,13 @@ class Camera{
 			return;
 		if (!clicked)
 			return;
-		if (hasMovedEnough == false && Math.abs(mouseDownPosition[0] - e.layerX) < minimumMovement && Math.abs(mouseDownPosition[1] - e.layerY) < minimumMovement)
+		if (isDragged == false && Math.abs(mouseDownPosition[0] - e.layerX) < minimumMovement && Math.abs(mouseDownPosition[1] - e.layerY) < minimumMovement)
 			return;
-		else if(!hasMovedEnough){
+		else if(!isDragged){
 			mouseDownPosition[0] = e.layerX;
 			mouseDownPosition[1] = e.layerY;
 		}
-		hasMovedEnough = true;
+		isDragged = true;
 		
 		offset = [oldCameraPosition[0] - (e.layerX - mouseDownPosition[0]) * dragSensitivity, oldCameraPosition[1] - (e.layerY - mouseDownPosition[1])*dragSensitivity];
 		
@@ -86,7 +86,7 @@ class Camera{
 
 	private function mouseUpListener (e):Void {
 		clicked = false;
-		hasMovedEnough = false;
+		isDragged = false;
 	}
 	
 	public function setCameraPosition (newPosition:Array<Float>):Void {

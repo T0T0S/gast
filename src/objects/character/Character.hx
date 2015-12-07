@@ -28,6 +28,7 @@ typedef Stats = {
 	var precision 		: Float;
 	var luck 			: Float;
 	var AP 				: Float;
+	var MaxAP 			: Float;
 }
 
 
@@ -38,8 +39,6 @@ class Character extends MovieClip{
 	public var tilePos:Array<Int> = [0,0];
 	public var directionFacing:Int = 0;
 	
-	public var inFight:Bool = false;
-	
 	public var stats:Stats = {
 		health 		: 100,
 		strength 	: 10,
@@ -48,7 +47,8 @@ class Character extends MovieClip{
 		moveSpeed	: 2.5,
 		precision 	: 10,
 		luck 		: 10,
-		AP 			: 10
+		AP 			: 10,
+		MaxAP		: 10
 	};
 	
 	private var activePath:Array<Dynamic> = [];
@@ -68,6 +68,8 @@ class Character extends MovieClip{
 	
 	public var z:Float = 0;
 	public var depth:Float = 0;
+	
+	private var lastTickRegistered:Int = 0;
 	
 	/*#################
 	*		NEW	 
@@ -145,7 +147,7 @@ class Character extends MovieClip{
 	}
 	
 	private function managePathFinding():Void {
-		if (activePath.length != 0) {
+		if (activePath.length != 0 && stats.AP > 0) {
 			if (activePathPoint == null)
 				getNextPathPoint();
 			if (tilePos[0] != activePath[activePath.length - 1].x || tilePos[1] != activePath[activePath.length - 1].y){
@@ -158,6 +160,9 @@ class Character extends MovieClip{
 					// new Point
 					setTilePosition(arrayPos);
 					pathIndex++;
+					
+					useAp(1); // - 1 AP
+					
 					if(pathIndex <= activePath.length -1)
 						getNextPathPoint();
 					else
@@ -252,15 +257,18 @@ class Character extends MovieClip{
 		depth = y + z;
 	}
 	
-	public function findPathTo(target:Array<Int>):Void
+	public function findPathTo(target:Array<Int>, follow:Bool = false):Array<Dynamic>
 	{
 		MapManager.finder.setColliTile(tilePos[0], tilePos[1], true);
-		followPath(MapManager.getInstance().activeMap.findPath(getPathFindingPoint(), target));
+		var returnPath = MapManager.getInstance().activeMap.findPath(getPathFindingPoint(), target);
 		MapManager.finder.setColliTile(tilePos[0], tilePos[1], false);
+		if (follow)
+			followPath(returnPath);
+		return returnPath;
 	}
 	
 	public function followPath(path:Array<Dynamic>):Void{
-		if (path.length == 0)
+		if (path.length == 0 || path.length-1 > stats.AP)
 			return;
 		activePath = path;
 		
@@ -282,9 +290,16 @@ class Character extends MovieClip{
 	}
 	
 	public function newTick(tickNumber:Int):Void { 
-		
+		if (stats.AP < stats.MaxAP)
+			stats.AP += tickNumber - lastTickRegistered;
+			
+		lastTickRegistered = tickNumber;
 	}
 	
+	public function useAp(amount:Int):Void
+	{
+		stats.AP -= amount;
+	}
 
 	/**
 	 * destroy to call for removing a character

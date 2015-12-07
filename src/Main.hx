@@ -56,6 +56,8 @@ class Main
 	public static var DEBUGMODE:Bool = true;
 	public static var GAMESTOPPED:Bool = false;
 	
+	public static var FIGHTMODE:Bool = false;
+	
 	static function main ():Void {
 		Main.getInstance();
 	}

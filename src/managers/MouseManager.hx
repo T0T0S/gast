@@ -67,37 +67,9 @@ class MouseManager{
 		Reflect.setField(event,"layerY", e.data.global.y);
 		Reflect.setField(event,"tilePos",Misc.convertToGridPosition(clicPoint[0],clicPoint[1]));
 		Reflect.setField(event,"gamePos",clicPoint);
-		Reflect.setField(event,"drag",Camera.getInstance().hasMovedEnough);
+		Reflect.setField(event,"drag",Camera.getInstance().isDragged);
 		//createLilCubes([convertClicToTilePosition(clicPoint[0], clicPoint[1])]);
 		
-		//var contChildren:Array<Sprite>;
-		//var conts:Array<Container> = cast Main.getInstance().fullStage.children;
-		//var needOffsetCamera:Int = conts.length;
-		//
-		//var i:Int = conts.length - 1;
-		//var j:Int = 0;
-		//while (i >= 0)
-		//{
-			//contChildren = untyped conts[i].children;
-			//j = contChildren.length - 1;
-			//while (j >= 0)
-			//{
-				//if (contChildren[j] != null)
-					//if(contChildren[j].anchor != null)
-						//if (Misc.colliSquarePoint(cast contChildren[j], clicPoint, --needOffsetCamera < 2 )) 
-						//{
-							//Reflect.setField(event, "element", contChildren[j]);
-							//Browser.window.dispatchEvent(event);
-							//e.stopPropagation();
-							//return;
-						//}
-				//--j;
-			//}
-			//i--;
-		//}
-		//
-		//Reflect.setField(event,"element", null);
-
 		Browser.window.dispatchEvent(event);
 
 		//trace(""+arrayPoints);
@@ -118,14 +90,10 @@ class MouseManager{
 	}
 	
 	
-	
-	
 	// A REFAIRE !
 	public static function getSquareTileAround(posClicked:Array<Int>, size:Int = 1):Array<Array<Int>> {
 		if (size == 0)
 			return [posClicked];
-		
-		
 		
 		var ArrayOfPos:Array<Array<Int>> = [];
 		var tileSize:Array<Int> = cast InitManager.data.config.tileSize;

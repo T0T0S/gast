@@ -26,7 +26,6 @@ class Button extends MovieClip {
 		arrayTextures.push(Texture.fromImage(name+"_idle.png"));
 		arrayTextures.push(Texture.fromImage(name+"_hover.png"));
 		arrayTextures.push(Texture.fromImage(name+"_down.png"));
-
 		super(arrayTextures);
 		
 		interactive = true;
@@ -38,7 +37,6 @@ class Button extends MovieClip {
 		arrayCallbacks.down 	= function():Void { };
 		arrayCallbacks.up 		= function():Void { };
 		arrayCallbacks.hover 	= function():Void { };
-		arrayCallbacks.out 		= function():Void { };
 		
 		//Browser.window.addEventListener("gameMouseDown", p_onDown);
 		//Browser.window.addEventListener("gameHover",p_onHover);
@@ -97,7 +95,7 @@ class Button extends MovieClip {
 		}
 	}
 	
-	private function mouseIsAbove(e:EventTarget):Bool{
+	private function mouseIsAbove(e:EventTarget):Bool {
 		return Misc.colliSquarePoint(this, [e.data.global.x, e.data.global.y]);
 	}
 	

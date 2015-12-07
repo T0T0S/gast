@@ -1,4 +1,5 @@
 package utils;
+import js.html.Point;
 import managers.InitManager;
 import objects.Camera;
 import pixi.core.display.DisplayObject;
@@ -88,6 +89,12 @@ class Misc {
 	 * convertie une position de pixel => en tile
 	 */
 	public static function convertToGridPosition(absoluteX:Float, absoluteY:Float, withCamera:Bool = true):Array<Int> {
+		if (false)
+		{
+			absoluteX += Camera.getInstance().offset[0];
+			absoluteY += Camera.getInstance().offset[1];
+		}
+		
 		var tileSize = InitManager.data.config.tileSize;
 		var halfMousePosX:Float = Math.floor((absoluteX) / (tileSize[0]/2))/2;
 		var halfMousePosY:Float = Math.floor((absoluteY) / (tileSize[1] / 2)) / 2;
@@ -109,13 +116,14 @@ class Misc {
 	
 	public static function colliSquarePoint(obj:Sprite, point:Array<Float>, ?cameraAffected:Bool):Bool {
 		var offset:Array<Float> = cameraAffected ? Camera.getInstance().offset : [0,0];
-		if (obj.x - (obj.width * obj.anchor.x)> point[0] + offset[0])
+		var target:Point = untyped obj.getGlobalPosition(null);
+		if (target.x - (obj.width * obj.anchor.x)> point[0] + offset[0])
 			return false;
-		if (obj.y - (obj.height * obj.anchor.y) > point[1] + offset[1])
+		if (target.y - (obj.height * obj.anchor.y) > point[1] + offset[1])
 			return false;
-		if (obj.x + obj.width - (obj.width * obj.anchor.x) < point[0] + offset[0])
+		if (target.x + obj.width - (obj.width * obj.anchor.x) < point[0] + offset[0])
 			return false;
-		if (obj.y + obj.height - (obj.height * obj.anchor.y) < point[1] + offset[1])
+		if (target.y + obj.height - (obj.height * obj.anchor.y) < point[1] + offset[1])
 			return false;
 		
 		return true;

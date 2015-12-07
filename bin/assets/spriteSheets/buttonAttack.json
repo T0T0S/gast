@@ -1,0 +1,39 @@
+{"frames": {
+
+"button_attack_down.png":
+{
+	"frame": {"x":0,"y":0,"w":90,"h":90},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":90,"h":90},
+	"sourceSize": {"w":90,"h":90},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"button_attack_hover.png":
+{
+	"frame": {"x":90,"y":0,"w":90,"h":90},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":90,"h":90},
+	"sourceSize": {"w":90,"h":90},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"button_attack_idle.png":
+{
+	"frame": {"x":180,"y":0,"w":90,"h":90},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":90,"h":90},
+	"sourceSize": {"w":90,"h":90},
+	"pivot": {"x":0.5,"y":0.5}
+}},
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "buttonAttack.png",
+	"format": "RGBA8888",
+	"size": {"w":270,"h":90},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:98adc0f52a59c005bbca84847b3104fb:23bb6fc9165f1fc6bdfb64500ffceece:1f2999883e531e506f78d047aded4c9e$"
+}
+}
