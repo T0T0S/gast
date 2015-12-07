@@ -49,6 +49,10 @@ class Main
 	
 	public var renderMask:Graphics = new Graphics();
 	
+	public static var tileSize:Array<Float> = [0,0];
+	public static var screenRatio:Array<Float> = [1,1]; // ratio of the scale from 1920x1080 screen
+	
+	
 	public static var DEBUGMODE:Bool = true;
 	public static var GAMESTOPPED:Bool = false;
 	
@@ -68,8 +72,11 @@ class Main
 		renderMask.drawRect(0, 0, renderer.width, renderer.height);
 		renderMask.endFill();
 		
+		screenRatio = [renderer.width / 1920, renderer.height / 1080];
+		
 		fullStage.addChild(renderMask);
 		
+		tileCont.interactive = true;
 		gameCont.interactive = true;
 		hudCont.interactive = true;
 
@@ -119,15 +126,16 @@ class Main
 		Browser.window.requestAnimationFrame(cast Update);
 	}
 	
-	public function resize (pEvent:js.html.Event = null): Void {
+	public function resize (pEvent:Event): Void {
 		//renderer.resize(DeviceCapabilities.width, DeviceCapabilities.height);
+		screenRatio = [renderer.width / 1920, renderer.height / 1080];
 	}
 	
 	public function Update() {
 		Browser.window.requestAnimationFrame(cast Update);
 		if(timeManager !=null)
 			timeManager.Update();
-		
+			
 		if (GAMESTOPPED && DEBUGMODE)
 			return;
 		mouseUpdate();

@@ -106,8 +106,8 @@ class Camera{
 	}
 	
 	public function updateMapSize(newMap:GameMap):Void{
-		mapSize.width = newMap.graphicalData[0].length * InitManager.data.config.tileSize[0];
-		mapSize.height = newMap.graphicalData.length * InitManager.data.config.tileSize[1] * 0.5;
+		mapSize.width = newMap.graphicalData[0].length * Main.tileSize[0];
+		mapSize.height = newMap.graphicalData.length * Main.tileSize[1] * 0.5;
 	}
 	
 	public function Update():Void
@@ -123,8 +123,8 @@ class Camera{
 	}
 	
 	private function constrainCam():Void{
-		offset[0] = Misc.clamp(offset[0],0,Math.max(mapSize.width - size[0] - InitManager.data.config.tileSize[0],0));
-		offset[1] = Misc.clamp(offset[1],0,Math.max(mapSize.height - size[1] - InitManager.data.config.tileSize[1] * 1.5,0));
+		offset[0] = Misc.clamp(offset[0],0,Math.max(mapSize.width - size[0] - Main.tileSize[0],0));
+		offset[1] = Misc.clamp(offset[1],0,Math.max(mapSize.height - size[1] - Main.tileSize[1] * 1.5,0));
 	}
 	
 	public function clampCam():Void { clampedCam = true; }

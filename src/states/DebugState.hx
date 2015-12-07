@@ -1,6 +1,7 @@
 package states;
 import js.Browser;
 import managers.DrawManager;
+import managers.HudManager;
 import managers.InitManager;
 import managers.MapManager;
 import managers.MouseManager;
@@ -11,6 +12,7 @@ import objects.Tile;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
 import pixi.extras.MovieClip;
+import pixi.interaction.EventTarget;
 import utils.Debug;
 import utils.Misc;
 
@@ -32,7 +34,9 @@ class DebugState extends State {
 	
 	}
 	public override function Start() {
-		MouseManager.lockedMouseEvents = true;
+	
+		HudManager.generateFightHud();
+	
 		MapManager.getInstance().generateMapDisplay("testMapZig", true);
 		MapManager.getInstance().activeMap.scrollable = true;
 		
@@ -40,6 +44,8 @@ class DebugState extends State {
 		hoverSprite.setTilePosition([0,0]);
 		DrawManager.addToDisplay(hoverSprite, MapManager.getInstance().activeMap.mapContainer,1);
 		
+		//Main.getInstance().tileCont.on("mousemove", mouseHover);
+		//Main.getInstance().tileCont.on("mouseup", mouseClick);
 		Browser.window.addEventListener("gameHover", mouseHover);
 		Browser.window.addEventListener("gameMouseUp", mouseClick);
 		
@@ -52,14 +58,13 @@ class DebugState extends State {
 	}
 	
 	public override function Update() {
-		MouseManager.lockedMouseEvents = false;
+	
 	}
 	
 	
 	private function mouseClick(e):Void {
-		if(! e.drag){
+		if(!e.drag){
 			hero.findPathTo(e.tilePos);
-			//.followPath(MapManager.getInstance().activeMap.findPath(hero.getPathFindingPoint(), e.tilePos));
 		}
 	}
 	

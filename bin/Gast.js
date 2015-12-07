@@ -78,7 +78,9 @@ var Main = function() {
 	this.renderMask.beginFill();
 	this.renderMask.drawRect(0,0,this.renderer.width,this.renderer.height);
 	this.renderMask.endFill();
+	Main.screenRatio = [this.renderer.width / 1920,this.renderer.height / 1080];
 	this.fullStage.addChild(this.renderMask);
+	this.tileCont.interactive = true;
 	this.gameCont.interactive = true;
 	this.hudCont.interactive = true;
 	this.fullStage.mask = this.renderMask;
@@ -117,6 +119,7 @@ Main.prototype = {
 		window.requestAnimationFrame($bind(this,this.Update));
 	}
 	,resize: function(pEvent) {
+		Main.screenRatio = [this.renderer.width / 1920,this.renderer.height / 1080];
 	}
 	,Update: function() {
 		window.requestAnimationFrame($bind(this,this.Update));
@@ -406,6 +409,44 @@ managers.DrawManager.prototype = {
 	}
 	,__class__: managers.DrawManager
 };
+managers.HudManager = function() {
+};
+managers.HudManager.__name__ = true;
+managers.HudManager.generateFightHud = function() {
+	managers.HudManager.mode = "fight";
+	var rightHud = new PIXI.Sprite(PIXI.Texture.fromImage("hud_bottom_right.png"));
+	rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+	rightHud.anchor.set(1,1);
+	rightHud.x = Main.getInstance().renderer.width;
+	rightHud.y = Main.getInstance().renderer.height;
+	var attackHud = new PIXI.Sprite(PIXI.Texture.fromImage("hud_bottom_center.png"));
+	attackHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+	attackHud.anchor.set(1,1);
+	attackHud.x = rightHud.x - (rightHud.width + 20);
+	attackHud.y = Main.getInstance().renderer.height;
+	var tickTimer = new PIXI.Sprite(PIXI.Texture.fromImage("timerFill.png"));
+	tickTimer.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+	tickTimer.anchor.set(0.5,0.5);
+	tickTimer.x = rightHud.x - (tickTimer.width * 0.5 + 49 * Main.screenRatio[0]);
+	tickTimer.y = Main.getInstance().renderer.height - (tickTimer.height * 0.5 + 48 * Main.screenRatio[1]);
+	tickTimer.name = "tickTimer";
+	managers.DrawManager.addToDisplay(attackHud,Main.getInstance().hudCont);
+	managers.DrawManager.addToDisplay(rightHud,Main.getInstance().hudCont);
+	managers.DrawManager.addToDisplay(tickTimer,Main.getInstance().hudCont);
+};
+managers.HudManager.getInstance = function() {
+	if(managers.HudManager.instance == null) managers.HudManager.instance = new managers.HudManager();
+	return managers.HudManager.instance;
+};
+managers.HudManager.prototype = {
+	switchState: function() {
+		managers.HudManager.mode = "none";
+	}
+	,destroy: function() {
+		managers.HudManager.instance = null;
+	}
+	,__class__: managers.HudManager
+};
 managers.InitManager = function() {
 	var lConfig = new PIXI.loaders.Loader();
 	lConfig.add("config","assets/config/" + "config.json");
@@ -431,6 +472,7 @@ managers.InitManager.prototype = {
 			managers.InitManager.data[i] = Reflect.field(resource,i).data;
 		}
 		if(Main.DEBUGMODE) window.data = managers.InitManager.data;
+		Main.tileSize = managers.InitManager.data.config.tileSize;
 		window.requestAnimationFrame(($_=Main.getInstance(),$bind($_,$_.Start)));
 	}
 	,__class__: managers.InitManager
@@ -509,6 +551,7 @@ managers.MapManager.prototype = {
 		while(i < newMap.layers.length) {
 			mapLayer = [];
 			j = 0;
+			if(newMap.layers == null) break;
 			var map = newMap.layers[i].data;
 			while(j < newMap.layers[i].data.length) {
 				if(mapLayer[Math.floor(j / newMap.width)] == null) mapLayer[Math.floor(j / newMap.width)] = [];
@@ -533,25 +576,11 @@ managers.MouseManager = function() {
 	this.arrayPoints = [];
 	this.refreshPerFrame = 1;
 	this.calledPerFrame = 0;
-	window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mousedown",$bind(this,this.mouseDown));
-	window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mouseup",$bind(this,this.mouseUp));
-	window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mousemove",$bind(this,this.mouseMoveHandler));
+	Main.getInstance().tileCont.on("mousedown",$bind(this,this.mouseDown));
+	Main.getInstance().tileCont.on("mouseup",$bind(this,this.mouseUp));
+	Main.getInstance().tileCont.on("mousemove",$bind(this,this.mouseMoveHandler));
 };
 managers.MouseManager.__name__ = true;
-managers.MouseManager.convertClicToTilePosition = function(absoluteX,absoluteY) {
-	var tileSize = managers.InitManager.data.config.tileSize;
-	var halfMousePosX = Math.floor(absoluteX / (tileSize[0] / 2)) / 2;
-	var halfMousePosY = Math.floor(absoluteY / (tileSize[1] / 2)) / 2;
-	if(halfMousePosX % 1 != 0) halfMousePosX += 0.5;
-	if(halfMousePosY % 1 != 0) halfMousePosY += 0.5;
-	var dx = (absoluteX - halfMousePosX * tileSize[0]) / tileSize[0] * 2;
-	var dy = (absoluteY - halfMousePosY * tileSize[1]) / tileSize[1] * 2;
-	var SelectedPos;
-	if(Math.abs(dx) + Math.abs(dy) <= 1) SelectedPos = [halfMousePosX,halfMousePosY]; else SelectedPos = [halfMousePosX + dx / Math.abs(dx) * 0.5,halfMousePosY + dy / Math.abs(dy) * 0.5];
-	SelectedPos[0] = Math.floor(SelectedPos[0]);
-	SelectedPos[1] *= 2;
-	return SelectedPos;
-};
 managers.MouseManager.getSquareTileAround = function(posClicked,size) {
 	if(size == null) size = 1;
 	if(size == 0) return [posClicked];
@@ -613,10 +642,10 @@ managers.MouseManager.prototype = {
 	mouseMoveHandler: function(e) {
 		if(this.calledPerFrame > this.refreshPerFrame || managers.StateManager.loadingState || managers.MouseManager.lockedMouseEvents) return;
 		++this.calledPerFrame;
-		var clicPoint = [e.layerX + Main.camera.offset[0],e.layerY + Main.camera.offset[1]];
-		var tilePos = managers.MouseManager.convertClicToTilePosition(clicPoint[0],clicPoint[1]);
-		managers.MouseManager.gamehover.layerX = e.layerX;
-		managers.MouseManager.gamehover.layerY = e.layerY;
+		var clicPoint = [e.data.global.x + Main.camera.offset[0],e.data.global.y + Main.camera.offset[1]];
+		var tilePos = utils.Misc.convertToGridPosition(clicPoint[0],clicPoint[1]);
+		managers.MouseManager.gamehover.layerX = e.data.global.x;
+		managers.MouseManager.gamehover.layerY = e.data.global.y;
 		managers.MouseManager.gamehover.tilePos = tilePos;
 		managers.MouseManager.gamehover.gamePos = clicPoint;
 		window.dispatchEvent(managers.MouseManager.gamehover);
@@ -624,10 +653,10 @@ managers.MouseManager.prototype = {
 	,mouseUp: function(e) {
 		if(managers.StateManager.loadingState || managers.MouseManager.lockedMouseEvents) return;
 		var event = managers.MouseManager.gameMouseUp;
-		var clicPoint = [e.layerX + Main.camera.offset[0],e.layerY + Main.camera.offset[1]];
-		event.layerX = e.layerX;
-		event.layerY = e.layerY;
-		Reflect.setField(event,"tilePos",managers.MouseManager.convertClicToTilePosition(clicPoint[0],clicPoint[1]));
+		var clicPoint = [e.data.global.x + Main.camera.offset[0],e.data.global.y + Main.camera.offset[1]];
+		event.layerX = e.data.global.x;
+		event.layerY = e.data.global.y;
+		Reflect.setField(event,"tilePos",utils.Misc.convertToGridPosition(clicPoint[0],clicPoint[1]));
 		event.gamePos = clicPoint;
 		event.drag = objects.Camera.getInstance().hasMovedEnough;
 		window.dispatchEvent(event);
@@ -635,17 +664,16 @@ managers.MouseManager.prototype = {
 	,mouseDown: function(e) {
 		if(managers.StateManager.loadingState || managers.MouseManager.lockedMouseEvents) return;
 		var event = managers.MouseManager.gameMouseDown;
-		var clicPoint = [e.layerX + Main.camera.offset[0],e.layerY + Main.camera.offset[1]];
-		event.layerX = e.layerX;
-		event.layerY = e.layerY;
-		Reflect.setField(event,"tilePos",managers.MouseManager.convertClicToTilePosition(clicPoint[0],clicPoint[1]));
+		var clicPoint = [e.data.global.x + Main.camera.offset[0],e.data.global.y + Main.camera.offset[1]];
+		event.layerX = e.data.global.x;
+		event.layerY = e.data.global.y;
+		Reflect.setField(event,"tilePos",utils.Misc.convertToGridPosition(clicPoint[0],clicPoint[1]));
 		event.gamePos = clicPoint;
 		window.dispatchEvent(event);
 	}
 	,__class__: managers.MouseManager
 };
 managers.StateManager = function() {
-	this.fpsCounter = new PIXI.Text("1",{ fill : "white", font : "16px gastFont"});
 	this.debugActiveState = new PIXI.Text("Init",{ fill : "white", font : "30px gastFont"});
 	this.firstLoop = true;
 	this.skipNextLateUpdate = false;
@@ -657,9 +685,6 @@ managers.StateManager = function() {
 	Main.getInstance().debugCont.addChild(this.debugActiveState);
 	this.debugActiveState.x = 10;
 	this.debugActiveState.y = Main.getInstance().renderer.height - 30;
-	this.fpsCounter.x = Main.getInstance().renderer.width - 50;
-	this.fpsCounter.y = Main.getInstance().renderer.height - 30;
-	Main.getInstance().debugCont.addChild(this.fpsCounter);
 	managers.StateManager.debugText.x = 200;
 	managers.StateManager.debugText.y = Main.getInstance().renderer.height - 30;
 	Main.getInstance().debugCont.addChild(managers.StateManager.debugText);
@@ -683,6 +708,7 @@ managers.StateManager.prototype = {
 		Main.mapManager.switchState();
 		Main.characterManager.switchState();
 		objects.Camera.getInstance().switchState();
+		managers.HudManager.getInstance().switchState();
 		this.activeState = newState;
 		this.activatedState = this.statesArray.get(this.activeState);
 		this.debugActiveState.text = this.activeState;
@@ -700,12 +726,14 @@ managers.StateManager.prototype = {
 		Main.getInstance().Render();
 		if(!this.skipNextLateUpdate) this.statesArray.get(this.activeState).LateUpdate();
 		this.skipNextLateUpdate = false;
-		this.fpsCounter.text = "[" + managers.TimeManager.FPS + "]";
 	}
 	,__class__: managers.StateManager
 };
 managers.TimeManager = function() {
-	this.timeSinceLastFPS = 0;
+	this.managedElements = [];
+	this.numberOfTicks = 0;
+	this.tickInterval = 60;
+	this.frameElapsed = 0;
 	this.timeNow = new Date().getTime();
 };
 managers.TimeManager.__name__ = true;
@@ -718,11 +746,23 @@ managers.TimeManager.prototype = {
 		managers.TimeManager.elapsedTime += new Date().getTime() - this.timeNow;
 		managers.TimeManager.deltaTime = (new Date().getTime() - this.timeNow) / 1000;
 		this.timeNow = new Date().getTime();
-		this.timeSinceLastFPS += managers.TimeManager.deltaTime;
-		if(this.timeSinceLastFPS > 0.1) {
-			this.timeSinceLastFPS = 0;
-			if(3600 * managers.TimeManager.deltaTime > 60) managers.TimeManager.FPS = 60; else managers.TimeManager.FPS = Math.floor(3600 * managers.TimeManager.deltaTime);
+		++this.frameElapsed;
+		if(this.frameElapsed % this.tickInterval == 0) {
+			++this.numberOfTicks;
+			this.newTick();
 		}
+		if(managers.HudManager.mode == "fight") Main.getInstance().hudCont.getChildByName("tickTimer").rotation = 2 * Math.PI * (this.frameElapsed % this.tickInterval / this.tickInterval);
+		if(3600 * managers.TimeManager.deltaTime > 60) managers.TimeManager.FPS = 60; else managers.TimeManager.FPS = Math.floor(3600 * managers.TimeManager.deltaTime);
+	}
+	,newTick: function() {
+		var $it0 = HxOverrides.iter(this.managedElements);
+		while( $it0.hasNext() ) {
+			var element = $it0.next();
+			element.newTick(this.numberOfTicks);
+		}
+	}
+	,switchState: function() {
+		this.managedElements = [];
 	}
 	,__class__: managers.TimeManager
 };
@@ -750,6 +790,8 @@ objects.Animation.prototype = {
 	,__class__: objects.Animation
 };
 objects.Button = function(name) {
+	this.isAbove = false;
+	this.isDown = false;
 	this.text = new PIXI.Text("",{ fill : "white", font : "60px gastFont"});
 	this.arrayCallbacks = { };
 	var arrayTextures = [];
@@ -770,9 +812,8 @@ objects.Button = function(name) {
 	this.arrayCallbacks.out = function() {
 	};
 	this.on("mousedown",$bind(this,this.p_onDown));
-	window.addEventListener("gameHover",$bind(this,this.p_onHover));
 	this.on("mouseup",$bind(this,this.p_onUp));
-	this.on("mouseout",$bind(this,this.p_onOut));
+	this.on("mousemove",$bind(this,this.p_onHover));
 	var shadow = new PIXI.filters.DropShadowFilter();
 	shadow.color = 0;
 	shadow.distance = 5;
@@ -797,34 +838,35 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 		if(actionName == "hover") this.gotoAndStop(1); else if(actionName == "down") this.gotoAndStop(2); else this.gotoAndStop(0);
 	}
 	,p_onDown: function(e) {
+		this.isDown = true;
 		this.setSpecialTexture("down");
 		this.arrayCallbacks.down(e);
 		e.stopPropagation();
 	}
 	,p_onUp: function(e) {
+		this.isDown = false;
 		this.setSpecialTexture("hover");
 		this.arrayCallbacks.up(e);
 		e.stopPropagation();
 	}
-	,p_onOut: function(e) {
-		this.setSpecialTexture("out");
-		this.arrayCallbacks.out(e);
-		e.stopPropagation();
-	}
 	,p_onHover: function(e) {
-		if(utils.Misc.colliSquarePoint(this,[e.layerX,e.layerY])) {
-			this.setSpecialTexture("hover");
+		this.isAbove = this.mouseIsAbove(e);
+		if(this.isAbove) {
+			if(this.isDown) this.setSpecialTexture("down"); else this.setSpecialTexture("hover");
 			this.arrayCallbacks.hover(e);
 		} else if(this.currentFrame != 0) this.gotoAndStop(0);
+	}
+	,mouseIsAbove: function(e) {
+		return utils.Misc.colliSquarePoint(this,[e.data.global.x,e.data.global.y]);
+	}
+	,Destroy: function() {
+		this.destroy();
 	}
 	,onDown: function(newFunction) {
 		this.arrayCallbacks.down = newFunction;
 	}
 	,onUp: function(newFunction) {
 		this.arrayCallbacks.up = newFunction;
-	}
-	,onOut: function(newFunction) {
-		this.arrayCallbacks.out = newFunction;
 	}
 	,onHover: function(newFunction) {
 		this.arrayCallbacks.hover = newFunction;
@@ -891,8 +933,8 @@ objects.Camera.prototype = {
 		this.size = [Main.getInstance().renderer.width,Main.getInstance().renderer.height];
 	}
 	,updateMapSize: function(newMap) {
-		this.mapSize.width = newMap.graphicalData[0].length * managers.InitManager.data.config.tileSize[0];
-		this.mapSize.height = newMap.graphicalData.length * managers.InitManager.data.config.tileSize[1] * 0.5;
+		this.mapSize.width = newMap.graphicalData[0].length * Main.tileSize[0];
+		this.mapSize.height = newMap.graphicalData.length * Main.tileSize[1] * 0.5;
 	}
 	,Update: function() {
 		if(this.targetToFollow != null) {
@@ -903,8 +945,8 @@ objects.Camera.prototype = {
 		}
 	}
 	,constrainCam: function() {
-		this.offset[0] = utils.Misc.clamp(this.offset[0],0,Math.max(this.mapSize.width - this.size[0] - managers.InitManager.data.config.tileSize[0],0));
-		this.offset[1] = utils.Misc.clamp(this.offset[1],0,Math.max(this.mapSize.height - this.size[1] - managers.InitManager.data.config.tileSize[1] * 1.5,0));
+		this.offset[0] = utils.Misc.clamp(this.offset[0],0,Math.max(this.mapSize.width - this.size[0] - Main.tileSize[0],0));
+		this.offset[1] = utils.Misc.clamp(this.offset[1],0,Math.max(this.mapSize.height - this.size[1] - Main.tileSize[1] * 1.5,0));
 	}
 	,clampCam: function() {
 		this.clampedCam = true;
@@ -932,7 +974,7 @@ objects.GameMap = function(datas,mapName) {
 	if(datas == null) return;
 	this.name = mapName;
 	this.json = managers.InitManager.data.config.mapJson[this.name];
-	this.OffsetY = managers.InitManager.data.config.tileSize[1] * 0.5;
+	this.OffsetY = Main.tileSize[1] * 0.5;
 	if(this.json == null) window.console.warn("%c[WARNING] no data json found for map '" + mapName + "' ","color:red;");
 	this.json.tiles.unshift(null);
 	this.json.tilesHeight.unshift(null);
@@ -979,6 +1021,7 @@ objects.GameMap.prototype = {
 	,findPath: function(source,target) {
 		var finder = managers.MapManager.finder;
 		var path = [];
+		if(source[0] > this.collisionData[0].length - 1 || target[0] > this.collisionData[0].length - 1 || source[1] > this.collisionData.length - 1 || target[1] > this.collisionData.length - 1 || source[0] < 0 || source[1] < 0 || target[0] < 0 || target[1] < 0) return [];
 		finder.findPath(source[0],source[1],target[0],target[1],function(newpath) {
 			if(newpath == null) console.log("XXX  NO PATH FOUND ! XXX"); else path = newpath;
 		});
@@ -987,6 +1030,23 @@ objects.GameMap.prototype = {
 	}
 	,__class__: objects.GameMap
 };
+objects.HudElement = function(texture) {
+	PIXI.Sprite.call(this,texture);
+	this.on("mousedown",$bind(this,this.p_onDown));
+	this.on("mouseup",$bind(this,this.p_onUp));
+};
+objects.HudElement.__name__ = true;
+objects.HudElement.__super__ = PIXI.Sprite;
+objects.HudElement.prototype = $extend(PIXI.Sprite.prototype,{
+	mouseIsAbove: function(e) {
+		return utils.Misc.colliSquarePoint(this,[e.layerX,e.layerY]);
+	}
+	,p_onDown: function(e) {
+	}
+	,p_onUp: function(e) {
+	}
+	,__class__: objects.HudElement
+});
 objects.State = function(newName) {
 	this.loaderReady = 0;
 	this.loadImage = new haxe.ds.StringMap();
@@ -1008,8 +1068,8 @@ objects.State.prototype = {
 		if(Lambda.count(this.loadImage) == 0) this.loaderReady += 1; else this.loaderReady += 0;
 		if(this.loaderReady == 2) {
 			this.StateLoaded = true;
-			managers.StateManager.loadingState = false;
 			this.Start();
+			managers.StateManager.loadingState = false;
 			return;
 		}
 		var jsonLoader = new PIXI.loaders.Loader();
@@ -1037,8 +1097,8 @@ objects.State.prototype = {
 		if(this.loaderReady == 2) {
 			this.AllAssetsLoaded(loader);
 			this.StateLoaded = true;
-			managers.StateManager.loadingState = false;
 			this.Start();
+			managers.StateManager.loadingState = false;
 		}
 	}
 	,Preload: function() {
@@ -1071,10 +1131,10 @@ objects.Tile.__super__ = PIXI.Sprite;
 objects.Tile.prototype = $extend(PIXI.Sprite.prototype,{
 	setTilePosition: function(position) {
 		this.tilePos[0] = position[0];
-		this.x = position[0] * managers.InitManager.data.config.tileSize[0] + managers.MapManager.getInstance().activeMap.OffsetX;
+		this.x = position[0] * Main.tileSize[0] + managers.MapManager.getInstance().activeMap.OffsetX;
 		this.tilePos[1] = position[1];
-		this.y = position[1] * managers.InitManager.data.config.tileSize[1] * 0.5 + managers.MapManager.getInstance().activeMap.OffsetY;
-		if(Math.abs(this.tilePos[1] % 2) == 1) this.x += managers.InitManager.data.config.tileSize[0] * 0.5;
+		this.y = position[1] * Main.tileSize[1] * 0.5 + managers.MapManager.getInstance().activeMap.OffsetY;
+		if(Math.abs(this.tilePos[1] % 2) == 1) this.x += Main.tileSize[0] * 0.5;
 		this.setZ(this.z);
 	}
 	,setAbsolutePosition: function(newX,newY) {
@@ -1088,9 +1148,9 @@ objects.Tile.prototype = $extend(PIXI.Sprite.prototype,{
 	}
 	,getAbsolutePosition: function() {
 		var arrayToReturn = [];
-		arrayToReturn[0] = this.tilePos[0] * managers.InitManager.data.config.tileSize[0];
-		arrayToReturn[1] = this.tilePos[1] * managers.InitManager.data.config.tileSize[1] * 0.5;
-		if(Math.abs(this.tilePos[1] % 2) == 1) arrayToReturn[0] += managers.InitManager.data.config.tileSize[0] * 0.5;
+		arrayToReturn[0] = this.tilePos[0] * Main.tileSize[0];
+		arrayToReturn[1] = this.tilePos[1] * Main.tileSize[1] * 0.5;
+		if(Math.abs(this.tilePos[1] % 2) == 1) arrayToReturn[0] += Main.tileSize[0] * 0.5;
 		return arrayToReturn;
 	}
 	,__class__: objects.Tile
@@ -1170,7 +1230,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 			if(this.tilePos[0] != this.activePath[this.activePath.length - 1].x || this.tilePos[1] != this.activePath[this.activePath.length - 1].y) {
 				var arrayPos = [this.activePathPoint.x,this.activePathPoint.y];
 				this.setAbsolutePosition(this.x + Math.cos(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed,this.y - Math.sin(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed);
-				if(utils.Misc.getDistance(this.x,this.y,utils.Misc.convertToAbsolutePosition(arrayPos)[0],utils.Misc.convertToAbsolutePosition(arrayPos)[1] + managers.InitManager.data.config.tileSize[1] * 0.5) < this.stats.moveSpeed) {
+				if(utils.Misc.getDistance(this.x,this.y,utils.Misc.convertToAbsolutePosition(arrayPos)[0],utils.Misc.convertToAbsolutePosition(arrayPos)[1] + Main.tileSize[1] * 0.5) < this.stats.moveSpeed) {
 					this.setTilePosition(arrayPos);
 					this.pathIndex++;
 					if(this.pathIndex <= this.activePath.length - 1) this.getNextPathPoint(); else {
@@ -1210,17 +1270,17 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	,setTilePosition: function(position) {
 		managers.CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this,position);
 		this.tilePos[0] = position[0];
-		this.x = position[0] * managers.InitManager.data.config.tileSize[0] + managers.MapManager.getInstance().activeMap.OffsetX;
+		this.x = position[0] * Main.tileSize[0] + managers.MapManager.getInstance().activeMap.OffsetX;
 		this.tilePos[1] = position[1];
-		this.y = position[1] * managers.InitManager.data.config.tileSize[1] * 0.5 + managers.MapManager.getInstance().activeMap.OffsetY;
-		if(Math.abs(this.tilePos[1] % 2) == 1) this.x += managers.InitManager.data.config.tileSize[0] * 0.5;
+		this.y = position[1] * Main.tileSize[1] * 0.5 + managers.MapManager.getInstance().activeMap.OffsetY;
+		if(Math.abs(this.tilePos[1] % 2) == 1) this.x += Main.tileSize[0] * 0.5;
 		this.setZ(this.z);
 	}
 	,getAbsolutePosition: function() {
 		var arrayToReturn = [];
-		arrayToReturn[0] = this.tilePos[0] * managers.InitManager.data.config.tileSize[0];
-		arrayToReturn[1] = this.tilePos[1] * managers.InitManager.data.config.tileSize[1] * 0.5;
-		if(Math.abs(this.tilePos[1] % 2) == 1) arrayToReturn[0] += managers.InitManager.data.config.tileSize[0] * 0.5;
+		arrayToReturn[0] = this.tilePos[0] * Main.tileSize[0];
+		arrayToReturn[1] = this.tilePos[1] * Main.tileSize[1] * 0.5;
+		if(Math.abs(this.tilePos[1] % 2) == 1) arrayToReturn[0] += Main.tileSize[0] * 0.5;
 		return arrayToReturn;
 	}
 	,setAbsolutePosition: function(newX,newY) {
@@ -1250,6 +1310,8 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		if(this.activePathPoint != null) return [this.activePathPoint.x,this.activePathPoint.y];
 		return this.tilePos;
 	}
+	,newTick: function(tickNumber) {
+	}
 	,Destroy: function() {
 		managers.CharacterManager.getInstance().removeCharacter(this);
 		managers.DrawManager.removeFromDisplay(this);
@@ -1267,7 +1329,7 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 	Preload: function() {
 	}
 	,Start: function() {
-		managers.MouseManager.lockedMouseEvents = true;
+		managers.HudManager.generateFightHud();
 		managers.MapManager.getInstance().generateMapDisplay("testMapZig",true);
 		managers.MapManager.getInstance().activeMap.scrollable = true;
 		this.hoverSprite = new objects.Tile(PIXI.Texture.fromImage("tilehover.png"));
@@ -1282,7 +1344,6 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 		objects.Camera.getInstance().setFollowTarget(this.hero);
 	}
 	,Update: function() {
-		managers.MouseManager.lockedMouseEvents = false;
 	}
 	,mouseClick: function(e) {
 		if(!e.drag) this.hero.findPathTo(e.tilePos);
@@ -1361,6 +1422,7 @@ states.MenuState.prototype = $extend(objects.State.prototype,{
 		managers.DrawManager.addToDisplay(this.playButton,Main.getInstance().hudCont);
 	}
 	,clickHandler: function(e) {
+		this.playButton.Destroy();
 		managers.StateManager.getInstance().switchToState("Debug");
 	}
 	,Update: function() {
@@ -1432,15 +1494,27 @@ utils.Misc.angleBetweenTiles = function(from,to) {
 	return utils.Misc.angleBetween(utils.Misc.convertToAbsolutePosition(from),utils.Misc.convertToAbsolutePosition(to));
 };
 utils.Misc.convertToAbsolutePosition = function(tilePosition) {
-	var configTileSize = managers.InitManager.data.config.tileSize;
+	var configTileSize = Main.tileSize;
 	var returnPosition = [];
 	returnPosition[0] = tilePosition[0] * configTileSize[0];
 	if(Math.abs(tilePosition[1] % 2) == 1) returnPosition[0] += configTileSize[0] * 0.5;
 	returnPosition[1] = tilePosition[1] * configTileSize[1] * 0.5;
 	return returnPosition;
 };
-utils.Misc.convertToGridPosition = function(pixelPosition) {
-	return [Math.floor(pixelPosition[0] / managers.InitManager.data.config.tileSize[0]),Math.floor(pixelPosition[1] / managers.InitManager.data.config.tileSize[1] * 2)];
+utils.Misc.convertToGridPosition = function(absoluteX,absoluteY,withCamera) {
+	if(withCamera == null) withCamera = true;
+	var tileSize = managers.InitManager.data.config.tileSize;
+	var halfMousePosX = Math.floor(absoluteX / (tileSize[0] / 2)) / 2;
+	var halfMousePosY = Math.floor(absoluteY / (tileSize[1] / 2)) / 2;
+	if(halfMousePosX % 1 != 0) halfMousePosX += 0.5;
+	if(halfMousePosY % 1 != 0) halfMousePosY += 0.5;
+	var dx = (absoluteX - halfMousePosX * tileSize[0]) / tileSize[0] * 2;
+	var dy = (absoluteY - halfMousePosY * tileSize[1]) / tileSize[1] * 2;
+	var SelectedPos;
+	if(Math.abs(dx) + Math.abs(dy) <= 1) SelectedPos = [halfMousePosX,halfMousePosY]; else SelectedPos = [halfMousePosX + dx / Math.abs(dx) * 0.5,halfMousePosY + dy / Math.abs(dy) * 0.5];
+	SelectedPos[0] = Math.floor(SelectedPos[0]);
+	SelectedPos[1] *= 2;
+	return SelectedPos;
 };
 utils.Misc.colliSquarePoint = function(obj,point,cameraAffected) {
 	var offset;
@@ -2325,8 +2399,11 @@ var Uint8Array = window.Uint8Array;
 }(window));
 ;
 })();
+Main.tileSize = [0,0];
+Main.screenRatio = [1,1];
 Main.DEBUGMODE = true;
 Main.GAMESTOPPED = false;
+managers.HudManager.mode = "none";
 managers.InitManager.CONFIG_PATH = "assets/config/";
 managers.InitManager.ASSETS_PATH = "assets/";
 managers.MapManager.finder = new EasyStar.js();

@@ -82,6 +82,8 @@ class MapManager{
 			mapLayer = [];
 			j = 0;
 			
+			if (newMap.layers == null)
+				break;
 			var map = newMap.layers[i].data;
 			while (j < newMap.layers[i].data.length) {
 				if (mapLayer[Math.floor(j / newMap.width)] == null)

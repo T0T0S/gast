@@ -44,8 +44,8 @@ class State{
 		loaderReady += Lambda.count(loadImage) == 0 ? 1 : 0;
 		if (loaderReady == 2) {
 			StateLoaded = true;
-			StateManager.loadingState = false;
 			Start();
+			StateManager.loadingState = false;
 			return;
 		}
 		
@@ -76,8 +76,8 @@ class State{
 		if(loaderReady == 2){
 			AllAssetsLoaded(loader);
 			StateLoaded = true;
-			StateManager.loadingState = false;
 			Start();
+			StateManager.loadingState = false;
 		}
 	}
 	

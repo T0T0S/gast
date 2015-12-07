@@ -37,7 +37,7 @@ class GameMap{
 		name = mapName;
 		json = InitManager.data.config.mapJson[untyped name];
 		
-		OffsetY = InitManager.data.config.tileSize[1] * 0.5;
+		OffsetY = Main.tileSize[1] * 0.5;
 		
 		if (json == null)
 			Browser.window.console.warn("%c[WARNING] no data json found for map '" + mapName+"' ", "color:red;");
@@ -98,9 +98,13 @@ class GameMap{
 	public function findPath(source:Array<Int>, target:Array<Int>):Array<Array<Int>> {
 		var finder:Dynamic = MapManager.finder;
 		var path:Array<Dynamic> = [];
-		/*
-		 * pathfinding does weird shit
-		 * */
+		
+		if (source[0] > collisionData[0].length-1 || 
+			target[0] > collisionData[0].length-1 || 
+			source[1] > collisionData.length-1 || 
+			target[1] > collisionData.length-1 ||
+			source[0] < 0 || source[1] < 0 || target[0] < 0 || target[1] < 0)
+			return [];
 		
 		finder.findPath(source[0], source[1], target[0], target[1], function( newpath ) {
 			if (newpath == null) {

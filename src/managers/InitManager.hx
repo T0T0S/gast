@@ -58,6 +58,8 @@ class InitManager
 		// SHOW DATA
 		if(Main.DEBUGMODE)
 			untyped Browser.window.data = data;
+			
+		Main.tileSize = data.config.tileSize;
 		Browser.window.requestAnimationFrame(cast Main.getInstance().Start);
 	}
 		

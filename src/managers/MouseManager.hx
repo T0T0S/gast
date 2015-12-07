@@ -33,39 +33,41 @@ class MouseManager{
 	var arrayPoints:Array<Array<Float>> = [];
 	
 	public function new() {
-		Browser.window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mousedown",mouseDown);
-		Browser.window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mouseup",mouseUp);
-		Browser.window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mousemove",mouseMoveHandler);
+		//Browser.window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mousedown",mouseDown);
+		//Browser.window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mouseup",mouseUp);
+		//Browser.window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mousemove",mouseMoveHandler);
+		Main.getInstance().tileCont.on("mousedown", mouseDown);
+		Main.getInstance().tileCont.on("mouseup", mouseUp);
+		Main.getInstance().tileCont.on("mousemove", mouseMoveHandler);
 	}
 	
-	public function mouseMoveHandler (e){
+	public function mouseMoveHandler (e:EventTarget){
 		if (calledPerFrame > refreshPerFrame || StateManager.loadingState || lockedMouseEvents)
 			return;
 		
 		++calledPerFrame;
 		
-		var clicPoint:Array<Float> = [e.layerX + Main.camera.offset[0], e.layerY + Main.camera.offset[1]];
-		var tilePos:Array<Int> = convertClicToTilePosition(clicPoint[0],clicPoint[1]);
-		Reflect.setField(gamehover,"layerX",e.layerX);
-		Reflect.setField(gamehover,"layerY",e.layerY);
+		var clicPoint:Array<Float> = [e.data.global.x + Main.camera.offset[0], e.data.global.y + Main.camera.offset[1]];
+		var tilePos:Array<Int> = Misc.convertToGridPosition(clicPoint[0],clicPoint[1]);
+		Reflect.setField(gamehover,"layerX",e.data.global.x);
+		Reflect.setField(gamehover,"layerY",e.data.global.y);
 		Reflect.setField(gamehover,"tilePos",tilePos);
 		Reflect.setField(gamehover,"gamePos",clicPoint);
 		
 		Browser.window.dispatchEvent(gamehover);
 	}
 
-	public function mouseUp (e:Event):Void {
+	public function mouseUp (e:EventTarget):Void {
+	
 		if(StateManager.loadingState || lockedMouseEvents)
 			return;
 		var event = gameMouseUp;
-		var clicPoint:Array<Float> = [untyped e.layerX + Main.camera.offset[0], untyped e.layerY + Main.camera.offset[1]];
-
-		Reflect.setField(event,"layerX",untyped e.layerX);
-		Reflect.setField(event,"layerY",untyped e.layerY);
-		Reflect.setField(event,"tilePos",convertClicToTilePosition(clicPoint[0],clicPoint[1]));
+		var clicPoint:Array<Float> = [e.data.global.x + Main.camera.offset[0], e.data.global.y + Main.camera.offset[1]];
+		Reflect.setField(event,"layerX", e.data.global.x);
+		Reflect.setField(event,"layerY", e.data.global.y);
+		Reflect.setField(event,"tilePos",Misc.convertToGridPosition(clicPoint[0],clicPoint[1]));
 		Reflect.setField(event,"gamePos",clicPoint);
 		Reflect.setField(event,"drag",Camera.getInstance().hasMovedEnough);
-
 		//createLilCubes([convertClicToTilePosition(clicPoint[0], clicPoint[1])]);
 		
 		//var contChildren:Array<Sprite>;
@@ -101,39 +103,21 @@ class MouseManager{
 		//trace(""+arrayPoints);
 	}
 	
-	public function mouseDown (e:Event):Void {
+	public function mouseDown (e:EventTarget):Void {
 		if(StateManager.loadingState || lockedMouseEvents)
 			return;
 		var event = gameMouseDown;
-		var clicPoint:Array<Float> = [untyped e.layerX + Main.camera.offset[0], untyped e.layerY + Main.camera.offset[1]];
-		Reflect.setField(event,"layerX",untyped e.layerX);
-		Reflect.setField(event,"layerY",untyped e.layerY);
-		Reflect.setField(event,"tilePos",convertClicToTilePosition(clicPoint[0],clicPoint[1]));
+		var clicPoint:Array<Float> = [e.data.global.x + Main.camera.offset[0], e.data.global.y + Main.camera.offset[1]];
+		//var clicPoint:Array<Float> = [untyped e.layerX + Main.camera.offset[0], untyped e.layerY + Main.camera.offset[1]];
+		Reflect.setField(event,"layerX", e.data.global.x);
+		Reflect.setField(event,"layerY", e.data.global.y);
+		Reflect.setField(event,"tilePos",Misc.convertToGridPosition(clicPoint[0],clicPoint[1]));
 		Reflect.setField(event,"gamePos",clicPoint);
 		
 		Browser.window.dispatchEvent(event);
 	}
 	
-	// fonction de detection de tile clické, c'est sure a 99% qu'il y a plus simple mais ça passe et ça consomme pas trop vu que ya que des calculs simples.
-	public static function convertClicToTilePosition(absoluteX:Float,absoluteY:Float):Array<Int> {
-		var tileSize = InitManager.data.config.tileSize;
-		var halfMousePosX:Float = Math.floor((absoluteX) / (tileSize[0]/2))/2;
-		var halfMousePosY:Float = Math.floor((absoluteY) / (tileSize[1] / 2)) / 2;
-		
-		if (halfMousePosX % 1 != 0)
-			halfMousePosX += 0.5;
-		if (halfMousePosY % 1 != 0)
-			halfMousePosY += 0.5;
-
-		var dx = (absoluteX - halfMousePosX * tileSize[0]) / tileSize[0]*2;
-		var dy = (absoluteY - halfMousePosY * tileSize[1]) / tileSize[1] *2;
-		var SelectedPos:Array<Int> = (Math.abs(dx)+ Math.abs(dy) <= 1) ? cast [halfMousePosX, halfMousePosY] : cast [halfMousePosX + ((dx / Math.abs(dx)) * 0.5), halfMousePosY + ((dy / Math.abs(dy))*0.5)]; 
-		SelectedPos[0] = Math.floor(SelectedPos[0]);
-		SelectedPos[1] *= 2;
-		
-//		trace(SelectedPos);
-		return SelectedPos;
-	}
+	
 	
 	
 	// A REFAIRE !

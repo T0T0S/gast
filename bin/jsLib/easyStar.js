@@ -655,6 +655,8 @@ EasyStar.js = function() {
 	// Helpers
 	var isTileWalkable = function(collisionGrid, acceptableTiles, x, y) {
 		for (var i = 0; i < acceptableTiles.length; i++) {
+			if (collisionGrid[y] == null)
+				return null;
 			if (collisionGrid[y][x] === acceptableTiles[i]) {
 				return true;
 			}

@@ -74,7 +74,7 @@ class Misc {
 	 * @return absolute position in PIXELS of tilePosition
 	 */
 	public static function convertToAbsolutePosition (tilePosition:Array<Int>):Array<Float> {
-		var configTileSize:Array<Int> = InitManager.data.config.tileSize;
+		var configTileSize:Array<Float> = Main.tileSize;
 		var returnPosition:Array<Float> = [];
 		returnPosition[0] = tilePosition[0] * configTileSize[0];		
 		if (Math.abs(tilePosition[1] % 2) == 1)
@@ -87,8 +87,24 @@ class Misc {
 	/**
 	 * convertie une position de pixel => en tile
 	 */
-	public static function convertToGridPosition (pixelPosition:Array<Float>):Array<Int> {
-		return [Math.floor(pixelPosition[0] / InitManager.data.config.tileSize[0]), Math.floor(pixelPosition[1] / InitManager.data.config.tileSize[1] * 2)];
+	public static function convertToGridPosition(absoluteX:Float, absoluteY:Float, withCamera:Bool = true):Array<Int> {
+		var tileSize = InitManager.data.config.tileSize;
+		var halfMousePosX:Float = Math.floor((absoluteX) / (tileSize[0]/2))/2;
+		var halfMousePosY:Float = Math.floor((absoluteY) / (tileSize[1] / 2)) / 2;
+		
+		if (halfMousePosX % 1 != 0)
+			halfMousePosX += 0.5;
+		if (halfMousePosY % 1 != 0)
+			halfMousePosY += 0.5;
+
+		var dx = (absoluteX - halfMousePosX * tileSize[0]) / tileSize[0]*2;
+		var dy = (absoluteY - halfMousePosY * tileSize[1]) / tileSize[1] *2;
+		var SelectedPos:Array<Int> = (Math.abs(dx)+ Math.abs(dy) <= 1) ? cast [halfMousePosX, halfMousePosY] : cast [halfMousePosX + ((dx / Math.abs(dx)) * 0.5), halfMousePosY + ((dy / Math.abs(dy))*0.5)]; 
+		SelectedPos[0] = Math.floor(SelectedPos[0]);
+		SelectedPos[1] *= 2;
+		
+//		trace(SelectedPos);
+		return SelectedPos;
 	}
 	
 	public static function colliSquarePoint(obj:Sprite, point:Array<Float>, ?cameraAffected:Bool):Bool {

@@ -23,7 +23,6 @@ class StateManager{
 	private var firstLoop:Bool = true;
 	
 	public var debugActiveState:Text = new Text("Init", { "fill":"white", "font":"30px gastFont" } );
-	public var fpsCounter:Text = new Text("1", { "fill":"white", "font":"16px gastFont" } );
 	public static var debugText:Text = new Text("", { "fill" :"white", "font":"18px Arial" } );
 	
 	public static var loadingState:Bool = false;
@@ -47,10 +46,6 @@ class StateManager{
 		debugActiveState.x = 10;
 		debugActiveState.y = Main.getInstance().renderer.height - 30;
 		
-		fpsCounter.x = Main.getInstance().renderer.width - 50;
-		fpsCounter.y = Main.getInstance().renderer.height - 30;
-		Main.getInstance().debugCont.addChild(fpsCounter);
-		
 		debugText.x = 200;
 		debugText.y = Main.getInstance().renderer.height - 30;
 		Main.getInstance().debugCont.addChild(debugText);
@@ -71,6 +66,7 @@ class StateManager{
 		Main.mapManager.switchState();
 		Main.characterManager.switchState();
 		Camera.getInstance().switchState();
+		HudManager.getInstance().switchState();
 		activeState = newState;
 		activatedState = statesArray[activeState];
 		debugActiveState.text = activeState;
@@ -93,9 +89,6 @@ class StateManager{
 		if(!skipNextLateUpdate)
 			statesArray[activeState].LateUpdate();
 		skipNextLateUpdate = false;
-		
-		
-		fpsCounter.text = "["+TimeManager.FPS+"]";
 	}
 	
 	public static function getInstance():StateManager {

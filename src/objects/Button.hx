@@ -2,6 +2,7 @@ package objects;
 
 import haxe.Constraints.Function;
 import js.Browser;
+import js.html.Event;
 import pixi.core.text.Text;
 import pixi.core.textures.Texture;
 import pixi.extras.MovieClip;
@@ -16,7 +17,9 @@ class Button extends MovieClip {
 
 	private var arrayCallbacks:Dynamic = { };
 	
-	private var text:Text = new Text("",{"fill":"white", "font":"60px gastFont"});
+	private var text:Text = new Text("", { "fill":"white", "font":"60px gastFont" } );
+	private var isDown:Bool = false;
+	private var isAbove:Bool = false;
 	
 	public function new(name:String) {
 		var arrayTextures:Array<Texture> = [];
@@ -37,10 +40,13 @@ class Button extends MovieClip {
 		arrayCallbacks.hover 	= function():Void { };
 		arrayCallbacks.out 		= function():Void { };
 		
+		//Browser.window.addEventListener("gameMouseDown", p_onDown);
+		//Browser.window.addEventListener("gameHover",p_onHover);
+		//Browser.window.addEventListener("gameMouseUp", p_onUp);
+		
 		on("mousedown", p_onDown);
-		Browser.window.addEventListener("gameHover",p_onHover);
 		on("mouseup", p_onUp);
-		on("mouseout", p_onOut);
+		on("mousemove", p_onHover);
 		
 		var shadow = new DropShadowFilter();
 		shadow.color 	= 0x0000;
@@ -73,25 +79,34 @@ class Button extends MovieClip {
 			gotoAndStop(2);
 		else 
 			gotoAndStop(0);
-			
 	}
 	
-	private function p_onDown	(e:EventTarget):Void { setSpecialTexture("down"); arrayCallbacks.down(e); e.stopPropagation(); }
-	private function p_onUp		(e:EventTarget):Void { setSpecialTexture("hover"); arrayCallbacks.up(e); e.stopPropagation(); }
-	private function p_onOut	(e:EventTarget):Void { setSpecialTexture("out"); arrayCallbacks.out(e); e.stopPropagation(); }
-	private function p_onHover	(e):Void { 
-		if (Misc.colliSquarePoint(this, [e.layerX, e.layerY])) {
-			setSpecialTexture("hover"); 
+	private function p_onDown	(e:EventTarget):Void { isDown = true; setSpecialTexture("down"); arrayCallbacks.down(e); e.stopPropagation(); }
+	private function p_onUp		(e:EventTarget):Void { isDown = false;  setSpecialTexture("hover"); arrayCallbacks.up(e); e.stopPropagation(); }
+	private function p_onHover	(e:EventTarget):Void {
+		isAbove = mouseIsAbove(e);
+		if (isAbove) {
+			if(isDown)
+				setSpecialTexture("down"); 
+			else
+				setSpecialTexture("hover"); 
 			arrayCallbacks.hover(e); 
 		}
-		else if(currentFrame != 0){
+		else if (currentFrame != 0) {
 			gotoAndStop(0);
 		}
+	}
+	
+	private function mouseIsAbove(e:EventTarget):Bool{
+		return Misc.colliSquarePoint(this, [e.data.global.x, e.data.global.y]);
+	}
+	
+	public function Destroy():Void{
+		destroy();
 	}
 
 	public function onDown	(newFunction:Function):Void { arrayCallbacks.down 	= newFunction; }
 	public function onUp	(newFunction:Function):Void { arrayCallbacks.up 	= newFunction; }
-	public function onOut	(newFunction:Function):Void { arrayCallbacks.out 	= newFunction; }
 	public function onHover	(newFunction:Function):Void { arrayCallbacks.hover 	= newFunction; }
 	
 }

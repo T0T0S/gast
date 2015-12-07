@@ -42,6 +42,7 @@ class MenuState extends State{
 	}
 	
 	private function clickHandler(e):Void {
+		playButton.Destroy();
 		StateManager.getInstance().switchToState("Debug");
 	}
 	
