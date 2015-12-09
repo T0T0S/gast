@@ -1,5 +1,6 @@
 package states;
 
+import managers.PoolManager;
 import managers.StateManager;
 import objects.State;
 import pixi.core.math.shapes.Rectangle;
@@ -14,12 +15,12 @@ import utils.DeviceCapabilities;
  */
 
 
-class IntroState extends State{
+class PreloadState extends State{
 	private var loadingRecangle:Graphics = new Graphics();
 	private var loadingFill:Graphics = new Graphics();
 	private var loopCounter = 0;
 	public function new() {
-		super("Intro");
+		super("Preload");
 		LoadingText.text = "Loading asset: 0%";
 		LoadingText.x = Main.getInstance().renderer.width * 0.5;
 		LoadingText.y = Main.getInstance().renderer.height * 0.6;
@@ -31,6 +32,7 @@ class IntroState extends State{
 	
 	public override function Preload():Void {
 	
+		loadJson.set("buttonTripleAttack", "assets/spriteSheets/buttonTripleAttack.json");
 		loadJson.set("buttonAttack", "assets/spriteSheets/buttonAttack.json");
 		loadJson.set("buttonMove", "assets/spriteSheets/buttonMove.json");
 		loadJson.set("hud_bottom", "assets/spriteSheets/hud_bottom.json");
@@ -48,6 +50,7 @@ class IntroState extends State{
 	}
 	
 	public override function Start():Void  {
+		PoolManager.generatePool();
 		StateManager.getInstance().switchToState("Menu");
 	}
 
@@ -64,6 +67,7 @@ class IntroState extends State{
 		loadingFill.beginFill(0xAAAAAA);
 		loadingFill.drawRect(Main.getInstance().renderer.width * 0.35 + 3, Main.getInstance().renderer.height*0.7+3,100 /loader.progress * ((Main.getInstance().renderer.width *0.25) - 4), 46);
 		loadingFill.endFill();
+		
 	}
 	
 	public override function switchState():Void {

@@ -5,7 +5,7 @@ import objects.State;
 import pixi.core.display.Container;
 import pixi.core.text.Text;
 import states.DebugState;
-import states.IntroState;
+import states.PreloadState;
 import states.MenuState;
 
 /**
@@ -17,7 +17,7 @@ class StateManager{
 	public static var instance:StateManager;
 	
 	private var statesArray:Map<String,State> = new Map.Map();
-	private var activeState:String = "Intro";
+	private var activeState:String = "Preload";
 	public var activatedState:State;
 	private var skipNextLateUpdate:Bool = false;
 	private var firstLoop:Bool = true;
@@ -38,7 +38,7 @@ class StateManager{
 	 */
 	public function new() {
 	
-		addState(new IntroState());
+		addState(new PreloadState());
 		addState(new MenuState());
 		addState(new DebugState());
 		

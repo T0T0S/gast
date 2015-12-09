@@ -15,10 +15,22 @@
 			"loop": true,
 			"frameData" : [[0],[1],[2],[3]]
 		},
-		"attack": {
+		"normalAttack": {
 			"fps": 60,
 			"loop": true,
 			"frameData" : [[4],[5],[6],[7]]
+		}
+	},
+	"attacks":{
+		"normal":{
+			"waitForFinish": true,
+			"animationName": "normalAttack",
+			"framesData": [[5,60]]
+		},
+		"triple":{
+			"waitForFinish": true,
+			"animationName": "normalAttack",
+			"framesData": [[5,2],[5,2],[5,2]]
 		}
 	}
 }

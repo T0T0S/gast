@@ -1,14 +1,12 @@
 package objects.character;
 import haxe.Constraints.Function;
-import haxe.Json;
 import js.Browser;
 import managers.CharacterManager;
 import managers.DrawManager;
 import managers.InitManager;
 import managers.MapManager;
-import managers.MouseManager;
 import objects.Animation;
-import pixi.core.graphics.Graphics;
+import objects.attacks.Attack;
 import pixi.core.textures.Texture;
 import pixi.extras.MovieClip;
 import utils.Id;
@@ -21,14 +19,14 @@ import utils.Misc;
 
 typedef Stats = {
 	var health 			: Float;
-	var strength 		: Float;
-	var endurance 		: Float;
+	var strength 		: Int;
+	var endurance 		: Int;
 	var moveSpeed 		: Float;
-	var regeneration 	: Float;
-	var precision 		: Float;
-	var luck 			: Float;
-	var AP 				: Float;
-	var MaxAP 			: Float;
+	var regeneration 	: Int;
+	var precision 		: Int;
+	var luck 			: Int;
+	var AP 				: Int;
+	var MaxAP 			: Int;
 }
 
 
@@ -58,9 +56,11 @@ class Character extends MovieClip{
 	public var refreshSpeed:Float = 1;
 	
 	public var charaName:String;
-	public var attacks:Map<String,Function>;
+	public var attacks:Map<String,Attack> = new Map.Map();
+	public var activeAttack:Attack;
 	
 	public var animations:Map<String,Animation> = new Map.Map();
+	public var animationFrame:Float = 0;
 	public var activeAnimation:Animation;
 	public var activeAnimationName:String;
 	
@@ -71,6 +71,10 @@ class Character extends MovieClip{
 	
 	private var lastTickRegistered:Int = 0;
 	
+	private var updateBlocked:Bool = false;
+	public var waitForNextTick:Bool = false;
+
+	
 	/*#################
 	*		NEW	 
 	* ################# */
@@ -79,6 +83,7 @@ class Character extends MovieClip{
 		config = InitManager.data[untyped newName];
 		super(generateTextures(charaName));
 		generateAnimations();
+		generateAttacks();
 		loop = true;
 		
 		anchor.set(0.5, 1);
@@ -98,6 +103,12 @@ class Character extends MovieClip{
 		}
 		
 		return returnArray;
+	}
+	
+	private function generateAttacks():Void{
+		for (i in Reflect.fields(config.attacks)) {
+			attacks.set(i, Misc.getAttackFromName(i, Reflect.field(config.attacks, i)));
+		}	
 	}
 	
 	private function generateAnimations():Void {
@@ -124,24 +135,53 @@ class Character extends MovieClip{
 	  #################*/
 	public function _selfUpdate():Void {
 		manageAnim();
-		managePathFinding();
-		customUpdate();
+
+		if (!updateBlocked) {
+			managePathFinding();
+			customUpdate();
+		}
 	}
 	
 	private function manageAnim():Void {
 		if (activeAnimation == null) {
 			return;
-		}		
-		if (currentFrame - activeAnimation.getLastIndex() >= activeAnimation.getFrames(directionFacing).length - 1) {
-			if (!activeAnimation.loop) {
-				stop();
-				activeAnimation.endAction();
+		}
+		
+		if (activeAttack != null) {
+			if (!activeAttack.finished)
+			{
+				activeAttack.updateAttack(this);
 			}
 			else {
-				if (activeAnimation.getFrames(directionFacing).length == 1)
+			
+			//post Attack callback
+				activeAttack = null;
+				if (activePathPoint == null)
+				{
+					setAnimation("idle");
+				}
+				else{
+					setDirection(Misc.getDirectionToPoint(tilePos, [activePathPoint.x,activePathPoint.y]));
+					setAnimation("run");
+				}
+			}
+		}
+		
+		if(activeAnimation.data[0].length > 1){
+			if (animationFrame >= activeAnimation.getFrames(directionFacing).length - 1) {
+				if (!activeAnimation.loop) {
+					stop();
+					activeAnimation.endAction();
+				}
+				else {
+					animationFrame = 0;
 					gotoAndStop(activeAnimation.getFrames(directionFacing)[0]);
-				else
-					gotoAndPlay(activeAnimation.getFrames(directionFacing)[0]);
+				}
+				
+			}
+			else {
+				animationFrame += 1 * (60 / activeAnimation.fps);
+				gotoAndStop(activeAnimation.getFrames(directionFacing)[Math.floor(animationFrame)]);
 			}
 		}
 	}
@@ -167,6 +207,8 @@ class Character extends MovieClip{
 						getNextPathPoint();
 					else
 					{
+						//finish Path
+						setAnimation("idle");
 						activePath = [];
 						activePathPoint = null;
 					}
@@ -276,11 +318,16 @@ class Character extends MovieClip{
 		setAnimation("run");
 	}
 	
-	public function launchAttack(targetPosition:Array<Int>):Void{
-		if (CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)) {
-			// launch attack	
-			CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(stats.strength);
+	public function launchAttack(attackName:String, targetPosition:Array<Int>):Void {
+		if (attacks.get(attackName) == null){
+			Browser.window.console.warn("attack not found: " + attackName);
+			return;
 		}
+		activeAttack = attacks.get(attackName);
+		setAnimation(activeAttack.animationName);
+		updateBlocked = activeAttack.waitForFinish;
+		activeAttack.activateAttack(targetPosition);
+		setDirection(Misc.getDirectionToPoint(tilePos, targetPosition));
 	};
 	
 	public function getPathFindingPoint():Array<Int> {
@@ -294,6 +341,12 @@ class Character extends MovieClip{
 			stats.AP += tickNumber - lastTickRegistered;
 			
 		lastTickRegistered = tickNumber;
+		
+		if (waitForNextTick)
+		{
+			waitForNextTick = false;
+			updateBlocked = false;
+		}
 	}
 	
 	public function useAp(amount:Int):Void

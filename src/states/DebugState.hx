@@ -5,6 +5,7 @@ import managers.HudManager;
 import managers.InitManager;
 import managers.MapManager;
 import managers.MouseManager;
+import managers.PoolManager;
 import objects.Camera;
 import objects.character.Character;
 import objects.character.Player;
@@ -39,6 +40,10 @@ class DebugState extends State {
 		HudManager.generateFightHud();
 	
 		MapManager.getInstance().generateMapDisplay("testMapZig", true);
+
+		
+		var testPool = PoolManager.pullObject("tile", 2);
+		PoolManager.returnObject("tile", testPool[0]);
 		
 		//hoverSprite = new Tile(Texture.fromImage("tilehover.png"));
 		//hoverSprite.setTilePosition([0,0]);
@@ -54,6 +59,8 @@ class DebugState extends State {
 		camShader.scale.set(Main.screenRatio[0], Main.screenRatio[1]);
 		
 		DrawManager.addToDisplay(camShader, Main.getInstance().effectCont);
+		
+
 	}
 	
 	public override function Update() {

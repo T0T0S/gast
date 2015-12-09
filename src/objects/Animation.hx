@@ -19,7 +19,6 @@ class Animation{
 		loop = newData.loop;
 		data = newData.frameData;
 		fps = newData.fps;
-		callback = endCallback;
 	}
 	
 	public function getFrames(newDirection:Int):Array<Int> {

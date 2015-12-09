@@ -1,26 +1,26 @@
 package utils;
-import js.html.Point;
+import js.Browser;
 import managers.InitManager;
+import managers.MouseManager;
+import managers.PoolManager;
+import objects.attacks.Attack;
+import objects.attacks.NormalAttack;
+import objects.attacks.TripleAttack;
 import objects.Camera;
+import objects.Tile;
 import pixi.core.display.DisplayObject;
+import pixi.core.math.shapes.Rectangle;
 import pixi.core.sprites.Sprite;
+import pixi.core.math.Point;
 
 /**
  * ...
  * @author ToTos
  */
 class Misc {
-/*
- * CLASS DE FONCTION DIVERSES !
- * 
- * Règle 1: 
- * 	Mettre toutes les fonctions en static pour pouvoir les appeller facilement
- * 
- * Règle 2: 
- * 	Essayer au maximum de mettre les fonctions spécialisées dans leurs classe respective
- * 	Ici c'est un peux la trousse a outil du jeu, on veux pas que ça devienne trop un bordel absolu.
- * 
- * */
+
+	private static var squareColliMax:Tile;
+	private static var squareColliMin:Tile;
 
 	/**
 	 * Fonction de calcul de distance entre 2 objects
@@ -75,12 +75,11 @@ class Misc {
 	 * @return absolute position in PIXELS of tilePosition
 	 */
 	public static function convertToAbsolutePosition (tilePosition:Array<Int>):Array<Float> {
-		var configTileSize:Array<Float> = Main.tileSize;
 		var returnPosition:Array<Float> = [];
-		returnPosition[0] = tilePosition[0] * configTileSize[0];		
+		returnPosition[0] = tilePosition[0] * Main.tileSize[0];
 		if (Math.abs(tilePosition[1] % 2) == 1)
-			returnPosition[0] += configTileSize[0] * 0.5;		
-		returnPosition[1] = tilePosition[1] * configTileSize[1] * 0.5;
+			returnPosition[0] += Main.tileSize[0] * 0.5;		
+		returnPosition[1] = tilePosition[1] * Main.tileSize[1] * 0.5;
 		return cast returnPosition;
 	}
 	
@@ -88,14 +87,14 @@ class Misc {
 	/**
 	 * convertie une position de pixel => en tile
 	 */
-	public static function convertToGridPosition(absoluteX:Float, absoluteY:Float, withCamera:Bool = true):Array<Int> {
-		if (false)
+	public static function convertToGridPosition(absoluteX:Float, absoluteY:Float, ?withCamera:Bool):Array<Int> {
+		if (withCamera)
 		{
 			absoluteX += Camera.getInstance().offset[0];
 			absoluteY += Camera.getInstance().offset[1];
 		}
 		
-		var tileSize = InitManager.data.config.tileSize;
+		var tileSize = Main.tileSize;
 		var halfMousePosX:Float = Math.floor((absoluteX) / (tileSize[0]/2))/2;
 		var halfMousePosY:Float = Math.floor((absoluteY) / (tileSize[1] / 2)) / 2;
 		
@@ -114,16 +113,80 @@ class Misc {
 		return SelectedPos;
 	}
 	
+	
+	public static function getRangeTileAround(tilePos:Array<Int>, minRange:Int = 0, maxRange:Int = 10):Array<Array<Int>>
+	{	
+		if (minRange == 0 && maxRange == 0)
+			return [tilePos];
+			
+		var ArrayOfPos:Array<Array<Int>> = [];
+		
+		var GridAround:Array<Array<Int>> = [];
+		var iter:IntIterator = new IntIterator(Math.floor(-maxRange * 0.5),Math.floor(2 + maxRange * 0.5));
+		for (i in iter) {
+			var iter2:IntIterator = new IntIterator(- maxRange,1 +maxRange);
+			for (j in iter2) {
+				GridAround.push([tilePos[0] + i, tilePos[1] - j]);
+			}
+		}
+		
+		//MouseManager.createLilCubes(cast GridAround,0x0000FF);
+		
+		var dx:Float;
+		var dy:Float;
+		var centerAbsolutePos:Array<Float> = Misc.convertToAbsolutePosition(cast tilePos);
+		
+		if (squareColliMax == null)
+		{
+			squareColliMax = PoolManager.pullObject("tile",1)[0];
+			squareColliMax.anchor.set(0.5, 0.5);
+		}
+		
+		if (squareColliMin == null)
+		{
+			squareColliMin = PoolManager.pullObject("tile",1)[0];
+			squareColliMin.anchor.set(0.5, 0.5);
+		}
+		squareColliMin.width = minRange * Main.tileSize[0] + 4;
+		squareColliMin.height = minRange * Main.tileSize[1] + 4;
+		squareColliMin.x = centerAbsolutePos[0] - 2;
+		squareColliMin.y = centerAbsolutePos[1] - 2;
+			
+		squareColliMax.width = maxRange * Main.tileSize[0] + 4;
+		squareColliMax.height = maxRange * Main.tileSize[1] + 4;
+		squareColliMax.x = centerAbsolutePos[0] - 2;
+		squareColliMax.y = centerAbsolutePos[1] - 2;
+
+		for (i in GridAround.iterator()) {
+			var absolutePosPoint = Misc.convertToAbsolutePosition(i);
+			if (Misc.colliSquarePoint(squareColliMax, absolutePosPoint))
+				if (!Misc.colliSquarePoint(squareColliMin, absolutePosPoint) || minRange == 0)
+					ArrayOfPos.push(i);
+		}
+		
+		//MouseManager.createLilCubes(cast ArrayOfPos,0xFFFF00);
+		//MouseManager.createLilCubes(cast [tilePos],0xFF0000);
+		
+		return ArrayOfPos;
+	}
+	
 	public static function colliSquarePoint(obj:Sprite, point:Array<Float>, ?cameraAffected:Bool):Bool {
 		var offset:Array<Float> = cameraAffected ? Camera.getInstance().offset : [0,0];
 		var target:Point = untyped obj.getGlobalPosition(null);
-		if (target.x - (obj.width * obj.anchor.x)> point[0] + offset[0])
+		var size:Dynamic = { width:obj.width, height:obj.height };
+		if(obj.parent != null)
+			size = untyped obj.getBounds(null);
+		
+		if (obj.anchor == null)
+			obj.anchor = new Point(0, 0);
+			
+		if (target.x - (size.width * obj.anchor.x)> point[0] + offset[0])
 			return false;
-		if (target.y - (obj.height * obj.anchor.y) > point[1] + offset[1])
+		if (target.y - (size.height * obj.anchor.y) > point[1] + offset[1])
 			return false;
-		if (target.x + obj.width - (obj.width * obj.anchor.x) < point[0] + offset[0])
+		if (target.x + size.width - (size.width * obj.anchor.x) < point[0] + offset[0])
 			return false;
-		if (target.y + obj.height - (obj.height * obj.anchor.y) < point[1] + offset[1])
+		if (target.y + size.height - (size.height * obj.anchor.y) < point[1] + offset[1])
 			return false;
 		
 		return true;
@@ -157,5 +220,15 @@ class Misc {
 		if (number > max)
 			return max;
 		return number;
+	}
+	
+	
+	public static function getAttackFromName(name:String, data:Dynamic):Attack{
+		switch name{
+			case "normal": return new NormalAttack(data);
+			case "triple": return new TripleAttack(data);
+		}
+		Browser.window.console.warn("ATTACK NOT FOUND !");
+		return new Attack(data);
 	}
 }

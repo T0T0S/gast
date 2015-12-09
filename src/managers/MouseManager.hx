@@ -4,6 +4,7 @@ import js.html.CustomEvent;
 import js.html.Event;
 import js.html.svg.Color;
 import objects.Camera;
+import objects.Tile;
 import pixi.core.display.DisplayObject;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
@@ -20,13 +21,15 @@ import pixi.core.graphics.Graphics;
 class MouseManager{
 	private static var instance: MouseManager;
 	private static var tileSize;
-	private static var redPoint:Graphics;//optionnel
 	public static var gamehover:CustomEvent = new CustomEvent("gameHover");
 	public static var gameMouseUp:CustomEvent = new CustomEvent("gameMouseUp");
 	public static var gameMouseDown:CustomEvent = new CustomEvent("gameMouseDown");
 	
 	public var calledPerFrame:Int = 0;
 	private var refreshPerFrame:Int = 1;
+	
+	private static var redPoint:Graphics;//optionnel
+	
 	
 	public static var lockedMouseEvents:Bool = false;
 	
@@ -58,7 +61,7 @@ class MouseManager{
 	}
 
 	public function mouseUp (e:EventTarget):Void {
-	
+		//getRangeTileAround(Misc.convertToGridPosition(e.data.global.x, e.data.global.y, true),0,5);
 		if(StateManager.loadingState || lockedMouseEvents)
 			return;
 		var event = gameMouseUp;
@@ -89,14 +92,13 @@ class MouseManager{
 		Browser.window.dispatchEvent(event);
 	}
 	
-	
 	// A REFAIRE !
 	public static function getSquareTileAround(posClicked:Array<Int>, size:Int = 1):Array<Array<Int>> {
 		if (size == 0)
 			return [posClicked];
 		
 		var ArrayOfPos:Array<Array<Int>> = [];
-		var tileSize:Array<Int> = cast InitManager.data.config.tileSize;
+		var tileSize:Array<Int> = cast Main.tileSize;
 		var GridAround:Array<Array<Int>> = [];
 		var iter:IntIterator = new IntIterator(Math.floor(-size),Math.floor(1 + size));
 		for (i in iter) {
@@ -131,7 +133,7 @@ class MouseManager{
 	public static function createLilCubes (position:Array<Array<Float>>, ?color:Int):Dynamic {
 	
 		var iter:IntIterator = new IntIterator(0,position.length);
-		var tileSize = InitManager.data.config.tileSize;
+		var tileSize = Main.tileSize;
 		var redPoint;
 		for (i in iter) {
 			var displayX:Float = position[i][0] * tileSize[0] -1;

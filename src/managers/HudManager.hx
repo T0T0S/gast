@@ -1,9 +1,11 @@
 package managers;
 import objects.Button;
 import objects.character.Player;
+import objects.HudElement;
 import pixi.core.sprites.Sprite;
 import pixi.core.text.Text;
 import pixi.core.textures.Texture;
+import pixi.interaction.EventTarget;
 
 	
 /**
@@ -23,14 +25,14 @@ class HudManager {
 	
 	public static function generateFightHud():Void {
 		mode = "fight";
-		var rightHud:Sprite 	= new Sprite(Texture.fromImage("hud_bottom_right.png"));
+		var rightHud:Sprite 	= new HudElement(Texture.fromImage("hud_bottom_right.png"));
 		rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
 		rightHud.anchor.set(1, 1);
 		rightHud.x = Main.getInstance().renderer.width;
 		rightHud.y = Main.getInstance().renderer.height;
 		rightHud.name = "right_bottom";
 		
-		var attackHud:Sprite 	= new Sprite(Texture.fromImage("hud_bottom_center.png"));
+		var attackHud:Sprite 	= new HudElement(Texture.fromImage("hud_bottom_center.png"));
 		attackHud.scale.set(Main.screenRatio[0], Main.screenRatio[1]);
 		attackHud.anchor.set(1, 1);
 		attackHud.x = rightHud.x - (rightHud.width + 20);
@@ -40,13 +42,13 @@ class HudManager {
 		moveButton.anchor.set(0.5, 0.5);
 		moveButton.x = -695;
 		moveButton.y = -73;
-		moveButton.onUp(function() { Player.selectedAction = Player.selectedAction == null ? "move" : null; } );
+		moveButton.onUp(function() { Player.selectedAction = Player.selectedAction == "move" ? null : "move"; } );
 		
 		var attackButton:Button  = new Button("button_attack");
 		attackButton.anchor.set(0.5, 0.5);
 		attackButton.x = -570;
 		attackButton.y = -73;
-		attackButton.onUp(function() { Player.selectedAction = Player.selectedAction == null ? "attack" : null; } );
+		attackButton.onUp(function() { Player.selectedAction = Player.selectedAction == "normal" ? null : "normal"; } );
 		
 		var tickTimer:Sprite = new Sprite(Texture.fromImage("timerFill.png"));
 		tickTimer.anchor.set(0.5,0.5);

@@ -9,9 +9,11 @@ import managers.DrawManager;
 import managers.InitManager;
 import managers.MapManager;
 import managers.MouseManager;
+import managers.PoolManager;
 import managers.StateManager;
 import managers.TimeManager;
 import objects.Camera;
+import objects.Options;
 import pixi.core.display.Container;
 import pixi.core.graphics.Graphics;
 import pixi.core.renderers.Detector;
@@ -36,7 +38,10 @@ class Main
 	public static var mapManager:MapManager;
 	public static var timeManager:TimeManager;
 	public static var characterManager:CharacterManager;
+	public static var poolManager:PoolManager;
+	
 	public static var camera:Camera;
+	public static var gameOptions:Options;
 	
 	public var renderer:WebGLRenderer;
 
@@ -63,6 +68,10 @@ class Main
 	}
 	
 	private function new () {
+	
+		gameOptions = Options.getInstance();
+		gameOptions.loadOptions();
+		
 		var font = new Font();
 		font.onload = function() { Browser.window.requestAnimationFrame(cast InitManager.getInstance); };
 		font.fontFamily = "gastFont";
@@ -122,8 +131,9 @@ class Main
 		camera = Camera.getInstance();
 		mapManager = MapManager.getInstance();
 		characterManager = CharacterManager.getInstance();
-		
+		poolManager = PoolManager.getInstance();
 		stateManager = StateManager.getInstance();
+		
 		Browser.window.addEventListener("resize", resize);
 		Browser.window.requestAnimationFrame(cast Update);
 	}

@@ -67,6 +67,8 @@ var Main = function() {
 	this.gameCont = new PIXI.Container();
 	this.tileCont = new PIXI.Container();
 	this.fullStage = new PIXI.Container();
+	Main.gameOptions = objects.Options.getInstance();
+	Main.gameOptions.loadOptions();
 	var font = new Font();
 	font.onload = function() {
 		window.requestAnimationFrame(managers.InitManager.getInstance);
@@ -114,6 +116,7 @@ Main.prototype = {
 		Main.camera = objects.Camera.getInstance();
 		Main.mapManager = managers.MapManager.getInstance();
 		Main.characterManager = managers.CharacterManager.getInstance();
+		Main.poolManager = managers.PoolManager.getInstance();
 		Main.stateManager = managers.StateManager.getInstance();
 		window.addEventListener("resize",$bind(this,this.resize));
 		window.requestAnimationFrame($bind(this,this.Update));
@@ -333,6 +336,17 @@ js.Boot.__instanceof = function(o,cl) {
 js.Boot.__cast = function(o,t) {
 	if(js.Boot.__instanceof(o,t)) return o; else throw "Cannot cast " + Std.string(o) + " to " + Std.string(t);
 };
+js.Browser = function() { };
+js.Browser.__name__ = true;
+js.Browser.getLocalStorage = function() {
+	try {
+		var s = window.localStorage;
+		s.getItem("");
+		return s;
+	} catch( e ) {
+		return null;
+	}
+};
 var managers = {};
 managers.CharacterManager = function() {
 	this.positions = [];
@@ -414,13 +428,13 @@ managers.HudManager = function() {
 managers.HudManager.__name__ = true;
 managers.HudManager.generateFightHud = function() {
 	managers.HudManager.mode = "fight";
-	var rightHud = new PIXI.Sprite(PIXI.Texture.fromImage("hud_bottom_right.png"));
+	var rightHud = new objects.HudElement(PIXI.Texture.fromImage("hud_bottom_right.png"));
 	rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
 	rightHud.anchor.set(1,1);
 	rightHud.x = Main.getInstance().renderer.width;
 	rightHud.y = Main.getInstance().renderer.height;
 	rightHud.name = "right_bottom";
-	var attackHud = new PIXI.Sprite(PIXI.Texture.fromImage("hud_bottom_center.png"));
+	var attackHud = new objects.HudElement(PIXI.Texture.fromImage("hud_bottom_center.png"));
 	attackHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
 	attackHud.anchor.set(1,1);
 	attackHud.x = rightHud.x - (rightHud.width + 20);
@@ -430,14 +444,14 @@ managers.HudManager.generateFightHud = function() {
 	moveButton.x = -695;
 	moveButton.y = -73;
 	moveButton.onUp(function() {
-		if(objects.character.Player.selectedAction == null) objects.character.Player.selectedAction = "move"; else objects.character.Player.selectedAction = null;
+		if(objects.character.Player.selectedAction == "move") objects.character.Player.selectedAction = null; else objects.character.Player.selectedAction = "move";
 	});
 	var attackButton = new objects.Button("button_attack");
 	attackButton.anchor.set(0.5,0.5);
 	attackButton.x = -570;
 	attackButton.y = -73;
 	attackButton.onUp(function() {
-		if(objects.character.Player.selectedAction == null) objects.character.Player.selectedAction = "attack"; else objects.character.Player.selectedAction = null;
+		if(objects.character.Player.selectedAction == "normal") objects.character.Player.selectedAction = null; else objects.character.Player.selectedAction = "normal";
 	});
 	var tickTimer = new PIXI.Sprite(PIXI.Texture.fromImage("timerFill.png"));
 	tickTimer.anchor.set(0.5,0.5);
@@ -613,7 +627,7 @@ managers.MouseManager.getSquareTileAround = function(posClicked,size) {
 	if(size == null) size = 1;
 	if(size == 0) return [posClicked];
 	var ArrayOfPos = [];
-	var tileSize = managers.InitManager.data.config.tileSize;
+	var tileSize = Main.tileSize;
 	var GridAround = [];
 	var iter = new IntIterator(Math.floor(-size),Math.floor(1 + size));
 	while( iter.hasNext() ) {
@@ -641,7 +655,7 @@ managers.MouseManager.getSquareTileAround = function(posClicked,size) {
 };
 managers.MouseManager.createLilCubes = function(position,color) {
 	var iter = new IntIterator(0,position.length);
-	var tileSize = managers.InitManager.data.config.tileSize;
+	var tileSize = Main.tileSize;
 	var redPoint;
 	while( iter.hasNext() ) {
 		var i = iter.next();
@@ -701,13 +715,64 @@ managers.MouseManager.prototype = {
 	}
 	,__class__: managers.MouseManager
 };
+managers.PoolManager = function() {
+	managers.PoolManager.Pools.set("tile",[]);
+};
+managers.PoolManager.__name__ = true;
+managers.PoolManager.generatePool = function() {
+	var _g = 0;
+	while(_g < 30) {
+		var i = _g++;
+		managers.PoolManager.Pools.get("tile").push(new objects.Tile(PIXI.Texture.fromImage("tile.png")));
+	}
+};
+managers.PoolManager.pullObject = function(poolName,number) {
+	if(!managers.PoolManager.Pools.exists(poolName)) return [];
+	if(number > managers.PoolManager.Pools.get(poolName).length) {
+		var iter = new IntIterator(0,Math.abs(managers.PoolManager.Pools.get(poolName).length - number));
+		while( iter.hasNext() ) {
+			var i = iter.next();
+			managers.PoolManager.Pools.get(poolName).push(managers.PoolManager.findClass(poolName));
+		}
+	}
+	var returnArray = [];
+	var _g = 0;
+	while(_g < number) {
+		var i1 = _g++;
+		returnArray.push(managers.PoolManager.Pools.get(poolName).pop());
+		returnArray[i1].visible = true;
+	}
+	return returnArray;
+};
+managers.PoolManager.returnObject = function(poolName,object) {
+	if(!managers.PoolManager.Pools.exists(poolName)) return;
+	object.visible = false;
+	managers.PoolManager.Pools.get(poolName).push(object);
+};
+managers.PoolManager.findClass = function(name) {
+	switch(name) {
+	case "tile":
+		return new objects.Tile(PIXI.Texture.fromImage("tile.png"));
+	}
+	return null;
+};
+managers.PoolManager.getInstance = function() {
+	if(managers.PoolManager.instance == null) managers.PoolManager.instance = new managers.PoolManager();
+	return managers.PoolManager.instance;
+};
+managers.PoolManager.prototype = {
+	destroy: function() {
+		managers.PoolManager.instance = null;
+	}
+	,__class__: managers.PoolManager
+};
 managers.StateManager = function() {
 	this.debugActiveState = new PIXI.Text("Init",{ fill : "white", font : "30px gastFont"});
 	this.firstLoop = true;
 	this.skipNextLateUpdate = false;
-	this.activeState = "Intro";
+	this.activeState = "Preload";
 	this.statesArray = new haxe.ds.StringMap();
-	this.addState(new states.IntroState());
+	this.addState(new states.PreloadState());
 	this.addState(new states.MenuState());
 	this.addState(new states.DebugState());
 	Main.getInstance().debugCont.addChild(this.debugActiveState);
@@ -802,7 +867,6 @@ objects.Animation = function(newName,newData,endCallback) {
 	this.loop = newData.loop;
 	this.data = newData.frameData;
 	this.fps = newData.fps;
-	this.callback = endCallback;
 };
 objects.Animation.__name__ = true;
 objects.Animation.prototype = {
@@ -838,9 +902,12 @@ objects.Button = function(name) {
 	};
 	this.arrayCallbacks.hover = function() {
 	};
+	this.arrayCallbacks.out = function() {
+	};
 	this.on("mousedown",$bind(this,this.p_onDown));
 	this.on("mouseup",$bind(this,this.p_onUp));
-	this.on("mousemove",$bind(this,this.p_onHover));
+	this.on("mouseover",$bind(this,this.p_onHover));
+	this.on("mouseout",$bind(this,this.p_onOut));
 	var shadow = new PIXI.filters.DropShadowFilter();
 	shadow.color = 0;
 	shadow.distance = 5;
@@ -871,17 +938,21 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 		e.stopPropagation();
 	}
 	,p_onUp: function(e) {
+		if(!this.isDown) return;
 		this.isDown = false;
 		this.setSpecialTexture("hover");
 		this.arrayCallbacks.up(e);
 		e.stopPropagation();
 	}
+	,p_onOut: function(e) {
+		this.isDown = false;
+		this.setSpecialTexture("idle");
+		this.arrayCallbacks.out(e);
+		e.stopPropagation();
+	}
 	,p_onHover: function(e) {
-		this.isAbove = this.mouseIsAbove(e);
-		if(this.isAbove) {
-			if(this.isDown) this.setSpecialTexture("down"); else this.setSpecialTexture("hover");
-			this.arrayCallbacks.hover(e);
-		} else if(this.currentFrame != 0) this.gotoAndStop(0);
+		if(this.isDown) this.setSpecialTexture("down"); else this.setSpecialTexture("hover");
+		this.arrayCallbacks.hover(e);
 	}
 	,mouseIsAbove: function(e) {
 		return utils.Misc.colliSquarePoint(this,[e.data.global.x,e.data.global.y]);
@@ -897,6 +968,9 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 	}
 	,onHover: function(newFunction) {
 		this.arrayCallbacks.hover = newFunction;
+	}
+	,onOut: function(newFunction) {
+		this.arrayCallbacks.out = newFunction;
 	}
 	,__class__: objects.Button
 });
@@ -1057,6 +1131,24 @@ objects.GameMap.prototype = {
 	}
 	,__class__: objects.GameMap
 };
+objects.HudElement = function(texture) {
+	this.stopping = false;
+	PIXI.Sprite.call(this,texture);
+	this.interactive = true;
+	this.on("mousemove",$bind(this,this.p_onMove));
+};
+objects.HudElement.__name__ = true;
+objects.HudElement.__super__ = PIXI.Sprite;
+objects.HudElement.prototype = $extend(PIXI.Sprite.prototype,{
+	mouseIsAbove: function(point) {
+		return utils.Misc.colliSquarePoint(this,point);
+	}
+	,p_onMove: function(e) {
+		this.stopping = this.mouseIsAbove([e.data.global.x,e.data.global.y]);
+		if(this.stopping) e.stopPropagation();
+	}
+	,__class__: objects.HudElement
+});
 objects.OSmovieclip = function(textures,newCallback) {
 	this.callback = function() {
 	};
@@ -1075,6 +1167,29 @@ objects.OSmovieclip.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 	}
 	,__class__: objects.OSmovieclip
 });
+objects.Options = function() {
+	objects.Options.setOption("player_showHoverMovement",true);
+};
+objects.Options.__name__ = true;
+objects.Options.setOption = function(name,value) {
+	objects.Options.data[name] = value;
+	objects.Options.saveOptions();
+};
+objects.Options.saveOptions = function() {
+	js.Browser.getLocalStorage().setItem("gastOptions",JSON.stringify(objects.Options.data));
+};
+objects.Options.getInstance = function() {
+	if(objects.Options.instance == null) objects.Options.instance = new objects.Options();
+	return objects.Options.instance;
+};
+objects.Options.prototype = {
+	loadOptions: function() {
+		var storageString = js.Browser.getLocalStorage().getItem("gastOptions");
+		if(storageString.length == 0) return;
+		objects.Options.data = JSON.parse(storageString);
+	}
+	,__class__: objects.Options
+};
 objects.State = function(newName) {
 	this.loaderReady = 0;
 	this.loadImage = new haxe.ds.StringMap();
@@ -1183,12 +1298,79 @@ objects.Tile.prototype = $extend(PIXI.Sprite.prototype,{
 	}
 	,__class__: objects.Tile
 });
+objects.attacks = {};
+objects.attacks.Attack = function(jsonData) {
+	this.finished = false;
+	this.targetPosition = [];
+	this.frameElaped = 0;
+	this.activeFrameData = 0;
+	this.framesData = [];
+	this.animationName = "no animation defined";
+	this.waitForFinish = true;
+	this.framesData = jsonData.framesData;
+	this.animationName = jsonData.animationName;
+	this.waitForFinish = jsonData.waitForFinish;
+};
+objects.attacks.Attack.__name__ = true;
+objects.attacks.Attack.prototype = {
+	updateAttack: function(launcher) {
+		if(this.frameElaped == this.framesData[this.activeFrameData][0]) this.attackEffect(launcher.stats);
+		if(this.frameElaped == this.framesData[this.activeFrameData][0] + this.framesData[this.activeFrameData][1]) {
+			if(this.activeFrameData == this.framesData.length - 1) this.endAction(launcher); else {
+				this.frameElaped = 0;
+				++this.activeFrameData;
+			}
+		}
+		++this.frameElaped;
+	}
+	,activateAttack: function(position) {
+		this.targetPosition = position;
+		this.activeFrameData = 0;
+		this.frameElaped = 0;
+		this.finished = false;
+	}
+	,attackEffect: function(stats) {
+	}
+	,endAction: function(launcher) {
+		launcher.waitForNextTick = this.waitForFinish;
+		this.finished = true;
+		console.log("end");
+	}
+	,__class__: objects.attacks.Attack
+};
+objects.attacks.NormalAttack = function(jsonData) {
+	objects.attacks.Attack.call(this,jsonData);
+};
+objects.attacks.NormalAttack.__name__ = true;
+objects.attacks.NormalAttack.__super__ = objects.attacks.Attack;
+objects.attacks.NormalAttack.prototype = $extend(objects.attacks.Attack.prototype,{
+	attackEffect: function(stats) {
+		console.log("attack !");
+		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition)) managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition).damage(stats.strength);
+	}
+	,__class__: objects.attacks.NormalAttack
+});
+objects.attacks.TripleAttack = function(jsonData) {
+	objects.attacks.Attack.call(this,jsonData);
+};
+objects.attacks.TripleAttack.__name__ = true;
+objects.attacks.TripleAttack.__super__ = objects.attacks.Attack;
+objects.attacks.TripleAttack.prototype = $extend(objects.attacks.Attack.prototype,{
+	attackEffect: function(stats) {
+		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition)) managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition).damage(stats.strength / Math.floor(1 + Math.random() * 3));
+	}
+	,__class__: objects.attacks.TripleAttack
+});
 objects.character = {};
 objects.character.Character = function(newName) {
+	this.waitForNextTick = false;
+	this.updateBlocked = false;
 	this.lastTickRegistered = 0;
 	this.depth = 0;
 	this.z = 0;
+	this.animationFrame = 0;
 	this.animations = new haxe.ds.StringMap();
+	this.attacks = new haxe.ds.StringMap();
 	this.refreshSpeed = 1;
 	this.pathIndex = 1;
 	this.activePath = [];
@@ -1199,6 +1381,7 @@ objects.character.Character = function(newName) {
 	this.config = managers.InitManager.data[newName];
 	PIXI.extras.MovieClip.call(this,this.generateTextures(this.charaName));
 	this.generateAnimations();
+	this.generateAttacks();
 	this.loop = true;
 	this.anchor.set(0.5,1);
 	managers.CharacterManager.getInstance().addCharacter(this);
@@ -1216,6 +1399,16 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 			returnArray.push(PIXI.Texture.fromImage(i));
 		}
 		return returnArray;
+	}
+	,generateAttacks: function() {
+		var _g = 0;
+		var _g1 = Reflect.fields(this.config.attacks);
+		while(_g < _g1.length) {
+			var i = _g1[_g];
+			++_g;
+			var value = utils.Misc.getAttackFromName(i,Reflect.field(this.config.attacks,i));
+			this.attacks.set(i,value);
+		}
 	}
 	,generateAnimations: function() {
 		var _g = 0;
@@ -1240,16 +1433,35 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	}
 	,_selfUpdate: function() {
 		this.manageAnim();
-		this.managePathFinding();
-		this.customUpdate();
+		if(!this.updateBlocked) {
+			this.managePathFinding();
+			this.customUpdate();
+		}
 	}
 	,manageAnim: function() {
 		if(this.activeAnimation == null) return;
-		if(this.currentFrame - this.activeAnimation.getLastIndex() >= this.activeAnimation.getFrames(this.directionFacing).length - 1) {
-			if(!this.activeAnimation.loop) {
-				this.stop();
-				this.activeAnimation.endAction();
-			} else if(this.activeAnimation.getFrames(this.directionFacing).length == 1) this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[0]); else this.gotoAndPlay(this.activeAnimation.getFrames(this.directionFacing)[0]);
+		if(this.activeAttack != null) {
+			if(!this.activeAttack.finished) this.activeAttack.updateAttack(this); else {
+				this.activeAttack = null;
+				if(this.activePathPoint == null) this.setAnimation("idle"); else {
+					this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,[this.activePathPoint.x,this.activePathPoint.y]));
+					this.setAnimation("run");
+				}
+			}
+		}
+		if(this.activeAnimation.data[0].length > 1) {
+			if(this.animationFrame >= this.activeAnimation.getFrames(this.directionFacing).length - 1) {
+				if(!this.activeAnimation.loop) {
+					this.stop();
+					this.activeAnimation.endAction();
+				} else {
+					this.animationFrame = 0;
+					this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[0]);
+				}
+			} else {
+				this.animationFrame += 60 / this.activeAnimation.fps;
+				this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[Math.floor(this.animationFrame)]);
+			}
 		}
 	}
 	,managePathFinding: function() {
@@ -1263,6 +1475,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 					this.pathIndex++;
 					this.useAp(1);
 					if(this.pathIndex <= this.activePath.length - 1) this.getNextPathPoint(); else {
+						this.setAnimation("idle");
 						this.activePath = [];
 						this.activePathPoint = null;
 					}
@@ -1334,8 +1547,16 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		if(this.activePathPoint != null) this.pathIndex = 0; else this.pathIndex = 1;
 		this.setAnimation("run");
 	}
-	,launchAttack: function(targetPosition) {
-		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)) managers.CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(this.stats.strength);
+	,launchAttack: function(attackName,targetPosition) {
+		if(this.attacks.get(attackName) == null) {
+			window.console.warn("attack not found: " + attackName);
+			return;
+		}
+		this.activeAttack = this.attacks.get(attackName);
+		this.setAnimation(this.activeAttack.animationName);
+		this.updateBlocked = this.activeAttack.waitForFinish;
+		this.activeAttack.activateAttack(targetPosition);
+		this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,targetPosition));
 	}
 	,getPathFindingPoint: function() {
 		if(this.activePathPoint != null) return [this.activePathPoint.x,this.activePathPoint.y];
@@ -1344,6 +1565,10 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	,newTick: function(tickNumber) {
 		if(this.stats.AP < this.stats.MaxAP) this.stats.AP += tickNumber - this.lastTickRegistered;
 		this.lastTickRegistered = tickNumber;
+		if(this.waitForNextTick) {
+			this.waitForNextTick = false;
+			this.updateBlocked = false;
+		}
 	}
 	,useAp: function(amount) {
 		this.stats.AP -= amount;
@@ -1356,21 +1581,21 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	,__class__: objects.character.Character
 });
 objects.character.Player = function(newName) {
-	this.movementTile = [];
+	this.mouseHovering = false;
+	this.pathTiles = [];
+	this.tilePool = [];
 	objects.character.Character.call(this,newName);
 	Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("HP").text = this.stats.health;
 	Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = this.stats.AP;
-	var _g1 = 0;
-	var _g = this.stats.MaxAP + 1;
-	while(_g1 < _g) {
-		var i = _g1++;
-		this.movementTile.push(new objects.Tile(PIXI.Texture.fromImage("tile.png")));
-		this.movementTile[i].visible = false;
-		this.movementTile[i].tint = 65280;
+	this.tilePool = managers.PoolManager.pullObject("tile",this.stats.MaxAP * 2);
+	var $it0 = HxOverrides.iter(this.tilePool);
+	while( $it0.hasNext() ) {
+		var i = $it0.next();
+		i.tint = 65280;
 	}
 	this.targetTile = new objects.Tile(PIXI.Texture.fromImage("tile.png"));
 	this.targetTile.visible = false;
-	Main.getInstance().tileCont.on("mousemove",$bind(this,this.mouseHover));
+	Main.getInstance().tileCont.on("mousemove",$bind(this,this.mapHover));
 	Main.getInstance().tileCont.on("mouseup",$bind(this,this.mapClick));
 	this.APFlash = new objects.OSmovieclip([PIXI.Texture.fromFrame("y_explo_0"),PIXI.Texture.fromFrame("y_explo_1"),PIXI.Texture.fromFrame("y_explo_2"),PIXI.Texture.fromFrame("y_explo_3"),PIXI.Texture.fromFrame("y_explo_4"),PIXI.Texture.fromFrame("y_explo_5"),PIXI.Texture.fromFrame("y_explo_6")]);
 	this.APFlash.anchor.set(0.5,0.5);
@@ -1379,19 +1604,42 @@ objects.character.Player = function(newName) {
 objects.character.Player.__name__ = true;
 objects.character.Player.__super__ = objects.character.Character;
 objects.character.Player.prototype = $extend(objects.character.Character.prototype,{
-	mapClick: function(e) {
-		var tilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y,true);
+	mouseOverSelf: function(e) {
 		if(objects.character.Player.selectedAction == "move") {
-			if(!objects.Camera.getInstance().isDragged) this.findPathTo(tilePos,true); else if(objects.character.Player.selectedAction == "attack") this.launchAttack(tilePos);
+			if(objects.Options.data.player_showHoverMovement = true) this.showRange(0,this.stats.AP,65280,0.7);
 		}
+	}
+	,mouseOutSelf: function(e) {
+		if(objects.character.Player.selectedAction == "move") {
+			if(objects.Options.data.player_showHoverMovement = true) this.hidePoolTiles();
+		}
+	}
+	,mapClick: function(e) {
+		var newtilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
+		if(objects.character.Player.selectedAction == "move") {
+			if(!objects.Camera.getInstance().isDragged) this.findPathTo(newtilePos,true);
+		} else if(objects.character.Player.selectedAction == "normal") this.launchAttack("triple",newtilePos);
 		this.hideHoverTile();
-		this.hidePathMovement();
+		this.hidePoolTiles();
 		objects.character.Player.selectedAction = null;
 	}
-	,mouseHover: function(e) {
-		var tilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y,true);
-		if(objects.character.Player.selectedAction == "move") this.showPathMovement(this.findPathTo(tilePos)); else if(objects.character.Player.selectedAction == "attack") this.showHoverTile(tilePos,16711680);
-		utils.Debug.log("" + Std.string(tilePos));
+	,mapHover: function(e) {
+		var newtilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
+		if(objects.character.Player.selectedAction == "move") {
+			this.hideHoverTile();
+			this.showPathMovement(this.findPathTo(newtilePos));
+		} else if(objects.character.Player.selectedAction == "normal") {
+			this.showHoverTile(newtilePos,16711680);
+			this.hidePoolTiles();
+		}
+		if(newtilePos[0] == this.tilePos[0] && newtilePos[1] == this.tilePos[1]) {
+			this.mouseHovering = true;
+			this.mouseOverSelf(e);
+		} else if(this.mouseHovering) {
+			this.mouseHovering = false;
+			this.mouseOutSelf(e);
+		}
+		utils.Debug.log("" + Std.string(newtilePos));
 	}
 	,newTick: function(tickNumber) {
 		objects.character.Character.prototype.newTick.call(this,tickNumber);
@@ -1407,33 +1655,71 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		Main.getInstance().hudCont.getChildByName("HP").text = this.stats.health;
 	}
 	,showPathMovement: function(path) {
-		this.hidePathMovement();
 		path.shift();
 		if(path.length == 0 || path.length > this.stats.AP) return;
-		var j = 0;
-		var $it0 = HxOverrides.iter(path);
+		var $it0 = HxOverrides.iter(this.pathTiles);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
-			this.movementTile[j].visible = true;
-			this.movementTile[j].setTilePosition([i.x,i.y]);
-			if(this.movementTile[j].parent == null) {
-				if(this.parent != null) managers.DrawManager.addToDisplay(this.movementTile[j],this.parent,0.5);
+			this.hideOnePoolTile(i);
+		}
+		this.pathTiles = [];
+		var $it1 = HxOverrides.iter(path);
+		while( $it1.hasNext() ) {
+			var i1 = $it1.next();
+			var tileIndex = this.getUnusedTileIndex();
+			this.pathTiles.push(tileIndex);
+			this.tilePool[tileIndex].visible = true;
+			this.tilePool[tileIndex].tint = 65280;
+			this.tilePool[tileIndex].setTilePosition([i1.x,i1.y]);
+			if(this.tilePool[tileIndex].parent == null) {
+				if(this.parent != null) managers.DrawManager.addToDisplay(this.tilePool[tileIndex],this.parent,0.5);
 			}
-			j++;
 		}
 	}
-	,hidePathMovement: function() {
-		var $it0 = HxOverrides.iter(this.movementTile);
+	,showRange: function(min,max,color,alpha) {
+		var tilepositions = utils.Misc.getRangeTileAround(this.tilePos,min,max);
+		var $it0 = HxOverrides.iter(tilepositions);
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			if(!managers.MapManager.getInstance().activeMap.getWalkableAt(i)) continue;
+			var tileIndex = this.getUnusedTileIndex();
+			this.tilePool[tileIndex].visible = true;
+			this.tilePool[tileIndex].setTilePosition([i[0],i[1]]);
+			if(this.tilePool[tileIndex].parent == null) {
+				if(this.parent != null) managers.DrawManager.addToDisplay(this.tilePool[tileIndex],this.parent,0.5);
+			}
+			if(color != null) this.tilePool[tileIndex].tint = color;
+			if(alpha != null) this.tilePool[tileIndex].alpha = alpha;
+		}
+	}
+	,hidePoolTiles: function(customCont) {
+		var $it0 = HxOverrides.iter(this.tilePool);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
 			i.visible = false;
+			i.tint = 16777215;
+			i.alpha = 1;
 		}
+	}
+	,hideOnePoolTile: function(index) {
+		this.tilePool[index].visible = false;
+		this.tilePool[index].tint = 16777215;
+		this.tilePool[index].alpha = 1;
+	}
+	,getUnusedTileIndex: function() {
+		var $it0 = HxOverrides.iter(this.tilePool);
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			if(!i.visible) return HxOverrides.indexOf(this.tilePool,i,0);
+		}
+		this.tilePool.push(managers.PoolManager.pullObject("tile",1)[0]);
+		return this.tilePool.length - 1;
 	}
 	,showHoverTile: function(tilePos,newTint) {
 		if(this.targetTile.parent == null) managers.DrawManager.addToDisplay(this.targetTile,managers.MapManager.getInstance().activeMap.mapContainer,0.5);
 		this.targetTile.setTilePosition(tilePos);
 		this.targetTile.visible = true;
-		if(newTint != null) this.targetTile.tint = newTint; else this.targetTile.tint = null;
+		if(newTint != null) this.targetTile.tint = newTint; else this.targetTile.tint = 16777215;
 	}
 	,hideHoverTile: function(remove) {
 		if(remove == null) remove = false;
@@ -1459,6 +1745,8 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 		Main.FIGHTMODE = true;
 		managers.HudManager.generateFightHud();
 		managers.MapManager.getInstance().generateMapDisplay("testMapZig",true);
+		var testPool = managers.PoolManager.pullObject("tile",2);
+		managers.PoolManager.returnObject("tile",testPool[0]);
 		this.hero = new objects.character.Player("hero");
 		this.hero.setTilePosition([13,30]);
 		this.hero.scale.set(0.4,0.4);
@@ -1471,56 +1759,6 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 	,Update: function() {
 	}
 	,__class__: states.DebugState
-});
-states.IntroState = function() {
-	this.loopCounter = 0;
-	this.loadingFill = new PIXI.Graphics();
-	this.loadingRecangle = new PIXI.Graphics();
-	objects.State.call(this,"Intro");
-	this.LoadingText.text = "Loading asset: 0%";
-	this.LoadingText.x = Main.getInstance().renderer.width * 0.5;
-	this.LoadingText.y = Main.getInstance().renderer.height * 0.6;
-	this.LoadingText.anchor.set(0.5,0.5);
-	this.loadingRecangle.lineStyle(3,16777215);
-	this.loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35,Main.getInstance().renderer.height * 0.7,Main.getInstance().renderer.width * 0.25,50);
-	this.loadingFill.lineStyle(3,11184810);
-};
-states.IntroState.__name__ = true;
-states.IntroState.__super__ = objects.State;
-states.IntroState.prototype = $extend(objects.State.prototype,{
-	Preload: function() {
-		this.loadJson.set("buttonAttack","assets/spriteSheets/buttonAttack.json");
-		this.loadJson.set("buttonMove","assets/spriteSheets/buttonMove.json");
-		this.loadJson.set("hud_bottom","assets/spriteSheets/hud_bottom.json");
-		this.loadJson.set("tileSh2","assets/spriteSheets/loadSpriteSheet.json");
-		this.loadJson.set("buttons","assets/spriteSheets/buttonSpriteSheet.json");
-		this.loadJson.set("hero","assets/spriteSheets/heroSpriteSheet.json");
-		this.loadJson.set("explosion","assets/spriteSheets/testExplosion.json");
-		this.loadJson.set("camShader","assets/effects/camShade.json");
-		Main.getInstance().hudCont.addChild(this.loadingRecangle);
-		Main.getInstance().hudCont.addChild(this.loadingFill);
-		this.LoadingText.text = "Loading asset: 0%";
-		Main.getInstance().hudCont.addChild(this.LoadingText);
-	}
-	,Start: function() {
-		managers.StateManager.getInstance().switchToState("Menu");
-	}
-	,Update: function() {
-	}
-	,AssetLoaded: function(loader,resource) {
-		this.LoadingText.text = "Loading asset: " + loader.progress + "%";
-		this.loadingRecangle.clear();
-		this.loadingRecangle.lineStyle(4,16777215);
-		this.loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35,Main.getInstance().renderer.height * 0.7,Main.getInstance().renderer.width * 0.25,50);
-		this.loadingFill.clear();
-		this.loadingFill.beginFill(11184810);
-		this.loadingFill.drawRect(Main.getInstance().renderer.width * 0.35 + 3,Main.getInstance().renderer.height * 0.7 + 3,100 / loader.progress * (Main.getInstance().renderer.width * 0.25 - 4),46);
-		this.loadingFill.endFill();
-	}
-	,switchState: function() {
-		this.loopCounter = null;
-	}
-	,__class__: states.IntroState
 });
 states.MenuState = function() {
 	objects.State.call(this,"Menu");
@@ -1548,6 +1786,58 @@ states.MenuState.prototype = $extend(objects.State.prototype,{
 	,switchState: function() {
 	}
 	,__class__: states.MenuState
+});
+states.PreloadState = function() {
+	this.loopCounter = 0;
+	this.loadingFill = new PIXI.Graphics();
+	this.loadingRecangle = new PIXI.Graphics();
+	objects.State.call(this,"Preload");
+	this.LoadingText.text = "Loading asset: 0%";
+	this.LoadingText.x = Main.getInstance().renderer.width * 0.5;
+	this.LoadingText.y = Main.getInstance().renderer.height * 0.6;
+	this.LoadingText.anchor.set(0.5,0.5);
+	this.loadingRecangle.lineStyle(3,16777215);
+	this.loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35,Main.getInstance().renderer.height * 0.7,Main.getInstance().renderer.width * 0.25,50);
+	this.loadingFill.lineStyle(3,11184810);
+};
+states.PreloadState.__name__ = true;
+states.PreloadState.__super__ = objects.State;
+states.PreloadState.prototype = $extend(objects.State.prototype,{
+	Preload: function() {
+		this.loadJson.set("buttonTripleAttack","assets/spriteSheets/buttonTripleAttack.json");
+		this.loadJson.set("buttonAttack","assets/spriteSheets/buttonAttack.json");
+		this.loadJson.set("buttonMove","assets/spriteSheets/buttonMove.json");
+		this.loadJson.set("hud_bottom","assets/spriteSheets/hud_bottom.json");
+		this.loadJson.set("tileSh2","assets/spriteSheets/loadSpriteSheet.json");
+		this.loadJson.set("buttons","assets/spriteSheets/buttonSpriteSheet.json");
+		this.loadJson.set("hero","assets/spriteSheets/heroSpriteSheet.json");
+		this.loadJson.set("explosion","assets/spriteSheets/testExplosion.json");
+		this.loadJson.set("camShader","assets/effects/camShade.json");
+		Main.getInstance().hudCont.addChild(this.loadingRecangle);
+		Main.getInstance().hudCont.addChild(this.loadingFill);
+		this.LoadingText.text = "Loading asset: 0%";
+		Main.getInstance().hudCont.addChild(this.LoadingText);
+	}
+	,Start: function() {
+		managers.PoolManager.generatePool();
+		managers.StateManager.getInstance().switchToState("Menu");
+	}
+	,Update: function() {
+	}
+	,AssetLoaded: function(loader,resource) {
+		this.LoadingText.text = "Loading asset: " + loader.progress + "%";
+		this.loadingRecangle.clear();
+		this.loadingRecangle.lineStyle(4,16777215);
+		this.loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35,Main.getInstance().renderer.height * 0.7,Main.getInstance().renderer.width * 0.25,50);
+		this.loadingFill.clear();
+		this.loadingFill.beginFill(11184810);
+		this.loadingFill.drawRect(Main.getInstance().renderer.width * 0.35 + 3,Main.getInstance().renderer.height * 0.7 + 3,100 / loader.progress * (Main.getInstance().renderer.width * 0.25 - 4),46);
+		this.loadingFill.endFill();
+	}
+	,switchState: function() {
+		this.loopCounter = null;
+	}
+	,__class__: states.PreloadState
 });
 var utils = {};
 utils.Debug = function() { };
@@ -1612,16 +1902,18 @@ utils.Misc.angleBetweenTiles = function(from,to) {
 	return utils.Misc.angleBetween(utils.Misc.convertToAbsolutePosition(from),utils.Misc.convertToAbsolutePosition(to));
 };
 utils.Misc.convertToAbsolutePosition = function(tilePosition) {
-	var configTileSize = Main.tileSize;
 	var returnPosition = [];
-	returnPosition[0] = tilePosition[0] * configTileSize[0];
-	if(Math.abs(tilePosition[1] % 2) == 1) returnPosition[0] += configTileSize[0] * 0.5;
-	returnPosition[1] = tilePosition[1] * configTileSize[1] * 0.5;
+	returnPosition[0] = tilePosition[0] * Main.tileSize[0];
+	if(Math.abs(tilePosition[1] % 2) == 1) returnPosition[0] += Main.tileSize[0] * 0.5;
+	returnPosition[1] = tilePosition[1] * Main.tileSize[1] * 0.5;
 	return returnPosition;
 };
 utils.Misc.convertToGridPosition = function(absoluteX,absoluteY,withCamera) {
-	if(withCamera == null) withCamera = true;
-	var tileSize = managers.InitManager.data.config.tileSize;
+	if(withCamera) {
+		absoluteX += objects.Camera.getInstance().offset[0];
+		absoluteY += objects.Camera.getInstance().offset[1];
+	}
+	var tileSize = Main.tileSize;
 	var halfMousePosX = Math.floor(absoluteX / (tileSize[0] / 2)) / 2;
 	var halfMousePosY = Math.floor(absoluteY / (tileSize[1] / 2)) / 2;
 	if(halfMousePosX % 1 != 0) halfMousePosX += 0.5;
@@ -1634,14 +1926,61 @@ utils.Misc.convertToGridPosition = function(absoluteX,absoluteY,withCamera) {
 	SelectedPos[1] *= 2;
 	return SelectedPos;
 };
+utils.Misc.getRangeTileAround = function(tilePos,minRange,maxRange) {
+	if(maxRange == null) maxRange = 10;
+	if(minRange == null) minRange = 0;
+	if(minRange == 0 && maxRange == 0) return [tilePos];
+	var ArrayOfPos = [];
+	var GridAround = [];
+	var iter = new IntIterator(Math.floor(-maxRange * 0.5),Math.floor(2 + maxRange * 0.5));
+	while( iter.hasNext() ) {
+		var i = iter.next();
+		var iter2 = new IntIterator(-maxRange,1 + maxRange);
+		while( iter2.hasNext() ) {
+			var j = iter2.next();
+			GridAround.push([tilePos[0] + i,tilePos[1] - j]);
+		}
+	}
+	var dx;
+	var dy;
+	var centerAbsolutePos = utils.Misc.convertToAbsolutePosition(tilePos);
+	if(utils.Misc.squareColliMax == null) {
+		utils.Misc.squareColliMax = managers.PoolManager.pullObject("tile",1)[0];
+		utils.Misc.squareColliMax.anchor.set(0.5,0.5);
+	}
+	if(utils.Misc.squareColliMin == null) {
+		utils.Misc.squareColliMin = managers.PoolManager.pullObject("tile",1)[0];
+		utils.Misc.squareColliMin.anchor.set(0.5,0.5);
+	}
+	utils.Misc.squareColliMin.width = minRange * Main.tileSize[0] + 4;
+	utils.Misc.squareColliMin.height = minRange * Main.tileSize[1] + 4;
+	utils.Misc.squareColliMin.x = centerAbsolutePos[0] - 2;
+	utils.Misc.squareColliMin.y = centerAbsolutePos[1] - 2;
+	utils.Misc.squareColliMax.width = maxRange * Main.tileSize[0] + 4;
+	utils.Misc.squareColliMax.height = maxRange * Main.tileSize[1] + 4;
+	utils.Misc.squareColliMax.x = centerAbsolutePos[0] - 2;
+	utils.Misc.squareColliMax.y = centerAbsolutePos[1] - 2;
+	var $it0 = HxOverrides.iter(GridAround);
+	while( $it0.hasNext() ) {
+		var i1 = $it0.next();
+		var absolutePosPoint = utils.Misc.convertToAbsolutePosition(i1);
+		if(utils.Misc.colliSquarePoint(utils.Misc.squareColliMax,absolutePosPoint)) {
+			if(!utils.Misc.colliSquarePoint(utils.Misc.squareColliMin,absolutePosPoint) || minRange == 0) ArrayOfPos.push(i1);
+		}
+	}
+	return ArrayOfPos;
+};
 utils.Misc.colliSquarePoint = function(obj,point,cameraAffected) {
 	var offset;
 	if(cameraAffected) offset = objects.Camera.getInstance().offset; else offset = [0,0];
 	var target = obj.getGlobalPosition(null);
-	if(target.x - obj.width * obj.anchor.x > point[0] + offset[0]) return false;
-	if(target.y - obj.height * obj.anchor.y > point[1] + offset[1]) return false;
-	if(target.x + obj.width - obj.width * obj.anchor.x < point[0] + offset[0]) return false;
-	if(target.y + obj.height - obj.height * obj.anchor.y < point[1] + offset[1]) return false;
+	var size = { width : obj.width, height : obj.height};
+	if(obj.parent != null) size = obj.getBounds(null);
+	if(obj.anchor == null) obj.anchor = new PIXI.Point(0,0);
+	if(target.x - size.width * obj.anchor.x > point[0] + offset[0]) return false;
+	if(target.y - size.height * obj.anchor.y > point[1] + offset[1]) return false;
+	if(target.x + size.width - size.width * obj.anchor.x < point[0] + offset[0]) return false;
+	if(target.y + size.height - size.height * obj.anchor.y < point[1] + offset[1]) return false;
 	return true;
 };
 utils.Misc.colliSquareSquare = function(obj1,obj2) {
@@ -1658,6 +1997,16 @@ utils.Misc.clamp = function(number,min,max) {
 	if(number < min) return min;
 	if(number > max) return max;
 	return number;
+};
+utils.Misc.getAttackFromName = function(name,data) {
+	switch(name) {
+	case "normal":
+		return new objects.attacks.NormalAttack(data);
+	case "triple":
+		return new objects.attacks.TripleAttack(data);
+	}
+	window.console.warn("ATTACK NOT FOUND !");
+	return new objects.attacks.Attack(data);
 };
 function $iterator(o) { if( o instanceof Array ) return function() { return HxOverrides.iter(o); }; return typeof(o.iterator) == 'function' ? $bind(o,o.iterator) : o.iterator; }
 var $_, $fid = 0;
@@ -2531,11 +2880,13 @@ managers.MouseManager.gamehover = new CustomEvent("gameHover");
 managers.MouseManager.gameMouseUp = new CustomEvent("gameMouseUp");
 managers.MouseManager.gameMouseDown = new CustomEvent("gameMouseDown");
 managers.MouseManager.lockedMouseEvents = false;
+managers.PoolManager.Pools = new haxe.ds.StringMap();
 managers.StateManager.debugText = new PIXI.Text("",{ fill : "white", font : "18px Arial"});
 managers.StateManager.loadingState = false;
 managers.TimeManager.elapsedTime = 0;
 managers.TimeManager.deltaTime = 0;
 managers.TimeManager.FPS = 0;
+objects.Options.data = { };
 objects.State.FTUEStateBool = false;
 utils.Id.numberIds = 0;
 Main.main();

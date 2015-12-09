@@ -37,6 +37,7 @@ class Button extends MovieClip {
 		arrayCallbacks.down 	= function():Void { };
 		arrayCallbacks.up 		= function():Void { };
 		arrayCallbacks.hover 	= function():Void { };
+		arrayCallbacks.out 		= function():Void { };
 		
 		//Browser.window.addEventListener("gameMouseDown", p_onDown);
 		//Browser.window.addEventListener("gameHover",p_onHover);
@@ -44,7 +45,8 @@ class Button extends MovieClip {
 		
 		on("mousedown", p_onDown);
 		on("mouseup", p_onUp);
-		on("mousemove", p_onHover);
+		on("mouseover", p_onHover);
+		on("mouseout", p_onOut);
 		
 		var shadow = new DropShadowFilter();
 		shadow.color 	= 0x0000;
@@ -80,19 +82,14 @@ class Button extends MovieClip {
 	}
 	
 	private function p_onDown	(e:EventTarget):Void { isDown = true; setSpecialTexture("down"); arrayCallbacks.down(e); e.stopPropagation(); }
-	private function p_onUp		(e:EventTarget):Void { isDown = false;  setSpecialTexture("hover"); arrayCallbacks.up(e); e.stopPropagation(); }
+	private function p_onUp		(e:EventTarget):Void { if (!isDown) return; isDown = false;  setSpecialTexture("hover"); arrayCallbacks.up(e); e.stopPropagation(); }
+	private function p_onOut	(e:EventTarget):Void { isDown = false; setSpecialTexture("idle"); arrayCallbacks.out(e); e.stopPropagation(); }
 	private function p_onHover	(e:EventTarget):Void {
-		isAbove = mouseIsAbove(e);
-		if (isAbove) {
-			if(isDown)
-				setSpecialTexture("down"); 
-			else
-				setSpecialTexture("hover"); 
-			arrayCallbacks.hover(e); 
-		}
-		else if (currentFrame != 0) {
-			gotoAndStop(0);
-		}
+		if(isDown)
+			setSpecialTexture("down"); 
+		else
+			setSpecialTexture("hover"); 
+		arrayCallbacks.hover(e); 
 	}
 	
 	private function mouseIsAbove(e:EventTarget):Bool {
@@ -106,5 +103,6 @@ class Button extends MovieClip {
 	public function onDown	(newFunction:Function):Void { arrayCallbacks.down 	= newFunction; }
 	public function onUp	(newFunction:Function):Void { arrayCallbacks.up 	= newFunction; }
 	public function onHover	(newFunction:Function):Void { arrayCallbacks.hover 	= newFunction; }
+	public function onOut	(newFunction:Function):Void { arrayCallbacks.out 	= newFunction; }
 	
 }
