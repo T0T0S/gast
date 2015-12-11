@@ -1,5 +1,8 @@
 package objects.attacks;
+import managers.PoolManager;
 import objects.character.Character;
+import pixi.core.text.Text;
+import objects.particle.DmgText;
 
 /**
  * ...
@@ -17,10 +20,21 @@ class Attack{
 	public var targetPosition:Array<Int> = [];
 	public var finished:Bool = false;
 	
+	public var minRange:Int = 0;
+	public var maxRange:Int = 0;
+	
+	public var damage:Int = 0;
+	public var apCost:Int = 0;
+	
 	public function new(jsonData:Dynamic) {
 		framesData = jsonData.framesData;
 		animationName = jsonData.animationName;
 		waitForFinish = jsonData.waitForFinish;
+		minRange = jsonData.minRange;
+		maxRange = jsonData.maxRange;
+		damage = jsonData.damage;
+		apCost = jsonData.apCost;
+		
 	}
 	
 	public function updateAttack(launcher:Character):Void {
@@ -46,8 +60,10 @@ class Attack{
 		finished = false;
 	}
 	
-	public function attackEffect(stats:Stats):Void{
+	public function attackEffect(stats:Stats):Void {
 	}
+	
+	
 	
 	public function endAction(launcher:Character):Void{
 		launcher.waitForNextTick = waitForFinish;

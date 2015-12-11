@@ -1,0 +1,44 @@
+{
+	"texturesUrls":[
+		"vivivictim.png"
+	],
+	"animations":{
+		"idle" : {
+			"fps": 10,
+			"loop": true,
+			"frameData" : [[0],[0],[0],[0]]
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

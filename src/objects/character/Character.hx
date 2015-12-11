@@ -5,8 +5,10 @@ import managers.CharacterManager;
 import managers.DrawManager;
 import managers.InitManager;
 import managers.MapManager;
+import managers.PoolManager;
 import objects.Animation;
 import objects.attacks.Attack;
+import objects.particle.DmgText;
 import pixi.core.textures.Texture;
 import pixi.extras.MovieClip;
 import utils.Id;
@@ -57,7 +59,11 @@ class Character extends MovieClip{
 	
 	public var charaName:String;
 	public var attacks:Map<String,Attack> = new Map.Map();
-	public var activeAttack:Attack;
+	private var activeAttack:Attack;
+	private var activeAttackRange:Array<Array<Int>> = [];
+	
+	
+	private var dmgTextPool:Array<DmgText> = [];
 	
 	public var animations:Map<String,Animation> = new Map.Map();
 	public var animationFrame:Float = 0;
@@ -73,6 +79,8 @@ class Character extends MovieClip{
 	
 	private var updateBlocked:Bool = false;
 	public var waitForNextTick:Bool = false;
+	
+	public var isDead:Bool = false;
 
 	
 	/*#################
@@ -87,7 +95,17 @@ class Character extends MovieClip{
 		loop = true;
 		
 		anchor.set(0.5, 1);
+		dmgTextPool = cast PoolManager.pullObject("dmgText",5);
 		CharacterManager.getInstance().addCharacter(this);
+	}
+	
+	public function getUnusedDmgTextIndex():Int{
+		for (i in dmgTextPool.iterator() ){
+			if (!i.visible)
+				return dmgTextPool.indexOf(i);
+		}
+		dmgTextPool.push(PoolManager.pullObject("dmgText", 1)[0]);
+		return dmgTextPool.length -1;
 	}
 	
 	
@@ -122,7 +140,24 @@ class Character extends MovieClip{
 		animations.set(newName, new Animation(newName,data, endCallback));
 	}
 		
-	public function damage(amount:Float):Void{
+	public function damage(amount:Int):Void{
+		var index:Int = getUnusedDmgTextIndex();
+		if (amount > 0)
+			dmgTextPool[index].text = "-"+(amount);
+		else
+			dmgTextPool[index].text = "+"+(amount);
+		dmgTextPool[index].alpha = 1;
+		dmgTextPool[index].visible = true;
+		dmgTextPool[index].x = x + (Math.random() * width * 0.5) - width*0.25;
+		dmgTextPool[index].y = y - height * 0.5;
+		dmgTextPool[index].anchor.set(0.5, 0.5);
+		if(dmgTextPool[index].parent == null)
+			DrawManager.addToDisplay(dmgTextPool[index],Main.getInstance().gameCont);
+		dmgTextPool[index].animate(0.5);
+		
+		
+		
+		
 		stats.health -= amount;
 		if(stats.health <= 0){
 			stats.health = 0;
@@ -135,7 +170,6 @@ class Character extends MovieClip{
 	  #################*/
 	public function _selfUpdate():Void {
 		manageAnim();
-
 		if (!updateBlocked) {
 			managePathFinding();
 			customUpdate();
@@ -180,7 +214,7 @@ class Character extends MovieClip{
 				
 			}
 			else {
-				animationFrame += 1 * (60 / activeAnimation.fps);
+				animationFrame += 1 * (activeAnimation.fps / 60);
 				gotoAndStop(activeAnimation.getFrames(directionFacing)[Math.floor(animationFrame)]);
 			}
 		}
@@ -250,8 +284,13 @@ class Character extends MovieClip{
 	
 	public function kill():Void{
 		trace("TARGET '" + charaName+"' is dead !");
+		
 		setAnimation("death");
-		/* callback of death animation */  Destroy();
+		/* callback of death animation */  
+		updateBlocked = true;
+		isDead = true;
+		
+		Destroy();
 		
 		
 		// penser a anim de mort
@@ -323,7 +362,17 @@ class Character extends MovieClip{
 			Browser.window.console.warn("attack not found: " + attackName);
 			return;
 		}
+		if (!Misc.targetInRange(tilePos, targetPosition, activeAttackRange)){
+			Browser.window.console.warn("target not in range");
+			return;
+		}
+		if (attacks.get(attackName).apCost > stats.AP)
+		{
+			Browser.window.console.warn("not enough AP");
+			return;
+		}
 		activeAttack = attacks.get(attackName);
+		useAp(activeAttack.apCost);
 		setAnimation(activeAttack.animationName);
 		updateBlocked = activeAttack.waitForFinish;
 		activeAttack.activateAttack(targetPosition);
@@ -357,9 +406,12 @@ class Character extends MovieClip{
 	/**
 	 * destroy to call for removing a character
 	 */
-	public function Destroy():Void{
+	public function Destroy():Void {
 		CharacterManager.getInstance().removeCharacter(this);
 		DrawManager.removeFromDisplay(this);
+		if (Camera.targetToFollow == this)
+			Camera.targetToFollow = null;
+			
 		destroy();
 	}
 

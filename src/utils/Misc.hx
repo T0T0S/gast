@@ -132,8 +132,6 @@ class Misc {
 		
 		//MouseManager.createLilCubes(cast GridAround,0x0000FF);
 		
-		var dx:Float;
-		var dy:Float;
 		var centerAbsolutePos:Array<Float> = Misc.convertToAbsolutePosition(cast tilePos);
 		
 		if (squareColliMax == null)
@@ -147,8 +145,8 @@ class Misc {
 			squareColliMin = PoolManager.pullObject("tile",1)[0];
 			squareColliMin.anchor.set(0.5, 0.5);
 		}
-		squareColliMin.width = minRange * Main.tileSize[0] + 4;
-		squareColliMin.height = minRange * Main.tileSize[1] + 4;
+		squareColliMin.width = (minRange -1) * Main.tileSize[0] + 4;
+		squareColliMin.height = (minRange  -1) * Main.tileSize[1] + 4;
 		squareColliMin.x = centerAbsolutePos[0] - 2;
 		squareColliMin.y = centerAbsolutePos[1] - 2;
 			
@@ -156,14 +154,13 @@ class Misc {
 		squareColliMax.height = maxRange * Main.tileSize[1] + 4;
 		squareColliMax.x = centerAbsolutePos[0] - 2;
 		squareColliMax.y = centerAbsolutePos[1] - 2;
-
+		
 		for (i in GridAround.iterator()) {
 			var absolutePosPoint = Misc.convertToAbsolutePosition(i);
 			if (Misc.colliSquarePoint(squareColliMax, absolutePosPoint))
 				if (!Misc.colliSquarePoint(squareColliMin, absolutePosPoint) || minRange == 0)
 					ArrayOfPos.push(i);
 		}
-		
 		//MouseManager.createLilCubes(cast ArrayOfPos,0xFFFF00);
 		//MouseManager.createLilCubes(cast [tilePos],0xFF0000);
 		
@@ -230,5 +227,18 @@ class Misc {
 		}
 		Browser.window.console.warn("ATTACK NOT FOUND !");
 		return new Attack(data);
+	}
+	
+	
+	public static function targetInRange(source:Array<Int>, target:Array<Int>, tilesInRange:Array<Array<Int>>):Bool {
+		for (i in tilesInRange.iterator())
+		{
+			if (i[0] == target[0] && i[1] == target[1]){
+				return true;
+			}
+		}
+		
+		return false;
+		
 	}
 }

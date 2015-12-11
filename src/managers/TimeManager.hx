@@ -19,7 +19,7 @@ class TimeManager {
 	public static var FPS:Float = 0;
 	
 	private var frameElapsed:Int = 0;
-	private var tickInterval:Int = 120;
+	private var tickInterval:Int = 60;
 	private var numberOfTicks:Int = 0;
 	
 	private var timeNow:Float;

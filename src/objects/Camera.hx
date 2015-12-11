@@ -29,7 +29,7 @@ class Camera{
 	private var clicked:Bool = false;
 	public var isDragged:Bool = false;
 	
-	private var targetToFollow:DisplayObject;
+	public static var targetToFollow:DisplayObject;
 	private var clampedCam:Bool = true;
 	
 	public var mapSize:Rectangle;

@@ -1,5 +1,6 @@
 package objects;
 
+import objects.character.Player;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
 import pixi.interaction.EventTarget;
@@ -27,6 +28,7 @@ class HudElement extends Sprite{
 	private function p_onMove(e:EventTarget):Void { 
 		stopping = mouseIsAbove(cast [e.data.global.x, e.data.global.y]);
 		if (stopping) { 
+			Player.getInstance().hideEveryTile();
 			e.stopPropagation(); 
 		}
 	}

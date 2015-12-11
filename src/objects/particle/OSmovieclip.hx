@@ -1,4 +1,4 @@
-package objects;
+package objects.particle;
 
 import haxe.Constraints.Function;
 import pixi.extras.MovieClip;
@@ -17,6 +17,7 @@ class OSmovieclip extends MovieClip{
 		onComplete = complete;
 		loop = false;
 		gotoAndPlay(0);
+
 	}
 	
 	private function complete():Void {

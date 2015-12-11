@@ -75,7 +75,11 @@ class Main
 		var font = new Font();
 		font.onload = function() { Browser.window.requestAnimationFrame(cast InitManager.getInstance); };
 		font.fontFamily = "gastFont";
-		font.src = "assets/fonts/CharlemagneStd-Bold.otf";
+		//font.src = "assets/fonts/CharlemagneStd-Bold.otf";
+		//font.src = "assets/fonts/LeagueGothic-Regular.otf";
+		//font.src = "assets/fonts/slkscr.ttf";
+		font.src = "assets/fonts/Days.otf";
+		
 		
 		renderer = Detector.autoDetectRenderer(1280, 720, {});
 		renderer.backgroundColor = 0x171824;

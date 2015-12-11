@@ -1,11 +1,13 @@
 package objects.character;
+import js.Browser;
 import js.html.RGBColor;
+import managers.CharacterManager;
 import managers.DrawManager;
 import managers.HudManager;
 import managers.MapManager;
 import managers.PoolManager;
 import objects.character.Character;
-import objects.OSmovieclip;
+import objects.particle.OSmovieclip;
 import objects.Tile;
 import pixi.core.display.Container;
 import pixi.core.sprites.Sprite;
@@ -19,19 +21,20 @@ import utils.Misc;
  * @author ToTos
  */
 class Player extends Character{
-	
+	private static var instance:Player;
+
 	private var tilePool:Array<Tile> = [];
 	private var targetTile:Tile;
 	
-	public static var selectedAction:String = null;
+	public static var selectedAction:String = "move";
 
 	private var APFlash:OSmovieclip;
-	private var pathTiles:Array<Int> = [];
+	private var pathPositions:Array<Int> = [];
+	
 	private var mouseHovering:Bool = false;
 	
-	
-	public function new(newName:String) {
-		super(newName);
+	private function new() {
+		super("hero");
 		untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("HP").text = stats.health;
 		untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = stats.AP;
 		
@@ -82,23 +85,26 @@ class Player extends Character{
 				findPathTo(newtilePos,true);
 			}
 		}
-		else if (selectedAction == "normal") {
-			launchAttack("triple", newtilePos);
+		else if (attacks.exists(selectedAction)) {
+			launchAttack(selectedAction, newtilePos);
 		}
 		hideHoverTile();
 		hidePoolTiles();
-		selectedAction = null;
+		changeSelectedAction("move");
 	}
 	
 	private function mapHover(e:EventTarget):Void {
 		var newtilePos = Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x, e.data.getLocalPosition(e.target).y);
+		hidePoolTiles();
+		hideHoverTile();
+
 		if(selectedAction == "move"){
-			hideHoverTile();
 			showPathMovement(findPathTo(newtilePos));
 		}
-		else if (selectedAction == "normal") {
-			showHoverTile(newtilePos, 0xFF0000);
-			hidePoolTiles();
+		else if (attacks.exists(selectedAction)) {
+			showRange(attacks.get(selectedAction).minRange, attacks.get(selectedAction).maxRange, 0xFF4747, 0.3);
+			if(Misc.targetInRange(tilePos, newtilePos, activeAttackRange))
+				showHoverTile(newtilePos, 0xFF0000);
 		}
 		
 		if (newtilePos[0] == tilePos[0] && newtilePos[1] == tilePos[1])
@@ -111,7 +117,7 @@ class Player extends Character{
 			mouseHovering = false;
 			mouseOutSelf(e);
 		}
-		
+
 		Debug.log("" + newtilePos);
 	}
 	
@@ -124,11 +130,31 @@ class Player extends Character{
 			APFlash.scale.set(2 *(1 / APFlash.parent.parent.scale.x), 2 *(1 / APFlash.parent.parent.scale.y));
 		}
 		APFlash.gotoAndPlay(0);
+		
+		lockHudButtons();
+		for (attackName in attacks.keys())
+		{
+			if(stats.AP < attacks.get(attackName).apCost)
+				untyped Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).lock();
+			else
+				untyped Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).unlock();
+		}
 	}
 	
-	override public function damage(amount:Float):Void {
+	override public function damage(amount:Int):Void {
 		super.damage(amount);
-		untyped Main.getInstance().hudCont.getChildByName("HP").text = stats.health;
+		untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("HP").text = stats.health;
+	}
+	
+	
+	private function lockHudButtons():Void{
+		for (attackName in attacks.keys())
+		{
+			if(stats.AP < attacks.get(attackName).apCost)
+				untyped Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).lock();
+			else
+				untyped Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).unlock();
+		}
 	}
 	
 	public function showPathMovement(path:Array<Dynamic>):Void{
@@ -136,16 +162,16 @@ class Player extends Character{
 		if (path.length == 0 || path.length > stats.AP)
 			return;
 		
-		for (i in pathTiles.iterator())
+		for (i in pathPositions.iterator())
 		{
 			hideOnePoolTile(i);
 		}
-		pathTiles = [];
+		pathPositions = [];
 		
 		for (i in path.iterator())
 		{
 			var tileIndex = getUnusedTileIndex(); 
-			pathTiles.push(tileIndex);
+			pathPositions.push(tileIndex);
 			tilePool[tileIndex].visible = true;
 			tilePool[tileIndex].tint = 0x00FF00;
 			tilePool[tileIndex].setTilePosition([i.x, i.y]);
@@ -161,11 +187,9 @@ class Player extends Character{
 		 * need to repredict after every end of path and stock the value.
 		 * */
 	
-		var tilepositions:Array<Array<Int>> =  Misc.getRangeTileAround(tilePos, min, max);
-		
-		for (i in tilepositions.iterator())
+		for (i in activeAttackRange.iterator())
 		{
-			if(!MapManager.getInstance().activeMap.getWalkableAt(i))
+			if(!MapManager.getInstance().activeMap.getWalkableAt(i) && CharacterManager.getInstance().findCharacterAtTilePos(i) == null)
 				continue;
 			var tileIndex = getUnusedTileIndex(); 
 			tilePool[tileIndex].visible = true;
@@ -221,7 +245,35 @@ class Player extends Character{
 	
 	override public function useAp(amount:Int):Void {
 		super.useAp(amount);
+		lockHudButtons();
 		untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = stats.AP;
 	}
 	
+	public function changeSelectedAction(newActionName:String):Void{
+		selectedAction = selectedAction == newActionName ? "move" : newActionName; 
+	}
+	
+	public function generateAttackRange(attackName:String):Void {
+		if(attacks.exists(attackName))
+			activeAttackRange = Misc.getRangeTileAround(tilePos, attacks.get(attackName).minRange, attacks.get(attackName).maxRange);
+		else
+			Browser.window.console.warn("Attack not found while generating attackRange of:" + attackName);
+		showRange(attacks.get(attackName).minRange, attacks.get(attackName).maxRange, 0xFF4747, 0.3);
+	}
+	
+	public function hideEveryTile():Void{
+		hideHoverTile();
+		hidePoolTiles();
+	}
+	
+	override public function Destroy():Void {
+		super.Destroy();
+		Main.getInstance().tileCont.off("mousemove", mapHover);
+		Main.getInstance().tileCont.off("mouseup", mapClick);
+	}
+	
+	public static function getInstance():Player{
+		if (instance == null) instance = new Player();
+		return instance;
+	}
 }

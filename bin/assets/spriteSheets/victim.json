@@ -1,0 +1,21 @@
+{"frames": {
+
+"vivivictim.png":
+{
+	"frame": {"x":0,"y":0,"w":264,"h":260},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":264,"h":260},
+	"sourceSize": {"w":264,"h":260},
+	"pivot": {"x":0.5,"y":0.5}
+}},
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "victim.png",
+	"format": "RGBA8888",
+	"size": {"w":264,"h":260},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:46cddb3c0f74f1ef9e5658932d396aa6:4349307663b6fe580ee33c40a9edd76a:595fc64309b7ca3156557d7f3ba7ff81$"
+}
+}

@@ -1,14 +1,13 @@
 package objects.character;
-import objects.character.Character;
 
 /**
  * ...
  * @author ToTos
  */
-class Pnj extends Character{
+class Victim extends Pnj{
 
 	public function new(newName:String) {
 		super(newName);
+		stats.health = 1000;
 	}
-	
 }

@@ -1,6 +1,7 @@
 package managers;
 import objects.Button;
 import objects.character.Player;
+import objects.HudButton;
 import objects.HudElement;
 import pixi.core.sprites.Sprite;
 import pixi.core.text.Text;
@@ -37,18 +38,22 @@ class HudManager {
 		attackHud.anchor.set(1, 1);
 		attackHud.x = rightHud.x - (rightHud.width + 20);
 		attackHud.y = Main.getInstance().renderer.height;
+		attackHud.name = "center";
 		
-		var moveButton:Button  = new Button("button_move");
-		moveButton.anchor.set(0.5, 0.5);
-		moveButton.x = -695;
-		moveButton.y = -73;
-		moveButton.onUp(function() { Player.selectedAction = Player.selectedAction == "move" ? null : "move"; } );
+		//var moveButton:Button  = new Button("button_move");
+		//moveButton.x = -695;
+		//moveButton.y = -73;
 		
-		var attackButton:Button  = new Button("button_attack");
-		attackButton.anchor.set(0.5, 0.5);
-		attackButton.x = -570;
+		var attackButton:Button  = new HudButton("button_attack", "normal");
+		attackButton.x = -695;
 		attackButton.y = -73;
-		attackButton.onUp(function() { Player.selectedAction = Player.selectedAction == "normal" ? null : "normal"; } );
+		attackButton.name = "normal";
+		
+		var tripleAttackButton:Button  = new HudButton("button_triple_attack", "triple");
+		tripleAttackButton.anchor.set(0.5, 0.5);
+		tripleAttackButton.x = -570;
+		tripleAttackButton.y = -73;
+		tripleAttackButton.name = "triple";
 		
 		var tickTimer:Sprite = new Sprite(Texture.fromImage("timerFill.png"));
 		tickTimer.anchor.set(0.5,0.5);
@@ -69,8 +74,9 @@ class HudManager {
 		HPText.y = - 175;
 		
 		DrawManager.addToDisplay(attackHud, Main.getInstance().hudCont);
-		DrawManager.addToDisplay(moveButton, attackHud);
+		//DrawManager.addToDisplay(moveButton, attackHud);
 		DrawManager.addToDisplay(attackButton, attackHud);
+		DrawManager.addToDisplay(tripleAttackButton, attackHud);
 
 		DrawManager.addToDisplay(rightHud, Main.getInstance().hudCont);
 		DrawManager.addToDisplay(tickTimer, rightHud);

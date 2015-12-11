@@ -35,7 +35,8 @@ class InitManager
 	{
 		var lConfig:Loader = new Loader();
 		lConfig.add("config", CONFIG_PATH + "config.json");
-		lConfig.add("hero", "assets/animations/" + "hero.json");
+		lConfig.add("hero", CONFIG_PATH +"/" + "hero.json");
+		lConfig.add("victim", CONFIG_PATH +"/" + "victim.json");
 		
 		
 		/* maps */

@@ -49,7 +49,9 @@ class CharacterManager{
 	}
 	
 	public function Update():Void{
-		for (i in managedCharacters.iterator()){
+		for (i in managedCharacters.iterator()) {
+			if (i == null)
+				continue;
 			i._selfUpdate();
 		}
 	}

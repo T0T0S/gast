@@ -14,9 +14,9 @@ class NormalAttack extends Attack{
 	}
 	
 	override public function attackEffect(stats:Stats):Void {
-		trace("attack !");
+		super.attackEffect(stats);
 		if (CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)) {
-			CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(stats.strength);
+			CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(damage * (stats.strength / 100 * 10));
 		}
 	}
 	

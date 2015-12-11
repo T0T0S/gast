@@ -1,0 +1,118 @@
+{
+	"texturesUrls":[
+		"idle 0_1.png",
+		"idle 0_2.png",
+		"idle 0_3.png",
+		"idle 0_4.png",
+		"idle 0_5.png",
+		"idle 0_6.png",
+		"idle 0_7.png",
+		"idle 0_8.png",
+		"idle 0_9.png",
+		"idle 0_10.png",
+		"idle 0_11.png",
+		"idle 1_1.png",
+		"idle 1_2.png",
+		"idle 1_3.png",
+		"idle 1_4.png",
+		"idle 1_5.png",
+		"idle 1_6.png",
+		"idle 1_7.png",
+		"idle 1_8.png",
+		"idle 1_9.png",
+		"idle 1_10.png",
+		"idle 1_11.png",
+		"idle 1_12.png",
+		"idle 2_1.png",
+		"idle 2_2.png",
+		"idle 2_3.png",
+		"idle 2_4.png",
+		"idle 2_5.png",
+		"idle 2_6.png",
+		"idle 2_7.png",
+		"idle 2_8.png",
+		"idle 2_9.png",
+		"idle 2_10.png",
+		"idle 2_11.png",
+		"idle 2_12.png",
+		"idle 3_1.png",
+		"idle 3_2.png",
+		"idle 3_3.png",
+		"idle 3_4.png",
+		"idle 3_5.png",
+		"idle 3_6.png",
+		"idle 3_7.png",
+		"idle 3_8.png",
+		"idle 3_9.png",
+		"idle 3_10.png",
+		"idle 3_11.png",
+		"hero_attack_0.png",
+		"hero_attack_1.png",
+		"hero_attack_2.png",
+		"hero_attack_3.png"
+	],
+	"animations":{
+		"idle" : {
+			"fps": 10,
+			"loop": true,
+			"frameData" : [[0,1,2,3,4,5,6,7,8,9,10],[11,12,13,14,15,16,17,18,19,20,21,22],[23,24,25,26,27,28,29,30,31,32,34],[35,36,37,38,39,40,41,42,43,44,45]]
+		},
+		"normalAttack": {
+			"fps": 10,
+			"loop": true,
+			"frameData" : [[46],[47],[48],[49]]
+		}
+	},
+	"attacks":{
+		"normal":{
+			"waitForFinish": true,
+			"animationName": "normalAttack",
+			"minRange": 1,
+			"maxRange": 10,
+			"apCost" : 2,
+			"damage" : 50,
+			"framesData": [[5,20]]
+		},
+		"triple":{
+			"waitForFinish": true,
+			"animationName": "normalAttack",
+			"minRange": 3,
+			"maxRange": 5,
+			"apCost" : 3,
+			"damage" : 30,
+			"framesData": [[5,2],[5,2],[5,2]]
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -39,7 +39,11 @@ class PreloadState extends State{
 		loadJson.set("tileSh2", "assets/spriteSheets/loadSpriteSheet.json");
 		loadJson.set("buttons", "assets/spriteSheets/buttonSpriteSheet.json");
 		loadJson.set("hero", "assets/spriteSheets/heroSpriteSheet.json");
+		loadJson.set("hero2", "assets/spriteSheets/heroSpriteSheet2.json");
 		loadJson.set("explosion", "assets/spriteSheets/testExplosion.json");
+		loadJson.set("enemy", "assets/spriteSheets/victim.json");
+		
+		
 		loadJson.set("camShader","assets/effects/camShade.json");
 		
 		

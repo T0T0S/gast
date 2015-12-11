@@ -21,6 +21,8 @@ class Button extends MovieClip {
 	private var isDown:Bool = false;
 	private var isAbove:Bool = false;
 	
+	private var locked:Bool = false;
+	
 	public function new(name:String) {
 		var arrayTextures:Array<Texture> = [];
 		arrayTextures.push(Texture.fromImage(name+"_idle.png"));
@@ -56,6 +58,8 @@ class Button extends MovieClip {
 		shadow.blur 	= 5;
 	
 		filters = [shadow];
+		
+		
 	}
 	
 	
@@ -81,10 +85,11 @@ class Button extends MovieClip {
 			gotoAndStop(0);
 	}
 	
-	private function p_onDown	(e:EventTarget):Void { isDown = true; setSpecialTexture("down"); arrayCallbacks.down(e); e.stopPropagation(); }
-	private function p_onUp		(e:EventTarget):Void { if (!isDown) return; isDown = false;  setSpecialTexture("hover"); arrayCallbacks.up(e); e.stopPropagation(); }
-	private function p_onOut	(e:EventTarget):Void { isDown = false; setSpecialTexture("idle"); arrayCallbacks.out(e); e.stopPropagation(); }
+	private function p_onDown	(e:EventTarget):Void { if (locked) return; isDown = true; setSpecialTexture("down"); arrayCallbacks.down(e); e.stopPropagation(); }
+	private function p_onUp		(e:EventTarget):Void { if (locked) return; if (!isDown) return; isDown = false;  setSpecialTexture("hover"); arrayCallbacks.up(e); e.stopPropagation(); }
+	private function p_onOut	(e:EventTarget):Void { if (locked) return; isDown = false; setSpecialTexture("idle"); arrayCallbacks.out(e); e.stopPropagation(); }
 	private function p_onHover	(e:EventTarget):Void {
+		if (locked) return;
 		if(isDown)
 			setSpecialTexture("down"); 
 		else
@@ -105,4 +110,7 @@ class Button extends MovieClip {
 	public function onHover	(newFunction:Function):Void { arrayCallbacks.hover 	= newFunction; }
 	public function onOut	(newFunction:Function):Void { arrayCallbacks.out 	= newFunction; }
 	
+	public function lock():Void { isDown = false ; locked = true; tint = 0x666666; buttonMode = false; }
+			
+	public function unlock():Void { locked = false;  tint = 0xFFFFFF;  buttonMode = true;}
 }
