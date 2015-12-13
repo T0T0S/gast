@@ -36,7 +36,7 @@ class DebugState extends State {
 	}
 	public override function Start() {
 		Main.FIGHTMODE = true;
-		HudManager.generateFightHud();
+		HudManager.getInstance().generateFightHud();
 		
 		var camShader:Sprite = new Sprite(Texture.fromImage("camShader.png"));
 		camShader.scale.set(Main.screenRatio[0], Main.screenRatio[1]);

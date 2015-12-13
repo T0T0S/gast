@@ -1,15 +1,71 @@
 {
 	"texturesUrls":[
-		"vivivictim.png"
+		"vivivictim.png",
+		"victim_damage0001.png",
+		"victim_damage0002.png",
+		"victim_damage0003.png",
+		"victim_damage0004.png",
+		"victim_damage0005.png",
+		"victim_damage0006.png",
+		"victim_damage0007.png",
+		"victim_damage0008.png",
+		"victim_damage0009.png",
+		"victim_damage0010.png",
+		"victim_damage0011.png",
+		"victim_damage0012.png",
+		"victim_damage0013.png",
+		"victim_damage0014.png",
+		"victim_damage0015.png",
+		"victim_damage0016.png",
+		"victim_damage0017.png",
+		"victim_damage0018.png",
+		"victim_damage0019.png",
+		"victim_damage0020.png",
+		"victim_damage0021.png",
+		"victim_damage0022.png",
+		"victim_damage0023.png",
+		"victim_damage0024.png",
+		"victim_damage0025.png",
+		"victim_damage0026.png",
+		"victim_damage0027.png",
+		"victim_damage0028.png"
 	],
+	"stats":{
+		"health" 		: 200,
+		"strength" 		: 2,
+		"endurance" 	: 3,
+		"regeneration" 	: 0,
+		"moveSpeed" 	: 100,
+		"precision" 	: 1,
+		"luck" 			: 1,
+		"AP" 			: 4,
+		"MaxAP" 		: 4
+	},
 	"animations":{
 		"idle" : {
 			"fps": 10,
 			"loop": true,
 			"frameData" : [[0],[0],[0],[0]]
+		},
+		"damage" : {
+			"fps": 24,
+			"loop": false,
+			"frameData" : [[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]]
+		}
+	},
+	"attacks":{
+		"normal":{
+			"waitForFinish": true,
+			"animationName": "normalAttack",
+			"minRange": 1,
+			"maxRange": 10,
+			"apCost" : 2,
+			"damage" : 50,
+			"framesData": [[5,20]]
 		}
 	}
 }
+
 
 
 

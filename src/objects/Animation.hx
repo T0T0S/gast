@@ -9,7 +9,7 @@ class Animation{
 	public var data:Array<Array<Int>>;
 	public var name:String;
 	public var loop:Bool;
-	public var callback:Dynamic;
+	public var callback:Dynamic = function(){};
 	public var fps:Int;
 	
 	private var direction:Int = 0;

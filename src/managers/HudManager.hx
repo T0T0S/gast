@@ -19,12 +19,16 @@ class HudManager {
 	
 	public static var mode:String = "none";
 	
+	public var attackButtons:Map<String,HudButton> = new Map.Map();
+	public var HPmeter:Text;
+	public var APmeter:Text;
+	
 
 	private function new() {
 		
 	}
 	
-	public static function generateFightHud():Void {
+	public function generateFightHud():Void {
 		mode = "fight";
 		var rightHud:Sprite 	= new HudElement(Texture.fromImage("hud_bottom_right.png"));
 		rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
@@ -44,16 +48,16 @@ class HudManager {
 		//moveButton.x = -695;
 		//moveButton.y = -73;
 		
-		var attackButton:Button  = new HudButton("button_attack", "normal");
+		var attackButton:HudButton  = new HudButton("button_attack", "normal");
 		attackButton.x = -695;
 		attackButton.y = -73;
-		attackButton.name = "normal";
+		attackButtons.set(attackButton.actionName, attackButton);
 		
-		var tripleAttackButton:Button  = new HudButton("button_triple_attack", "triple");
+		var tripleAttackButton:HudButton  = new HudButton("button_triple_attack", "triple");
 		tripleAttackButton.anchor.set(0.5, 0.5);
 		tripleAttackButton.x = -570;
 		tripleAttackButton.y = -73;
-		tripleAttackButton.name = "triple";
+		attackButtons.set(tripleAttackButton.actionName, tripleAttackButton);
 		
 		var tickTimer:Sprite = new Sprite(Texture.fromImage("timerFill.png"));
 		tickTimer.anchor.set(0.5,0.5);
@@ -61,20 +65,21 @@ class HudManager {
 		tickTimer.y = - (tickTimer.height * 0.5 + 48);
 		tickTimer.name = "tickTimer";
 	
-		var APText:Text = new Text("", { "fill" :"white", "font":"35px gastFont", "stroke": "black", "strokeThickness":5 } );
-		APText.anchor.set(0.5,0.5);
-		APText.name = "HP";
-		APText.x = - 342 ;
-		APText.y = - 65 ;
-		
 		var HPText:Text = new Text("", { "fill" :"white", "font":"35px gastFont", "stroke": "black", "strokeThickness":5 } );
 		HPText.anchor.set(0.5,0.5);
-		HPText.name = "AP";
-		HPText.x = - 342;
-		HPText.y = - 175;
+		HPText.name = "HP";
+		HPText.x = - 342 ;
+		HPText.y = - 65 ;
+		HPmeter = HPText;
+		
+		var APText:Text = new Text("", { "fill" :"white", "font":"35px gastFont", "stroke": "black", "strokeThickness":5 } );
+		APText.anchor.set(0.5,0.5);
+		APText.name = "AP";
+		APText.x = - 342;
+		APText.y = - 175;
+		APmeter = APText;
 		
 		DrawManager.addToDisplay(attackHud, Main.getInstance().hudCont);
-		//DrawManager.addToDisplay(moveButton, attackHud);
 		DrawManager.addToDisplay(attackButton, attackHud);
 		DrawManager.addToDisplay(tripleAttackButton, attackHud);
 

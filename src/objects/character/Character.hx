@@ -6,6 +6,7 @@ import managers.DrawManager;
 import managers.InitManager;
 import managers.MapManager;
 import managers.PoolManager;
+import managers.TimeManager;
 import objects.Animation;
 import objects.attacks.Attack;
 import objects.particle.DmgText;
@@ -90,6 +91,8 @@ class Character extends MovieClip{
 		charaName = newName;
 		config = InitManager.data[untyped newName];
 		super(generateTextures(charaName));
+		
+		generateStats();
 		generateAnimations();
 		generateAttacks();
 		loop = true;
@@ -97,6 +100,20 @@ class Character extends MovieClip{
 		anchor.set(0.5, 1);
 		dmgTextPool = cast PoolManager.pullObject("dmgText",5);
 		CharacterManager.getInstance().addCharacter(this);
+	}
+	
+	
+	private function generateStats():Void {
+		/* test from server */	
+		stats.health 		= config.stats.health;
+		stats.strength 		= config.stats.strength;
+		stats.endurance 	= config.stats.endurance;
+		stats.regeneration 	= config.stats.regeneration;
+		stats.moveSpeed		= config.stats.moveSpeed;
+		stats.precision		= config.stats.precision;
+		stats.luck 			= config.stats.luck;
+		stats.MaxAP 		= config.stats.MaxAP;
+		stats.AP 			= stats.MaxAP;
 	}
 	
 	public function getUnusedDmgTextIndex():Int{
@@ -140,7 +157,7 @@ class Character extends MovieClip{
 		animations.set(newName, new Animation(newName,data, endCallback));
 	}
 		
-	public function damage(amount:Int):Void{
+	public function damage(amount:Int):Void {
 		var index:Int = getUnusedDmgTextIndex();
 		if (amount > 0)
 			dmgTextPool[index].text = "-"+(amount);
@@ -155,7 +172,7 @@ class Character extends MovieClip{
 			DrawManager.addToDisplay(dmgTextPool[index],Main.getInstance().gameCont);
 		dmgTextPool[index].animate(0.5);
 		
-		
+		setAnimation("damage");
 		
 		
 		stats.health -= amount;
@@ -170,9 +187,14 @@ class Character extends MovieClip{
 	  #################*/
 	public function _selfUpdate():Void {
 		manageAnim();
+		
+		
 		if (!updateBlocked) {
 			managePathFinding();
-			customUpdate();
+			if (Main.FIGHTMODE)
+				fightUpdate();
+			else if(Main.FIGHTMODE)
+				normalUpdate();
 		}
 	}
 	
@@ -205,13 +227,13 @@ class Character extends MovieClip{
 			if (animationFrame >= activeAnimation.getFrames(directionFacing).length - 1) {
 				if (!activeAnimation.loop) {
 					stop();
+					setAnimation("idle");
 					activeAnimation.endAction();
 				}
 				else {
-					animationFrame = 0;
 					gotoAndStop(activeAnimation.getFrames(directionFacing)[0]);
 				}
-				
+				animationFrame = 0;
 			}
 			else {
 				animationFrame += 1 * (activeAnimation.fps / 60);
@@ -228,8 +250,8 @@ class Character extends MovieClip{
 				var arrayPos = [activePathPoint.x, activePathPoint.y];
 				
 				//trace(Misc.getDistance(x,y,Misc.convertToAbsolutePosition(arrayPos)[0],Misc.convertToAbsolutePosition(arrayPos)[1]));
-				setAbsolutePosition(x + Math.cos(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed, y - Math.sin(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed);
-				if(Misc.getDistance(x,y,Misc.convertToAbsolutePosition(arrayPos)[0],Misc.convertToAbsolutePosition(arrayPos)[1] + Main.tileSize[1] * 0.5) < stats.moveSpeed)
+				setAbsolutePosition(x + Math.cos(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed * TimeManager.deltaTime, y - Math.sin(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed * TimeManager.deltaTime);
+				if(Misc.getDistance(x,y,Misc.convertToAbsolutePosition(arrayPos)[0],Misc.convertToAbsolutePosition(arrayPos)[1] + Main.tileSize[1] * 0.5) < stats.moveSpeed * TimeManager.deltaTime)
 				{
 					// new Point
 					setTilePosition(arrayPos);
@@ -256,9 +278,19 @@ class Character extends MovieClip{
 		setDirection(Misc.getDirectionToPoint(tilePos, [activePathPoint.x,activePathPoint.y]));
 	}
 	
-	public function customUpdate():Void{
+	public function showPosTile():Void{
+	/* SHOW TILE OF POSITION (BLUE OR RED) */
+	}
+	
+	public function normalUpdate():Void{
 	
 	}
+	
+	public function fightUpdate():Void{
+	
+	}
+	
+	
 	
 	public function setAnimation(animName:String):Void {
 		if (!animations.exists(animName)){

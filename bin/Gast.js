@@ -107,7 +107,7 @@ var Main = function() {
 	};
 	font.fontFamily = "gastFont";
 	font.src = "assets/fonts/Days.otf";
-	this.renderer = PIXI.autoDetectRenderer(1280,720,{ });
+	this.renderer = PIXI.autoDetectRenderer(1600,900,{ });
 	this.renderer.backgroundColor = 1513508;
 	this.renderMask.beginFill();
 	this.renderMask.drawRect(0,0,this.renderer.width,this.renderer.height);
@@ -520,60 +520,63 @@ managers.DrawManager.prototype = {
 	,__class__: managers.DrawManager
 };
 managers.HudManager = function() {
+	this.attackButtons = new haxe.ds.StringMap();
 };
 managers.HudManager.__name__ = ["managers","HudManager"];
-managers.HudManager.generateFightHud = function() {
-	managers.HudManager.mode = "fight";
-	var rightHud = new objects.HudElement(PIXI.Texture.fromImage("hud_bottom_right.png"));
-	rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
-	rightHud.anchor.set(1,1);
-	rightHud.x = Main.getInstance().renderer.width;
-	rightHud.y = Main.getInstance().renderer.height;
-	rightHud.name = "right_bottom";
-	var attackHud = new objects.HudElement(PIXI.Texture.fromImage("hud_bottom_center.png"));
-	attackHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
-	attackHud.anchor.set(1,1);
-	attackHud.x = rightHud.x - (rightHud.width + 20);
-	attackHud.y = Main.getInstance().renderer.height;
-	attackHud.name = "center";
-	var attackButton = new objects.HudButton("button_attack","normal");
-	attackButton.x = -695;
-	attackButton.y = -73;
-	attackButton.name = "normal";
-	var tripleAttackButton = new objects.HudButton("button_triple_attack","triple");
-	tripleAttackButton.anchor.set(0.5,0.5);
-	tripleAttackButton.x = -570;
-	tripleAttackButton.y = -73;
-	tripleAttackButton.name = "triple";
-	var tickTimer = new PIXI.Sprite(PIXI.Texture.fromImage("timerFill.png"));
-	tickTimer.anchor.set(0.5,0.5);
-	tickTimer.x = -(tickTimer.width * 0.5 + 50);
-	tickTimer.y = -(tickTimer.height * 0.5 + 48);
-	tickTimer.name = "tickTimer";
-	var APText = new PIXI.Text("",{ fill : "white", font : "35px gastFont", stroke : "black", strokeThickness : 5});
-	APText.anchor.set(0.5,0.5);
-	APText.name = "HP";
-	APText.x = -342;
-	APText.y = -65;
-	var HPText = new PIXI.Text("",{ fill : "white", font : "35px gastFont", stroke : "black", strokeThickness : 5});
-	HPText.anchor.set(0.5,0.5);
-	HPText.name = "AP";
-	HPText.x = -342;
-	HPText.y = -175;
-	managers.DrawManager.addToDisplay(attackHud,Main.getInstance().hudCont);
-	managers.DrawManager.addToDisplay(attackButton,attackHud);
-	managers.DrawManager.addToDisplay(tripleAttackButton,attackHud);
-	managers.DrawManager.addToDisplay(rightHud,Main.getInstance().hudCont);
-	managers.DrawManager.addToDisplay(tickTimer,rightHud);
-	managers.DrawManager.addToDisplay(APText,rightHud);
-	managers.DrawManager.addToDisplay(HPText,rightHud);
-};
 managers.HudManager.getInstance = function() {
 	if(managers.HudManager.instance == null) managers.HudManager.instance = new managers.HudManager();
 	return managers.HudManager.instance;
 };
 managers.HudManager.prototype = {
-	switchState: function() {
+	generateFightHud: function() {
+		managers.HudManager.mode = "fight";
+		var rightHud = new objects.HudElement(PIXI.Texture.fromImage("hud_bottom_right.png"));
+		rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+		rightHud.anchor.set(1,1);
+		rightHud.x = Main.getInstance().renderer.width;
+		rightHud.y = Main.getInstance().renderer.height;
+		rightHud.name = "right_bottom";
+		var attackHud = new objects.HudElement(PIXI.Texture.fromImage("hud_bottom_center.png"));
+		attackHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+		attackHud.anchor.set(1,1);
+		attackHud.x = rightHud.x - (rightHud.width + 20);
+		attackHud.y = Main.getInstance().renderer.height;
+		attackHud.name = "center";
+		var attackButton = new objects.HudButton("button_attack","normal");
+		attackButton.x = -695;
+		attackButton.y = -73;
+		this.attackButtons.set(attackButton.actionName,attackButton);
+		var tripleAttackButton = new objects.HudButton("button_triple_attack","triple");
+		tripleAttackButton.anchor.set(0.5,0.5);
+		tripleAttackButton.x = -570;
+		tripleAttackButton.y = -73;
+		this.attackButtons.set(tripleAttackButton.actionName,tripleAttackButton);
+		var tickTimer = new PIXI.Sprite(PIXI.Texture.fromImage("timerFill.png"));
+		tickTimer.anchor.set(0.5,0.5);
+		tickTimer.x = -(tickTimer.width * 0.5 + 50);
+		tickTimer.y = -(tickTimer.height * 0.5 + 48);
+		tickTimer.name = "tickTimer";
+		var HPText = new PIXI.Text("",{ fill : "white", font : "35px gastFont", stroke : "black", strokeThickness : 5});
+		HPText.anchor.set(0.5,0.5);
+		HPText.name = "HP";
+		HPText.x = -342;
+		HPText.y = -65;
+		this.HPmeter = HPText;
+		var APText = new PIXI.Text("",{ fill : "white", font : "35px gastFont", stroke : "black", strokeThickness : 5});
+		APText.anchor.set(0.5,0.5);
+		APText.name = "AP";
+		APText.x = -342;
+		APText.y = -175;
+		this.APmeter = APText;
+		managers.DrawManager.addToDisplay(attackHud,Main.getInstance().hudCont);
+		managers.DrawManager.addToDisplay(attackButton,attackHud);
+		managers.DrawManager.addToDisplay(tripleAttackButton,attackHud);
+		managers.DrawManager.addToDisplay(rightHud,Main.getInstance().hudCont);
+		managers.DrawManager.addToDisplay(tickTimer,rightHud);
+		managers.DrawManager.addToDisplay(APText,rightHud);
+		managers.DrawManager.addToDisplay(HPText,rightHud);
+	}
+	,switchState: function() {
 		managers.HudManager.mode = "none";
 	}
 	,destroy: function() {
@@ -923,7 +926,7 @@ managers.StateManager.prototype = {
 };
 managers.TimeManager = function() {
 	this.numberOfTicks = 0;
-	this.tickInterval = 60;
+	this.tickInterval = 90;
 	this.frameElapsed = 0;
 	this.timeNow = new Date().getTime();
 };
@@ -962,6 +965,8 @@ managers.TimeManager.prototype = {
 var objects = {};
 objects.Animation = function(newName,newData,endCallback) {
 	this.direction = 0;
+	this.callback = function() {
+	};
 	this.name = newName;
 	this.loop = newData.loop;
 	this.data = newData.frameData;
@@ -1306,8 +1311,6 @@ objects.Options.prototype = {
 	,__class__: objects.Options
 };
 objects.State = function(newName) {
-	this.loaderReady = 0;
-	this.loadImage = new haxe.ds.StringMap();
 	this.loadJson = new haxe.ds.StringMap();
 	this.ButtonText = new PIXI.Text("",{ fill : "black", font : "30px gastFont"});
 	this.LoadingText = new PIXI.Text("",{ fill : "white", font : "30px gastFont"});
@@ -1322,46 +1325,34 @@ objects.State.__name__ = ["objects","State"];
 objects.State.prototype = {
 	_StartLoading: function() {
 		this.Preload();
-		if(Lambda.count(this.loadJson) == 0) this.loaderReady += 1; else this.loaderReady += 0;
-		if(Lambda.count(this.loadImage) == 0) this.loaderReady += 1; else this.loaderReady += 0;
-		if(this.loaderReady == 2) {
+		if(Lambda.count(this.loadJson) == 0) {
 			this.StateLoaded = true;
 			this.Start();
 			managers.StateManager.loadingState = false;
 			return;
 		}
 		var jsonLoader = new PIXI.loaders.Loader();
-		var assetLoader = new PIXI.loaders.Loader();
 		var $it0 = this.loadJson.iterator();
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
 			jsonLoader.add(i,this.loadJson.get(i));
 		}
-		var $it1 = this.loadImage.iterator();
-		while( $it1.hasNext() ) {
-			var i1 = $it1.next();
-			assetLoader.add(i1,this.loadImage.get(i1));
-		}
 		jsonLoader.once("complete",$bind(this,this._assetLoaded));
-		assetLoader.once("complete",$bind(this,this._assetLoaded));
-		assetLoader.load($bind(this,this._onAssetLoadProgress));
+		jsonLoader.on("progress",$bind(this,this.AssetLoad));
 		jsonLoader.load();
 	}
 	,_onAssetLoadProgress: function(loader,resource) {
-		this.AssetLoaded(loader,resource);
+		this.AssetLoad(loader);
 	}
 	,_assetLoaded: function(loader) {
-		++this.loaderReady;
-		if(this.loaderReady == 2) {
-			this.AllAssetsLoaded(loader);
-			this.StateLoaded = true;
-			this.Start();
-			managers.StateManager.loadingState = false;
-		}
+		this.AllAssetsLoaded(loader);
+		this.StateLoaded = true;
+		this.Start();
+		managers.StateManager.loadingState = false;
 	}
 	,Preload: function() {
 	}
-	,AssetLoaded: function(loader,resource) {
+	,AssetLoad: function(loader) {
 	}
 	,AllAssetsLoaded: function(loader) {
 	}
@@ -1457,7 +1448,6 @@ objects.attacks.Attack.prototype = {
 	,endAction: function(launcher) {
 		launcher.waitForNextTick = this.waitForFinish;
 		this.finished = true;
-		console.log("end");
 	}
 	,__class__: objects.attacks.Attack
 };
@@ -1506,6 +1496,7 @@ objects.character.Character = function(newName) {
 	this.charaName = newName;
 	this.config = managers.InitManager.data[newName];
 	PIXI.extras.MovieClip.call(this,this.generateTextures(this.charaName));
+	this.generateStats();
 	this.generateAnimations();
 	this.generateAttacks();
 	this.loop = true;
@@ -1516,7 +1507,18 @@ objects.character.Character = function(newName) {
 objects.character.Character.__name__ = ["objects","character","Character"];
 objects.character.Character.__super__ = PIXI.extras.MovieClip;
 objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,{
-	getUnusedDmgTextIndex: function() {
+	generateStats: function() {
+		this.stats.health = this.config.stats.health;
+		this.stats.strength = this.config.stats.strength;
+		this.stats.endurance = this.config.stats.endurance;
+		this.stats.regeneration = this.config.stats.regeneration;
+		this.stats.moveSpeed = this.config.stats.moveSpeed;
+		this.stats.precision = this.config.stats.precision;
+		this.stats.luck = this.config.stats.luck;
+		this.stats.MaxAP = this.config.stats.MaxAP;
+		this.stats.AP = this.stats.MaxAP;
+	}
+	,getUnusedDmgTextIndex: function() {
 		var $it0 = HxOverrides.iter(this.dmgTextPool);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
@@ -1570,6 +1572,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.dmgTextPool[index].anchor.set(0.5,0.5);
 		if(this.dmgTextPool[index].parent == null) managers.DrawManager.addToDisplay(this.dmgTextPool[index],Main.getInstance().gameCont);
 		this.dmgTextPool[index].animate(0.5);
+		this.setAnimation("damage");
 		this.stats.health -= amount;
 		if(this.stats.health <= 0) {
 			this.stats.health = 0;
@@ -1580,7 +1583,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.manageAnim();
 		if(!this.updateBlocked) {
 			this.managePathFinding();
-			this.customUpdate();
+			if(Main.FIGHTMODE) this.fightUpdate(); else if(Main.FIGHTMODE) this.normalUpdate();
 		}
 	}
 	,manageAnim: function() {
@@ -1598,11 +1601,10 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 			if(this.animationFrame >= this.activeAnimation.getFrames(this.directionFacing).length - 1) {
 				if(!this.activeAnimation.loop) {
 					this.stop();
+					this.setAnimation("idle");
 					this.activeAnimation.endAction();
-				} else {
-					this.animationFrame = 0;
-					this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[0]);
-				}
+				} else this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[0]);
+				this.animationFrame = 0;
 			} else {
 				this.animationFrame += this.activeAnimation.fps / 60;
 				this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[Math.floor(this.animationFrame)]);
@@ -1614,8 +1616,8 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 			if(this.activePathPoint == null) this.getNextPathPoint();
 			if(this.tilePos[0] != this.activePath[this.activePath.length - 1].x || this.tilePos[1] != this.activePath[this.activePath.length - 1].y) {
 				var arrayPos = [this.activePathPoint.x,this.activePathPoint.y];
-				this.setAbsolutePosition(this.x + Math.cos(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed,this.y - Math.sin(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed);
-				if(utils.Misc.getDistance(this.x,this.y,utils.Misc.convertToAbsolutePosition(arrayPos)[0],utils.Misc.convertToAbsolutePosition(arrayPos)[1] + Main.tileSize[1] * 0.5) < this.stats.moveSpeed) {
+				this.setAbsolutePosition(this.x + Math.cos(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed * managers.TimeManager.deltaTime,this.y - Math.sin(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed * managers.TimeManager.deltaTime);
+				if(utils.Misc.getDistance(this.x,this.y,utils.Misc.convertToAbsolutePosition(arrayPos)[0],utils.Misc.convertToAbsolutePosition(arrayPos)[1] + Main.tileSize[1] * 0.5) < this.stats.moveSpeed * managers.TimeManager.deltaTime) {
 					this.setTilePosition(arrayPos);
 					this.pathIndex++;
 					this.useAp(1);
@@ -1632,7 +1634,9 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.activePathPoint = this.activePath[this.pathIndex];
 		this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,[this.activePathPoint.x,this.activePathPoint.y]));
 	}
-	,customUpdate: function() {
+	,normalUpdate: function() {
+	}
+	,fightUpdate: function() {
 	}
 	,setAnimation: function(animName) {
 		if(!this.animations.exists(animName)) {
@@ -1742,15 +1746,15 @@ objects.character.Player = function() {
 	this.pathPositions = [];
 	this.tilePool = [];
 	objects.character.Character.call(this,"hero");
-	Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("HP").text = this.stats.health;
-	Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = this.stats.AP;
+	managers.HudManager.getInstance().HPmeter.text = "" + this.stats.health;
+	managers.HudManager.getInstance().APmeter.text = "" + this.stats.AP;
 	this.tilePool = managers.PoolManager.pullObject("tile",this.stats.MaxAP * 2);
 	var $it0 = HxOverrides.iter(this.tilePool);
 	while( $it0.hasNext() ) {
 		var i = $it0.next();
 		i.tint = 65280;
 	}
-	this.targetTile = new objects.Tile(PIXI.Texture.fromImage("tile.png"));
+	this.targetTile = new objects.Tile(PIXI.Texture.fromImage("selectedTile.png"));
 	this.targetTile.visible = false;
 	Main.getInstance().tileCont.on("mousemove",$bind(this,this.mapHover));
 	Main.getInstance().tileCont.on("mouseup",$bind(this,this.mapClick));
@@ -1767,7 +1771,7 @@ objects.character.Player.__super__ = objects.character.Character;
 objects.character.Player.prototype = $extend(objects.character.Character.prototype,{
 	mouseOverSelf: function(e) {
 		if(objects.character.Player.selectedAction == "move") {
-			if(objects.Options.data.player_showHoverMovement = true) this.showRange(0,this.stats.AP,65280,0.7);
+			if(objects.Options.data.player_showHoverMovement = true) this.showRange(0,this.stats.AP,65280,0.7,utils.Misc.getRangeTileAround(this.tilePos,1,this.stats.AP));
 		}
 	}
 	,mouseOutSelf: function(e) {
@@ -1803,28 +1807,23 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 	}
 	,newTick: function(tickNumber) {
 		objects.character.Character.prototype.newTick.call(this,tickNumber);
-		Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = this.stats.AP;
+		managers.HudManager.getInstance().APmeter.text = "" + this.stats.AP;
 		if(this.APFlash.parent == null) {
-			managers.DrawManager.addToDisplay(this.APFlash,Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP"));
+			managers.DrawManager.addToDisplay(this.APFlash,managers.HudManager.getInstance().APmeter);
 			this.APFlash.scale.set(2 * (1 / this.APFlash.parent.parent.scale.x),2 * (1 / this.APFlash.parent.parent.scale.y));
 		}
 		this.APFlash.gotoAndPlay(0);
 		this.lockHudButtons();
-		var $it0 = this.attacks.keys();
-		while( $it0.hasNext() ) {
-			var attackName = $it0.next();
-			if(this.stats.AP < this.attacks.get(attackName).apCost) Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).lock(); else Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).unlock();
-		}
 	}
 	,damage: function(amount) {
 		objects.character.Character.prototype.damage.call(this,amount);
-		Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("HP").text = this.stats.health;
+		managers.HudManager.getInstance().HPmeter.text = "" + this.stats.health;
 	}
 	,lockHudButtons: function() {
-		var $it0 = this.attacks.keys();
+		var $it0 = managers.HudManager.getInstance().attackButtons.keys();
 		while( $it0.hasNext() ) {
 			var attackName = $it0.next();
-			if(this.stats.AP < this.attacks.get(attackName).apCost) Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).lock(); else Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).unlock();
+			if(this.stats.AP < this.attacks.get(attackName).apCost) managers.HudManager.getInstance().attackButtons.get(attackName).lock(); else managers.HudManager.getInstance().attackButtons.get(attackName).unlock();
 		}
 	}
 	,showPathMovement: function(path) {
@@ -1849,8 +1848,10 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 			}
 		}
 	}
-	,showRange: function(min,max,color,alpha) {
-		var $it0 = HxOverrides.iter(this.activeAttackRange);
+	,showRange: function(min,max,color,alpha,customRange) {
+		var arrayIter;
+		if(customRange == null) arrayIter = this.activeAttackRange; else arrayIter = customRange;
+		var $it0 = HxOverrides.iter(arrayIter);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
 			if(!managers.MapManager.getInstance().activeMap.getWalkableAt(i) && managers.CharacterManager.getInstance().findCharacterAtTilePos(i) == null) continue;
@@ -1888,10 +1889,9 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		return this.tilePool.length - 1;
 	}
 	,showHoverTile: function(tilePos,newTint) {
-		if(this.targetTile.parent == null) managers.DrawManager.addToDisplay(this.targetTile,managers.MapManager.getInstance().activeMap.mapContainer,0.5);
+		if(this.targetTile.parent == null) managers.DrawManager.addToDisplay(this.targetTile,managers.MapManager.getInstance().activeMap.mapContainer,0.7);
 		this.targetTile.setTilePosition(tilePos);
 		this.targetTile.visible = true;
-		if(newTint != null) this.targetTile.tint = newTint; else this.targetTile.tint = 16777215;
 	}
 	,hideHoverTile: function(remove) {
 		if(remove == null) remove = false;
@@ -1901,7 +1901,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 	,useAp: function(amount) {
 		objects.character.Character.prototype.useAp.call(this,amount);
 		this.lockHudButtons();
-		Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = this.stats.AP;
+		managers.HudManager.getInstance().APmeter.text = "" + this.stats.AP;
 	}
 	,changeSelectedAction: function(newActionName) {
 		if(objects.character.Player.selectedAction == newActionName) objects.character.Player.selectedAction = "move"; else objects.character.Player.selectedAction = newActionName;
@@ -1927,7 +1927,9 @@ objects.character.Pnj = function(newName) {
 objects.character.Pnj.__name__ = ["objects","character","Pnj"];
 objects.character.Pnj.__super__ = objects.character.Character;
 objects.character.Pnj.prototype = $extend(objects.character.Character.prototype,{
-	__class__: objects.character.Pnj
+	processAI: function() {
+	}
+	,__class__: objects.character.Pnj
 });
 objects.character.Victim = function(newName) {
 	objects.character.Pnj.call(this,newName);
@@ -1982,7 +1984,7 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 	}
 	,Start: function() {
 		Main.FIGHTMODE = true;
-		managers.HudManager.generateFightHud();
+		managers.HudManager.getInstance().generateFightHud();
 		var camShader = new PIXI.Sprite(PIXI.Texture.fromImage("camShader.png"));
 		camShader.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
 		managers.DrawManager.addToDisplay(camShader,Main.getInstance().effectCont);
@@ -2038,7 +2040,7 @@ states.PreloadState = function() {
 	this.LoadingText.y = Main.getInstance().renderer.height * 0.6;
 	this.LoadingText.anchor.set(0.5,0.5);
 	this.loadingRecangle.lineStyle(3,16777215);
-	this.loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35,Main.getInstance().renderer.height * 0.7,Main.getInstance().renderer.width * 0.25,50);
+	this.loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35,Main.getInstance().renderer.height * 0.7,Main.getInstance().renderer.width * 0.30,50);
 	this.loadingFill.lineStyle(3,11184810);
 };
 states.PreloadState.__name__ = ["states","PreloadState"];
@@ -2067,14 +2069,14 @@ states.PreloadState.prototype = $extend(objects.State.prototype,{
 	}
 	,Update: function() {
 	}
-	,AssetLoaded: function(loader,resource) {
-		this.LoadingText.text = "Loading asset: " + loader.progress + "%";
+	,AssetLoad: function(loader) {
+		this.LoadingText.text = "Loading asset: " + Math.round(loader.progress) + "%";
 		this.loadingRecangle.clear();
 		this.loadingRecangle.lineStyle(4,16777215);
-		this.loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35,Main.getInstance().renderer.height * 0.7,Main.getInstance().renderer.width * 0.25,50);
+		this.loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35,Main.getInstance().renderer.height * 0.7,Main.getInstance().renderer.width * 0.30,50);
 		this.loadingFill.clear();
 		this.loadingFill.beginFill(11184810);
-		this.loadingFill.drawRect(Main.getInstance().renderer.width * 0.35 + 3,Main.getInstance().renderer.height * 0.7 + 3,100 / loader.progress * (Main.getInstance().renderer.width * 0.25 - 4),46);
+		this.loadingFill.drawRect(Main.getInstance().renderer.width * 0.35 + 3,Main.getInstance().renderer.height * 0.7 + 3,loader.progress / 100 * (Main.getInstance().renderer.width * 0.30 - 4),46);
 		this.loadingFill.endFill();
 	}
 	,switchState: function() {

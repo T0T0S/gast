@@ -68,7 +68,6 @@ class Attack{
 	public function endAction(launcher:Character):Void{
 		launcher.waitForNextTick = waitForFinish;
 		finished = true;
-		trace("end");
 	}
 	
 }

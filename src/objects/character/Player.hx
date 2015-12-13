@@ -35,8 +35,8 @@ class Player extends Character{
 	
 	private function new() {
 		super("hero");
-		untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("HP").text = stats.health;
-		untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = stats.AP;
+		HudManager.getInstance().HPmeter.text = ""+stats.health;
+		HudManager.getInstance().APmeter.text = ""+stats.AP;
 		
 		tilePool = cast PoolManager.pullObject("tile", stats.MaxAP * 2);
 		for (i in tilePool.iterator())
@@ -44,7 +44,7 @@ class Player extends Character{
 			i.tint = 0x00FF00;
 		}
 		
-		targetTile = new Tile(Texture.fromImage("tile.png"));
+		targetTile = new Tile(Texture.fromImage("selectedTile.png"));
 		targetTile.visible = false;
 		
 		Main.getInstance().tileCont.on("mousemove", mapHover);
@@ -66,7 +66,7 @@ class Player extends Character{
 	private function mouseOverSelf(e:EventTarget):Void {
 		if (selectedAction == "move")
 			if (Options.data.player_showHoverMovement = true){
-				showRange(0, stats.AP, 0x00FF00, 0.7);
+				showRange(0, stats.AP, 0x00FF00, 0.7, Misc.getRangeTileAround(tilePos, 1, stats.AP));
 			}
 	}
 	
@@ -123,37 +123,30 @@ class Player extends Character{
 	
 	override public function newTick(tickNumber:Int):Void {
 		super.newTick(tickNumber);
-		untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = stats.AP;
+		HudManager.getInstance().APmeter.text = ""+stats.AP;
 		
 		if (APFlash.parent == null) {
-			DrawManager.addToDisplay(APFlash, untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP"));
+			DrawManager.addToDisplay(APFlash, HudManager.getInstance().APmeter);
 			APFlash.scale.set(2 *(1 / APFlash.parent.parent.scale.x), 2 *(1 / APFlash.parent.parent.scale.y));
 		}
 		APFlash.gotoAndPlay(0);
 		
 		lockHudButtons();
-		for (attackName in attacks.keys())
-		{
-			if(stats.AP < attacks.get(attackName).apCost)
-				untyped Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).lock();
-			else
-				untyped Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).unlock();
-		}
 	}
 	
 	override public function damage(amount:Int):Void {
 		super.damage(amount);
-		untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("HP").text = stats.health;
+		HudManager.getInstance().HPmeter.text = ""+stats.health;
 	}
 	
 	
 	private function lockHudButtons():Void{
-		for (attackName in attacks.keys())
+		for (attackName in HudManager.getInstance().attackButtons.keys())
 		{
 			if(stats.AP < attacks.get(attackName).apCost)
-				untyped Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).lock();
+				HudManager.getInstance().attackButtons.get(attackName).lock();
 			else
-				untyped Main.getInstance().hudCont.getChildByName("center").getChildByName(attackName).unlock();
+				HudManager.getInstance().attackButtons.get(attackName).unlock();
 		}
 	}
 	
@@ -181,13 +174,13 @@ class Player extends Character{
 		}
 	}
 	
-	public function showRange(min:Int, max:Int, ?color:Int, ?alpha:Float):Void {
+	public function showRange(min:Int, max:Int, ?color:Int, ?alpha:Float, ?customRange:Array<Array<Int>>):Void {
 		/*
 		 * attention pour le pathfinding bug <= il calcule pas si on peux arriver aux positions.
 		 * need to repredict after every end of path and stock the value.
 		 * */
-	
-		for (i in activeAttackRange.iterator())
+		var arrayIter:Array<Array<Int>> = customRange == null ? activeAttackRange : customRange;
+		for (i in arrayIter.iterator())
 		{
 			if(!MapManager.getInstance().activeMap.getWalkableAt(i) && CharacterManager.getInstance().findCharacterAtTilePos(i) == null)
 				continue;
@@ -230,11 +223,11 @@ class Player extends Character{
 	
 	public function showHoverTile(tilePos:Array<Int>, newTint:Int = null):Void {
 		if (targetTile.parent == null){
-			DrawManager.addToDisplay(targetTile, MapManager.getInstance().activeMap.mapContainer, untyped 0.5);
+			DrawManager.addToDisplay(targetTile, MapManager.getInstance().activeMap.mapContainer, untyped 0.7);
 		}
 		targetTile.setTilePosition(tilePos);
 		targetTile.visible = true;
-		targetTile.tint = newTint != null ? newTint : 0xFFFFFF;	
+		//targetTile.tint = newTint != null ? newTint : 0xFFFFFF;	
 	}
 	
 	public function hideHoverTile(remove:Bool = false):Void {
@@ -246,7 +239,7 @@ class Player extends Character{
 	override public function useAp(amount:Int):Void {
 		super.useAp(amount);
 		lockHudButtons();
-		untyped Main.getInstance().hudCont.getChildByName("right_bottom").getChildByName("AP").text = stats.AP;
+		HudManager.getInstance().APmeter.text = ""+stats.AP;
 	}
 	
 	public function changeSelectedAction(newActionName:String):Void{

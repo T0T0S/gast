@@ -26,7 +26,7 @@ class PreloadState extends State{
 		LoadingText.y = Main.getInstance().renderer.height * 0.6;
 		LoadingText.anchor.set(0.5, 0.5);
 		loadingRecangle.lineStyle(3, 0xFFFFFF);
-		loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35 , Main.getInstance().renderer.height*0.7, Main.getInstance().renderer.width *0.25, 50);
+		loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35 , Main.getInstance().renderer.height*0.7, Main.getInstance().renderer.width *0.30, 50);
 		loadingFill.lineStyle(3, 0xAAAAAA);
 	}
 	
@@ -62,14 +62,19 @@ class PreloadState extends State{
 	
 	}
 	
-	override public function AssetLoaded(loader:Loader, resource:Resource):Void {
-		LoadingText.text = "Loading asset: "+loader.progress+"%";
+	override public function AssetLoad(loader:Loader):Void {
+		LoadingText.text = "Loading asset: "+Math.fround(loader.progress)+"%";
 		loadingRecangle.clear();
 		loadingRecangle.lineStyle(4, 0xFFFFFF);
-		loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35 , Main.getInstance().renderer.height*0.7, Main.getInstance().renderer.width *0.25, 50);
+		loadingRecangle.drawRect(Main.getInstance().renderer.width * 0.35 , Main.getInstance().renderer.height*0.7, Main.getInstance().renderer.width *0.30, 50);
 		loadingFill.clear();
 		loadingFill.beginFill(0xAAAAAA);
-		loadingFill.drawRect(Main.getInstance().renderer.width * 0.35 + 3, Main.getInstance().renderer.height*0.7+3,100 /loader.progress * ((Main.getInstance().renderer.width *0.25) - 4), 46);
+		loadingFill.drawRect(
+			Main.getInstance().renderer.width * 0.35 + 3, 
+			Main.getInstance().renderer.height * 0.7 + 3,
+			(loader.progress / 100) * ((Main.getInstance().renderer.width * 0.30) - 4), 
+			46
+		);
 		loadingFill.endFill();
 		
 	}

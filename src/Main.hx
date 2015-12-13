@@ -81,7 +81,7 @@ class Main
 		font.src = "assets/fonts/Days.otf";
 		
 		
-		renderer = Detector.autoDetectRenderer(1280, 720, {});
+		renderer = Detector.autoDetectRenderer(1600, 900, {});
 		renderer.backgroundColor = 0x171824;
 		renderMask.beginFill();
 		renderMask.drawRect(0, 0, renderer.width, renderer.height);
@@ -183,6 +183,26 @@ class Main
 	
 }
 
+/*
+ *	 TODO: 
+ * 		
+ * 	Fight Manager
+ * 	view angle
+ * 
+ *   IA ENEMY ZOMBIE
+ * 		1 - rush player
+ * 	 	2 - attack cac
+ * 		3 - attack ranged
+ * 	
+ * 	new map survival
+ * 	mode survival
+ * 
+ * 	server nodejs  !!!
+ * 
+ * 	mode normal vs mode fight
+ * 	
+ * 
+ **/
 
 
 

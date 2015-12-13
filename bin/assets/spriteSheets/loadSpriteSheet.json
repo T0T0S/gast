@@ -1,8 +1,26 @@
 {"frames": {
 
-"tile.png":
+"tile6.png":
 {
-	"frame": {"x":1,"y":1,"w":64,"h":32},
+	"frame": {"x":0,"y":0,"w":64,"h":128},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":128},
+	"sourceSize": {"w":64,"h":128},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"tile4.png":
+{
+	"frame": {"x":64,"y":0,"w":64,"h":64},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
+	"sourceSize": {"w":64,"h":64},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"tilehover.png":
+{
+	"frame": {"x":0,"y":128,"w":64,"h":32},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":32},
@@ -11,47 +29,56 @@
 },
 "tile2.png":
 {
-	"frame": {"x":65,"y":1,"w":64,"h":32},
+	"frame": {"x":64,"y":128,"w":64,"h":32},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":32},
 	"sourceSize": {"w":64,"h":32},
 	"pivot": {"x":0.5,"y":0.5}
 },
-"tile4.png":
+"alliedTile.png":
 {
-	"frame": {"x":129,"y":1,"w":64,"h":64},
+	"frame": {"x":0,"y":160,"w":64,"h":32},
 	"rotated": false,
 	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
-	"sourceSize": {"w":64,"h":64},
+	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":32},
+	"sourceSize": {"w":64,"h":32},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"tile.png":
+{
+	"frame": {"x":64,"y":160,"w":64,"h":32},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":32},
+	"sourceSize": {"w":64,"h":32},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"enemyTile.png":
+{
+	"frame": {"x":0,"y":192,"w":64,"h":32},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":32},
+	"sourceSize": {"w":64,"h":32},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"selectedTile.png":
+{
+	"frame": {"x":64,"y":192,"w":64,"h":32},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":32},
+	"sourceSize": {"w":64,"h":32},
 	"pivot": {"x":0.5,"y":0.5}
 },
 "tile5.png":
 {
-	"frame": {"x":1,"y":65,"w":128,"h":128},
+	"frame": {"x":0,"y":224,"w":128,"h":128},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":128,"h":128},
 	"sourceSize": {"w":128,"h":128},
-	"pivot": {"x":0.5,"y":0.5}
-},
-"tile6.png":
-{
-	"frame": {"x":129,"y":65,"w":64,"h":128},
-	"rotated": false,
-	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":128},
-	"sourceSize": {"w":64,"h":128},
-	"pivot": {"x":0.5,"y":0.5}
-},
-"tilehover.png":
-{
-	"frame": {"x":1,"y":193,"w":64,"h":32},
-	"rotated": false,
-	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":32},
-	"sourceSize": {"w":64,"h":32},
 	"pivot": {"x":0.5,"y":0.5}
 }},
 "meta": {
@@ -59,8 +86,8 @@
 	"version": "1.0",
 	"image": "loadSpriteSheet.png",
 	"format": "RGBA8888",
-	"size": {"w":194,"h":226},
+	"size": {"w":128,"h":352},
 	"scale": "1",
-	"smartupdate": "$TexturePacker:SmartUpdate:8e1c38c9b05499dcf29355ec8fbafb12:b9a6d235bf99ed39a2845b1100b627ca:d2cb66596aa0fa9c0a7387d2bc41c52c$"
+	"smartupdate": "$TexturePacker:SmartUpdate:1449ce3cbc3e91275349d014cd6fc1bf:94b39370daa8e073321b7fae759b1ebb:d2cb66596aa0fa9c0a7387d2bc41c52c$"
 }
 }

@@ -51,6 +51,17 @@
 		"hero_attack_2.png",
 		"hero_attack_3.png"
 	],
+	"stats":{
+		"health" 		: 100,
+		"strength" 		: 10,
+		"endurance" 	: 10,
+		"regeneration" 	: 10,
+		"moveSpeed" 	: 140,
+		"precision" 	: 10,
+		"luck" 			: 10,
+		"AP" 			: 10,
+		"MaxAP" 		: 10
+	},
 	"animations":{
 		"idle" : {
 			"fps": 10,

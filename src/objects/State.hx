@@ -28,8 +28,6 @@ class State{
 	 * pusher les assets en faisant: elementsToLoad.push("assets/decor/cadre.png");
 	 */
 	public var loadJson:Map<String,String> = new Map.Map();
-	public var loadImage:Map<String,String> = new Map.Map();
-	public var loaderReady:Int = 0;
 	
 	public function new(newName:String) {
 		name = newName;
@@ -40,9 +38,7 @@ class State{
 	
 	public function _StartLoading():Void {
 		Preload();
-		loaderReady += Lambda.count(loadJson) == 0 ? 1 : 0;
-		loaderReady += Lambda.count(loadImage) == 0 ? 1 : 0;
-		if (loaderReady == 2) {
+		if (Lambda.count(loadJson) == 0) {
 			StateLoaded = true;
 			Start();
 			StateManager.loadingState = false;
@@ -51,39 +47,30 @@ class State{
 		
 		
 		var jsonLoader:Loader = new Loader();
-		var assetLoader:Loader = new Loader();
 		
 		for (i in loadJson.iterator()) {
 			jsonLoader.add(i,loadJson[i]); 
 		}
 		
-		for (i in loadImage.iterator()) {
-			assetLoader.add(i,loadImage[i]); 
-		}
-		
 		jsonLoader.once("complete", _assetLoaded);
-		assetLoader.once("complete", _assetLoaded);
-		assetLoader.load(untyped _onAssetLoadProgress);
+		jsonLoader.on("progress", AssetLoad);
 		jsonLoader.load();
 	};
 	
 	private function _onAssetLoadProgress (loader:Loader, resource:Resource):Void {		
-		AssetLoaded(loader, resource);
+		AssetLoad(loader);
 	}
 	
 	private function _assetLoaded (loader:Loader):Void {
-		++loaderReady;
-		if(loaderReady == 2){
-			AllAssetsLoaded(loader);
-			StateLoaded = true;
-			Start();
-			StateManager.loadingState = false;
-		}
+		AllAssetsLoaded(loader);
+		StateLoaded = true;
+		Start();
+		StateManager.loadingState = false;
 	}
 	
 	public function Preload():Void { };
 	
-	public function AssetLoaded(loader:Loader, resource:Resource):Void { };
+	public function AssetLoad(loader:Loader):Void { };
 
 	public function AllAssetsLoaded(loader:Loader):Void { };
 	

@@ -7,7 +7,7 @@ import objects.character.Player;
  * @author ToTos
  */
 class HudButton extends Button{
-	private var actionName:String;
+	public var actionName:String;
 	public function new(textureName:String, actionName:String) {
 		super(textureName);
 		anchor.set(0.5, 0.5);
