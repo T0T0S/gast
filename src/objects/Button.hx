@@ -85,8 +85,8 @@ class Button extends MovieClip {
 			gotoAndStop(0);
 	}
 	
-	private function p_onDown	(e:EventTarget):Void { if (locked) return; isDown = true; setSpecialTexture("down"); arrayCallbacks.down(e); e.stopPropagation(); }
-	private function p_onUp		(e:EventTarget):Void { if (locked) return; if (!isDown) return; isDown = false;  setSpecialTexture("hover"); arrayCallbacks.up(e); e.stopPropagation(); }
+	private function p_onDown	(e:EventTarget):Void { if (locked) return; isDown = true; setSpecialTexture("down"); arrayCallbacks.down(e); if(e != null)e.stopPropagation(); }
+	private function p_onUp		(e:EventTarget):Void { if (locked) return; if (!isDown) return; isDown = false;  setSpecialTexture("hover"); arrayCallbacks.up(e); if(e != null) e.stopPropagation(); }
 	private function p_onOut	(e:EventTarget):Void { if (locked) return; isDown = false; setSpecialTexture("idle"); arrayCallbacks.out(e); e.stopPropagation(); }
 	private function p_onHover	(e:EventTarget):Void {
 		if (locked) return;

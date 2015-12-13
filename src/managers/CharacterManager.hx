@@ -34,16 +34,16 @@ class CharacterManager{
 		
 		if (positions[newPosition[0]] == null)
 			positions[newPosition[0]] = [];
-		positions[newPosition[0]][newPosition[1]] = element.charaName;
+		positions[newPosition[0]][newPosition[1]] = element.ID;
 		MapManager.finder.setColliTile(newPosition[0],newPosition[1],false);
 	}
 	
 	public function addCharacter(element:Character):Void{
-		managedCharacters.set(element.charaName, element);
+		managedCharacters.set(element.ID, element);
 	}
 	
 	public function removeCharacter(element:Character):Void{
-		managedCharacters.remove(element.charaName);
+		managedCharacters.remove(element.ID);
 		positions[element.tilePos[0]][element.tilePos[1]] = null;
 		MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
 	}
@@ -58,7 +58,7 @@ class CharacterManager{
 	
 	public function switchState():Void{
 		for (i in managedCharacters.iterator())
-			managedCharacters.remove(i.charaName);
+			managedCharacters.remove(i.ID);
 		positions = [[]];
 	}
 	

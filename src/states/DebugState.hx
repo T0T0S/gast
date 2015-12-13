@@ -1,6 +1,7 @@
 package states;
 import js.Browser;
 import managers.DrawManager;
+import managers.FightManager;
 import managers.HudManager;
 import managers.InitManager;
 import managers.MapManager;
@@ -35,7 +36,6 @@ class DebugState extends State {
 	
 	}
 	public override function Start() {
-		Main.FIGHTMODE = true;
 		HudManager.getInstance().generateFightHud();
 		
 		var camShader:Sprite = new Sprite(Texture.fromImage("camShader.png"));
@@ -61,7 +61,12 @@ class DebugState extends State {
 		victim.scale.set(0.4, 0.4);
 		DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer,1);
 		
-
+		FightManager.getInstance().startSetup([victim.ID]);
+	
+	
+	
+		//trace(""+Misc.checkLine(0,0,5,20));
+		Misc.traceRay([3,15],[7,15]);
 	}
 	
 	public override function Update() {

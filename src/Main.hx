@@ -6,6 +6,8 @@ import js.html.Font;
 import js.html.KeyboardEvent;
 import managers.CharacterManager;
 import managers.DrawManager;
+import managers.FightManager;
+import managers.HudManager;
 import managers.InitManager;
 import managers.MapManager;
 import managers.MouseManager;
@@ -19,6 +21,7 @@ import pixi.core.graphics.Graphics;
 import pixi.core.renderers.Detector;
 import pixi.core.renderers.webgl.WebGLRenderer;
 import pixi.core.text.Text;
+import utils.Misc;
 
 //import managers.ZoomManager;
 
@@ -39,6 +42,8 @@ class Main
 	public static var timeManager:TimeManager;
 	public static var characterManager:CharacterManager;
 	public static var poolManager:PoolManager;
+	public static var fightManager:FightManager;
+	
 	
 	public static var camera:Camera;
 	public static var gameOptions:Options;
@@ -60,8 +65,6 @@ class Main
 	
 	public static var DEBUGMODE:Bool = true;
 	public static var GAMESTOPPED:Bool = false;
-	
-	public static var FIGHTMODE:Bool = false;
 	
 	static function main ():Void {
 		Main.getInstance();
@@ -113,6 +116,7 @@ class Main
 		renderer.render(fullStage);
 		renderer.view.className = "gastCanvas";
 		
+		
 		Browser.document.body.appendChild(renderer.view);
 		Browser.window.addEventListener("keydown", keyDownListener);
 	}
@@ -135,6 +139,7 @@ class Main
 		camera = Camera.getInstance();
 		mapManager = MapManager.getInstance();
 		characterManager = CharacterManager.getInstance();
+		fightManager = FightManager.getInstance();
 		poolManager = PoolManager.getInstance();
 		stateManager = StateManager.getInstance();
 		
@@ -174,6 +179,23 @@ class Main
 		if (String.fromCharCode(e.keyCode) == "A" && e.altKey) {
 			GAMESTOPPED = !GAMESTOPPED;
 		}
+		
+		if (FightManager.status == "fight")
+		{
+			var attackIndex:Int = 0;
+			if (e.keyCode >= 48)
+			{
+				attackIndex = e.keyCode - 48;
+				attackIndex = attackIndex == 0 ? 10 : attackIndex;
+				
+				if (HudManager.getInstance().buttonPosition[attackIndex] != null){
+					HudManager.getInstance().buttonPosition[attackIndex].emit("mousedown");
+					HudManager.getInstance().buttonPosition[attackIndex].emit("mouseup");
+					HudManager.getInstance().buttonPosition[attackIndex].emit("mouseout");
+				}
+			}
+		
+		}
 	}
 
 	
@@ -186,8 +208,9 @@ class Main
 /*
  *	 TODO: 
  * 		
- * 	Fight Manager
- * 	view angle
+ * 	view angle (ranges)
+ * 	====> ajouter ça au player, tester, tester, tester, tester, tester, et voir avec tout les points sur le tour de la range. ou de la range en elle meme. pute.
+ * 
  * 
  *   IA ENEMY ZOMBIE
  * 		1 - rush player

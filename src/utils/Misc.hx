@@ -1,12 +1,14 @@
 package utils;
 import js.Browser;
 import managers.InitManager;
+import managers.MapManager;
 import managers.MouseManager;
 import managers.PoolManager;
 import objects.attacks.Attack;
 import objects.attacks.NormalAttack;
 import objects.attacks.TripleAttack;
 import objects.Camera;
+import objects.GameMap;
 import objects.Tile;
 import pixi.core.display.DisplayObject;
 import pixi.core.math.shapes.Rectangle;
@@ -241,4 +243,205 @@ class Misc {
 		return false;
 		
 	}
+	
+	static inline function fastAbs(v:Dynamic) : Int {
+		return (v ^ (v >> 31)) - (v >> 31);
+	}	
+ 
+	static inline function fastFloor(v:Float) : Int {
+		return Std.int(v);
+	}
+		
+	
+	// algo de bresenham;
+	public static function checkLine(x0:Int, y0:Int, x1:Int, y1:Int):Array<Array<Int>> {
+		var rayCanPass  = function(x, y) { return MapManager.getInstance().activeMap.getWalkableAt([x, y]); };
+		var swapXY = fastAbs( y1 - y0 ) > fastAbs( x1 - x0 );
+		var tmp : Int;
+		if ( swapXY ) {
+			// swap x and y
+			tmp = x0; x0 = y0; y0 = tmp; // swap x0 and y0
+			tmp = x1; x1 = y1; y1 = tmp; // swap x1 and y1
+		}
+		 
+		if ( x0 > x1 ) {
+			// make sure x0 < x1
+			tmp = x0; x0 = x1; x1 = tmp; // swap x0 and x1
+			tmp = y0; y0 = y1; y1 = tmp; // swap y0 and y1
+		}
+		 
+		var deltax = x1 - x0;
+		var deltay = fastFloor( fastAbs( y1 - y0 ) );
+		var error = fastFloor( deltax / 2 );
+		var y = y0;
+		var ystep = if ( y0 < y1 ) 1 else -1;
+		var pts:Array<Array<Int>> = [];
+		if( swapXY )
+			// Y / X
+			for ( x in x0 ... x1+1 ) {
+				pts.push([y,x]);
+				if( !rayCanPass(y,x) )
+					return pts;
+					 
+				error -= deltay;
+				if ( error < 0 ) {
+					y = y + ystep;
+					error = error + deltax;
+				}
+			}
+		else
+			// X / Y
+			for ( x in x0 ... x1+1 ) {
+				pts.push([x,y]);
+				if( !rayCanPass(x,y) )
+					return pts;
+					 
+				error -= deltay;
+				if ( error < 0 ) {
+					y = y + ystep;
+					error = error + deltax;
+				}
+			}
+		return pts;
+	}
+	
+	public static function convertOrthoToIso(orthoPos:Array<Array<Int>>):Array<Array<Int>>{
+		var i:Int = 0;
+		while (i < orthoPos.length) {
+			if (i == 0){ // skip first
+				++i;
+				continue;
+			}
+			
+			if (orthoPos[i - 1][1] % 2 == 0)
+			{
+				if (orthoPos[i - 1][0] - orthoPos[i][0] < 0)
+				{
+					if (orthoPos[i - 1][1] - orthoPos[i][1] < 0)
+					{
+						//wrong diago down right move
+						if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] + 1, orthoPos[i - 1][1]]))
+						{
+							trace("addPoint");
+							orthoPos.insert(i, [orthoPos[i - 1][0] + 1, orthoPos[i - 1][1]]);
+							++i;
+						}
+						else if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0], orthoPos[i - 1][1] +1]))
+						{
+							trace("addPoint");
+							orthoPos.insert(i, [orthoPos[i - 1][0], orthoPos[i - 1][1] +1]);
+							++i;
+						}
+						else
+						{
+							trace("BREAK");
+							orthoPos.splice(i, orthoPos.length - i - 1);
+							i = 300000;
+						}
+					
+					}
+					else if(orthoPos[i - 1][1] - orthoPos[i][1] > 0)
+					{
+						//wrong diago up right move
+						if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] + 1, orthoPos[i - 1][1]]))
+						{
+							trace("addPoint");
+							orthoPos.insert(i, [orthoPos[i - 1][0] + 1, orthoPos[i - 1][1]]);
+							++i;
+						}
+						else if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0], orthoPos[i - 1][1]  - 1]))
+						{
+							trace("addPoint");
+							orthoPos.insert(i, [orthoPos[i - 1][0], orthoPos[i - 1][1] - 1]);
+							++i;
+						}
+						else
+						{
+							trace("BREAK");
+							orthoPos.splice(i, orthoPos.length - i - 1);
+							i = 300000;
+						}
+					}
+				}
+			}
+			else
+			{
+				if (orthoPos[i - 1][0] - orthoPos[i][0] > 0)
+				{
+					if (orthoPos[i - 1][1] - orthoPos[i][1] < 0)
+					{
+						//wrong diago down left move
+						if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] - 1, orthoPos[i - 1][1]]))
+						{
+							trace("addPoint");
+							orthoPos.insert(i, [orthoPos[i - 1][0] - 1, orthoPos[i - 1][1]]);
+							++i;
+						}
+						else if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0], orthoPos[i - 1][1] +1]))
+						{
+							trace("addPoint");
+							orthoPos.insert(i, [orthoPos[i - 1][0], orthoPos[i - 1][1] +1]);
+							++i;
+						}
+						else
+						{
+							trace("BREAK");
+							orthoPos.splice(i, orthoPos.length - i - 1);
+							i = 300000;
+						}
+					
+					}
+					else if(orthoPos[i - 1][1] - orthoPos[i][1] > 0)
+					{
+						//wrong diago up left move
+						if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] - 1, orthoPos[i - 1][1]]))
+						{
+							trace("addPoint");
+							orthoPos.insert(i, [orthoPos[i - 1][0] - 1, orthoPos[i - 1][1]]);
+							++i;
+						}
+						else if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0], orthoPos[i - 1][1]  - 1]))
+						{
+							trace("addPoint");
+							orthoPos.insert(i, [orthoPos[i - 1][0], orthoPos[i - 1][1] - 1]);
+							++i;
+						}
+						else
+						{
+							trace("BREAK");
+							orthoPos.splice(i, orthoPos.length - i - 1);
+							i = 300000;
+						}
+					}
+				}
+			}
+			++i;
+		}
+			
+			
+		
+		//PHASE DECOUPE
+		i = 0;
+		while (i < orthoPos.length) {
+			if (i < 2){// skip 2 first
+				++i;
+				continue;
+			}
+			
+			if (orthoPos[i][0] == orthoPos[i - 1][0] && orthoPos[i][0] == orthoPos[i - 2][0])
+			{
+				trace("cutPoint");
+				orthoPos.splice(i - 1, 1);
+			}
+			++i;
+		}
+		
+		return orthoPos;
+	}
+	
+	public static function traceRay(from:Array<Int>, to:Array<Int>):Void{
+		//MouseManager.createLilCubes(cast checkLine(from[0],from[1], to[0], to[1]));
+		MouseManager.createLilCubes(cast convertOrthoToIso(checkLine(from[0],from[1], to[0], to[1])));
+	}
+	
 }

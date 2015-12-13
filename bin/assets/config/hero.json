@@ -90,7 +90,7 @@
 			"minRange": 3,
 			"maxRange": 5,
 			"apCost" : 3,
-			"damage" : 30,
+			"damage" : 300,
 			"framesData": [[5,2],[5,2],[5,2]]
 		}
 	}

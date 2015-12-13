@@ -31,7 +31,23 @@
  "tilesets":[
         {
          "firstgid":1,
-         "image":"..\/spriteSheets\/mapSpriteSheet.png",
+         "image":"..\/misc\/tile.png",
+         "imageheight":64,
+         "imagewidth":64,
+         "margin":0,
+         "name":"mapSpriteSheet",
+         "properties":
+            {
+
+            },
+         "spacing":0,
+         "tileheight":32,
+         "tilewidth":64,
+         "transparentcolor":"#ff00fb"
+        }, 
+        {
+         "firstgid":2,
+         "image":"..\/misc\/tile2.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,

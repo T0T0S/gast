@@ -3,6 +3,7 @@ import haxe.Constraints.Function;
 import js.Browser;
 import managers.CharacterManager;
 import managers.DrawManager;
+import managers.FightManager;
 import managers.InitManager;
 import managers.MapManager;
 import managers.PoolManager;
@@ -35,7 +36,7 @@ typedef Stats = {
 
 class Character extends MovieClip{
 
-	public var ID:Id;
+	public var ID:String;
 
 	public var tilePos:Array<Int> = [0,0];
 	public var directionFacing:Int = 0;
@@ -96,6 +97,8 @@ class Character extends MovieClip{
 		generateAnimations();
 		generateAttacks();
 		loop = true;
+		
+		ID = Id.newId();
 		
 		anchor.set(0.5, 1);
 		dmgTextPool = cast PoolManager.pullObject("dmgText",5);
@@ -190,10 +193,11 @@ class Character extends MovieClip{
 		
 		
 		if (!updateBlocked) {
-			managePathFinding();
-			if (Main.FIGHTMODE)
+			if (FightManager.status != "setup")
+				managePathFinding();
+			if (FightManager.status == "fight")
 				fightUpdate();
-			else if(Main.FIGHTMODE)
+			else
 				normalUpdate();
 		}
 	}
@@ -314,7 +318,7 @@ class Character extends MovieClip{
 	
 	
 	
-	public function kill():Void{
+	public function kill():Void {
 		trace("TARGET '" + charaName+"' is dead !");
 		
 		setAnimation("death");
@@ -322,6 +326,7 @@ class Character extends MovieClip{
 		updateBlocked = true;
 		isDead = true;
 		
+		FightManager.getInstance().testFightOver();
 		Destroy();
 		
 		

@@ -3,6 +3,7 @@ import js.Browser;
 import js.html.CustomEvent;
 import objects.character.Character;
 import pixi.core.display.Container;
+import utils.Misc;
 
 	
 /**
@@ -33,7 +34,7 @@ class TimeManager {
 		deltaTime = (Date.now().getTime() - timeNow) / 1000;
 		timeNow = Date.now().getTime();
 		
-		if(Main.FIGHTMODE)
+		if(FightManager.status == "fight")
 			combatTick();
 			
 		FPS = 3600 * deltaTime > 60 ? 60 : Math.floor(3600 * deltaTime);
@@ -46,7 +47,7 @@ class TimeManager {
 			newTick();
 		}
 
-		if (HudManager.mode == "fight") 
+		if (FightManager.status == "fight") 
 		{
 			cast(Main.getInstance().hudCont.getChildByName("right_bottom"), Container).getChildByName("tickTimer").rotation = (2 * Math.PI) * ((frameElapsed % tickInterval) / tickInterval);
 		}

@@ -17,9 +17,8 @@ class HudManager {
 	
 	private static var instance: HudManager;
 	
-	public static var mode:String = "none";
-	
 	public var attackButtons:Map<String,HudButton> = new Map.Map();
+	public var buttonPosition:Array<HudButton> = [];
 	public var HPmeter:Text;
 	public var APmeter:Text;
 	
@@ -29,7 +28,6 @@ class HudManager {
 	}
 	
 	public function generateFightHud():Void {
-		mode = "fight";
 		var rightHud:Sprite 	= new HudElement(Texture.fromImage("hud_bottom_right.png"));
 		rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
 		rightHud.anchor.set(1, 1);
@@ -48,16 +46,13 @@ class HudManager {
 		//moveButton.x = -695;
 		//moveButton.y = -73;
 		
-		var attackButton:HudButton  = new HudButton("button_attack", "normal");
-		attackButton.x = -695;
-		attackButton.y = -73;
-		attackButtons.set(attackButton.actionName, attackButton);
 		
-		var tripleAttackButton:HudButton  = new HudButton("button_triple_attack", "triple");
-		tripleAttackButton.anchor.set(0.5, 0.5);
-		tripleAttackButton.x = -570;
-		tripleAttackButton.y = -73;
-		attackButtons.set(tripleAttackButton.actionName, tripleAttackButton);
+		
+		var attackButton:HudButton = addActionButton("button_attack", "normal", 1);
+		
+		var tripleAttackButton:HudButton  =  addActionButton("button_triple_attack", "triple", 2);
+		
+		
 		
 		var tickTimer:Sprite = new Sprite(Texture.fromImage("timerFill.png"));
 		tickTimer.anchor.set(0.5,0.5);
@@ -90,8 +85,18 @@ class HudManager {
 
 	}
 	
+	public function addActionButton(textureName:String, attackName:String, position:Int):HudButton{
+		position = position == 0 ? 10 : position;
+		var newButton = new HudButton(textureName, attackName);
+		newButton.anchor.set(0.5, 0.5);
+		newButton.x = -695 + 125 * (position -1);
+		newButton.y = -73;
+		attackButtons.set(newButton.actionName, newButton);
+		buttonPosition[position] = newButton;
+		return newButton;
+	}
+	
 	public function switchState():Void{
-		mode = "none";
 	}
 	
 	public static function getInstance (): HudManager {

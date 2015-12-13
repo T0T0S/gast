@@ -148,6 +148,7 @@ Main.prototype = {
 		Main.camera = objects.Camera.getInstance();
 		Main.mapManager = managers.MapManager.getInstance();
 		Main.characterManager = managers.CharacterManager.getInstance();
+		Main.fightManager = managers.FightManager.getInstance();
 		Main.poolManager = managers.PoolManager.getInstance();
 		Main.stateManager = managers.StateManager.getInstance();
 		window.addEventListener("resize",$bind(this,this.resize));
@@ -174,6 +175,18 @@ Main.prototype = {
 	}
 	,keyDownListener: function(e) {
 		if(String.fromCharCode(e.keyCode) == "A" && e.altKey) Main.GAMESTOPPED = !Main.GAMESTOPPED;
+		if(managers.FightManager.status == "fight") {
+			var attackIndex = 0;
+			if(e.keyCode >= 48) {
+				attackIndex = e.keyCode - 48;
+				if(attackIndex == 0) attackIndex = 10; else attackIndex = attackIndex;
+				if(managers.HudManager.getInstance().buttonPosition[attackIndex] != null) {
+					managers.HudManager.getInstance().buttonPosition[attackIndex].emit("mousedown");
+					managers.HudManager.getInstance().buttonPosition[attackIndex].emit("mouseup");
+					managers.HudManager.getInstance().buttonPosition[attackIndex].emit("mouseout");
+				}
+			}
+		}
 	}
 	,destroy: function() {
 		Main.instance = null;
@@ -463,14 +476,14 @@ managers.CharacterManager.prototype = {
 		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
 		managers.MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
 		if(this.positions[newPosition[0]] == null) this.positions[newPosition[0]] = [];
-		this.positions[newPosition[0]][newPosition[1]] = element.charaName;
+		this.positions[newPosition[0]][newPosition[1]] = element.ID;
 		managers.MapManager.finder.setColliTile(newPosition[0],newPosition[1],false);
 	}
 	,addCharacter: function(element) {
-		this.managedCharacters.set(element.charaName,element);
+		this.managedCharacters.set(element.ID,element);
 	}
 	,removeCharacter: function(element) {
-		this.managedCharacters.remove(element.charaName);
+		this.managedCharacters.remove(element.ID);
 		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
 		managers.MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
 	}
@@ -486,7 +499,7 @@ managers.CharacterManager.prototype = {
 		var $it0 = this.managedCharacters.iterator();
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
-			this.managedCharacters.remove(i.charaName);
+			this.managedCharacters.remove(i.ID);
 		}
 		this.positions = [[]];
 	}
@@ -519,7 +532,63 @@ managers.DrawManager.prototype = {
 	}
 	,__class__: managers.DrawManager
 };
+managers.FightManager = function() {
+	this.enemyCharactersID = [];
+	this.alliedCharactersID = [];
+};
+managers.FightManager.__name__ = ["managers","FightManager"];
+managers.FightManager.getInstance = function() {
+	if(managers.FightManager.instance == null) managers.FightManager.instance = new managers.FightManager();
+	return managers.FightManager.instance;
+};
+managers.FightManager.prototype = {
+	startSetup: function(enemiesID) {
+		managers.FightManager.status = "setup";
+		this.alliedCharactersID.push(objects.character.Player.getInstance().ID);
+		var $it0 = HxOverrides.iter(enemiesID);
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			this.enemyCharactersID.push(i);
+		}
+		this.startFight();
+	}
+	,addAlliedCharacterToSetup: function(alliedID) {
+		this.alliedCharactersID.push(alliedID);
+	}
+	,startFight: function() {
+		managers.FightManager.status = "fight";
+	}
+	,testFightOver: function() {
+		var numberAlliedDead = 0;
+		var numberEnemyDead = 0;
+		var $it0 = HxOverrides.iter(this.alliedCharactersID);
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			if(managers.CharacterManager.getInstance().managedCharacters.get(i).isDead) ++numberAlliedDead;
+		}
+		var $it1 = HxOverrides.iter(this.enemyCharactersID);
+		while( $it1.hasNext() ) {
+			var i1 = $it1.next();
+			if(managers.CharacterManager.getInstance().managedCharacters.get(i1).isDead) ++numberEnemyDead;
+		}
+		if(this.alliedCharactersID.length == numberAlliedDead) {
+			objects.character.Player.getInstance().loseCombat();
+			this.fightEnd();
+		} else if(numberEnemyDead == this.enemyCharactersID.length) {
+			objects.character.Player.getInstance().winCombat();
+			this.fightEnd();
+		}
+	}
+	,fightEnd: function() {
+		managers.FightManager.status = "normal";
+	}
+	,destroy: function() {
+		managers.FightManager.instance = null;
+	}
+	,__class__: managers.FightManager
+};
 managers.HudManager = function() {
+	this.buttonPosition = [];
 	this.attackButtons = new haxe.ds.StringMap();
 };
 managers.HudManager.__name__ = ["managers","HudManager"];
@@ -529,7 +598,6 @@ managers.HudManager.getInstance = function() {
 };
 managers.HudManager.prototype = {
 	generateFightHud: function() {
-		managers.HudManager.mode = "fight";
 		var rightHud = new objects.HudElement(PIXI.Texture.fromImage("hud_bottom_right.png"));
 		rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
 		rightHud.anchor.set(1,1);
@@ -542,15 +610,8 @@ managers.HudManager.prototype = {
 		attackHud.x = rightHud.x - (rightHud.width + 20);
 		attackHud.y = Main.getInstance().renderer.height;
 		attackHud.name = "center";
-		var attackButton = new objects.HudButton("button_attack","normal");
-		attackButton.x = -695;
-		attackButton.y = -73;
-		this.attackButtons.set(attackButton.actionName,attackButton);
-		var tripleAttackButton = new objects.HudButton("button_triple_attack","triple");
-		tripleAttackButton.anchor.set(0.5,0.5);
-		tripleAttackButton.x = -570;
-		tripleAttackButton.y = -73;
-		this.attackButtons.set(tripleAttackButton.actionName,tripleAttackButton);
+		var attackButton = this.addActionButton("button_attack","normal",1);
+		var tripleAttackButton = this.addActionButton("button_triple_attack","triple",2);
 		var tickTimer = new PIXI.Sprite(PIXI.Texture.fromImage("timerFill.png"));
 		tickTimer.anchor.set(0.5,0.5);
 		tickTimer.x = -(tickTimer.width * 0.5 + 50);
@@ -576,8 +637,17 @@ managers.HudManager.prototype = {
 		managers.DrawManager.addToDisplay(APText,rightHud);
 		managers.DrawManager.addToDisplay(HPText,rightHud);
 	}
+	,addActionButton: function(textureName,attackName,position) {
+		if(position == 0) position = 10; else position = position;
+		var newButton = new objects.HudButton(textureName,attackName);
+		newButton.anchor.set(0.5,0.5);
+		newButton.x = -695 + 125 * (position - 1);
+		newButton.y = -73;
+		this.attackButtons.set(newButton.actionName,newButton);
+		this.buttonPosition[position] = newButton;
+		return newButton;
+	}
 	,switchState: function() {
-		managers.HudManager.mode = "none";
 	}
 	,destroy: function() {
 		managers.HudManager.instance = null;
@@ -940,7 +1010,7 @@ managers.TimeManager.prototype = {
 		managers.TimeManager.elapsedTime += new Date().getTime() - this.timeNow;
 		managers.TimeManager.deltaTime = (new Date().getTime() - this.timeNow) / 1000;
 		this.timeNow = new Date().getTime();
-		if(Main.FIGHTMODE) this.combatTick();
+		if(managers.FightManager.status == "fight") this.combatTick();
 		if(3600 * managers.TimeManager.deltaTime > 60) managers.TimeManager.FPS = 60; else managers.TimeManager.FPS = Math.floor(3600 * managers.TimeManager.deltaTime);
 	}
 	,combatTick: function() {
@@ -949,7 +1019,7 @@ managers.TimeManager.prototype = {
 			++this.numberOfTicks;
 			this.newTick();
 		}
-		if(managers.HudManager.mode == "fight") (js.Boot.__cast(Main.getInstance().hudCont.getChildByName("right_bottom") , PIXI.Container)).getChildByName("tickTimer").rotation = 2 * Math.PI * (this.frameElapsed % this.tickInterval / this.tickInterval);
+		if(managers.FightManager.status == "fight") (js.Boot.__cast(Main.getInstance().hudCont.getChildByName("right_bottom") , PIXI.Container)).getChildByName("tickTimer").rotation = 2 * Math.PI * (this.frameElapsed % this.tickInterval / this.tickInterval);
 	}
 	,newTick: function() {
 		var $it0 = managers.CharacterManager.getInstance().managedCharacters.iterator();
@@ -1041,7 +1111,7 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 		this.isDown = true;
 		this.setSpecialTexture("down");
 		this.arrayCallbacks.down(e);
-		e.stopPropagation();
+		if(e != null) e.stopPropagation();
 	}
 	,p_onUp: function(e) {
 		if(this.locked) return;
@@ -1049,7 +1119,7 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 		this.isDown = false;
 		this.setSpecialTexture("hover");
 		this.arrayCallbacks.up(e);
-		e.stopPropagation();
+		if(e != null) e.stopPropagation();
 	}
 	,p_onOut: function(e) {
 		if(this.locked) return;
@@ -1500,6 +1570,7 @@ objects.character.Character = function(newName) {
 	this.generateAnimations();
 	this.generateAttacks();
 	this.loop = true;
+	this.ID = utils.Id.newId();
 	this.anchor.set(0.5,1);
 	this.dmgTextPool = managers.PoolManager.pullObject("dmgText",5);
 	managers.CharacterManager.getInstance().addCharacter(this);
@@ -1582,8 +1653,8 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	,_selfUpdate: function() {
 		this.manageAnim();
 		if(!this.updateBlocked) {
-			this.managePathFinding();
-			if(Main.FIGHTMODE) this.fightUpdate(); else if(Main.FIGHTMODE) this.normalUpdate();
+			if(managers.FightManager.status != "setup") this.managePathFinding();
+			if(managers.FightManager.status == "fight") this.fightUpdate(); else this.normalUpdate();
 		}
 	}
 	,manageAnim: function() {
@@ -1634,6 +1705,8 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.activePathPoint = this.activePath[this.pathIndex];
 		this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,[this.activePathPoint.x,this.activePathPoint.y]));
 	}
+	,showPosTile: function() {
+	}
 	,normalUpdate: function() {
 	}
 	,fightUpdate: function() {
@@ -1657,6 +1730,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.setAnimation("death");
 		this.updateBlocked = true;
 		this.isDead = true;
+		managers.FightManager.getInstance().testFightOver();
 		this.Destroy();
 	}
 	,setTilePosition: function(position) {
@@ -1792,7 +1866,9 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		var newtilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
 		this.hidePoolTiles();
 		this.hideHoverTile();
-		if(objects.character.Player.selectedAction == "move") this.showPathMovement(this.findPathTo(newtilePos)); else if(this.attacks.exists(objects.character.Player.selectedAction)) {
+		if(objects.character.Player.selectedAction == "move") {
+			if(managers.FightManager.status == "fight") this.showPathMovement(this.findPathTo(newtilePos));
+		} else if(this.attacks.exists(objects.character.Player.selectedAction) && managers.FightManager.status == "fight") {
 			this.showRange(this.attacks.get(objects.character.Player.selectedAction).minRange,this.attacks.get(objects.character.Player.selectedAction).maxRange,16729927,0.3);
 			if(utils.Misc.targetInRange(this.tilePos,newtilePos,this.activeAttackRange)) this.showHoverTile(newtilePos,16711680);
 		}
@@ -1849,6 +1925,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		}
 	}
 	,showRange: function(min,max,color,alpha,customRange) {
+		if(managers.FightManager.status == "normal") return;
 		var arrayIter;
 		if(customRange == null) arrayIter = this.activeAttackRange; else arrayIter = customRange;
 		var $it0 = HxOverrides.iter(arrayIter);
@@ -1892,6 +1969,12 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		if(this.targetTile.parent == null) managers.DrawManager.addToDisplay(this.targetTile,managers.MapManager.getInstance().activeMap.mapContainer,0.7);
 		this.targetTile.setTilePosition(tilePos);
 		this.targetTile.visible = true;
+	}
+	,loseCombat: function() {
+		console.log("fight lost!");
+	}
+	,winCombat: function() {
+		console.log("fight won!");
 	}
 	,hideHoverTile: function(remove) {
 		if(remove == null) remove = false;
@@ -1983,7 +2066,6 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 	Preload: function() {
 	}
 	,Start: function() {
-		Main.FIGHTMODE = true;
 		managers.HudManager.getInstance().generateFightHud();
 		var camShader = new PIXI.Sprite(PIXI.Texture.fromImage("camShader.png"));
 		camShader.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
@@ -1998,6 +2080,8 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 		victim.setTilePosition([10,24]);
 		victim.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
+		managers.FightManager.getInstance().startSetup([victim.ID]);
+		utils.Misc.traceRay([3,15],[7,15]);
 	}
 	,Update: function() {
 	}
@@ -4244,6 +4328,167 @@ utils.Misc.targetInRange = function(source,target,tilesInRange) {
 	}
 	return false;
 };
+utils.Misc.fastAbs = function(v) {
+	return (v ^ v >> 31) - (v >> 31);
+};
+utils.Misc.fastFloor = function(v) {
+	return v | 0;
+};
+utils.Misc.checkLine = function(x0,y0,x1,y1) {
+	var rayCanPass = function(x,y) {
+		return managers.MapManager.getInstance().activeMap.getWalkableAt([x,y]);
+	};
+	var swapXY = utils.Misc.fastAbs(y1 - y0) > utils.Misc.fastAbs(x1 - x0);
+	var tmp;
+	if(swapXY) {
+		tmp = x0;
+		x0 = y0;
+		y0 = tmp;
+		tmp = x1;
+		x1 = y1;
+		y1 = tmp;
+	}
+	if(x0 > x1) {
+		tmp = x0;
+		x0 = x1;
+		x1 = tmp;
+		tmp = y0;
+		y0 = y1;
+		y1 = tmp;
+	}
+	var deltax = x1 - x0;
+	var deltay = utils.Misc.fastFloor(utils.Misc.fastAbs(y1 - y0));
+	var error = deltax / 2 | 0;
+	var y2 = y0;
+	var ystep;
+	if(y0 < y1) ystep = 1; else ystep = -1;
+	var pts = [];
+	if(swapXY) {
+		var _g1 = x0;
+		var _g = x1 + 1;
+		while(_g1 < _g) {
+			var x2 = _g1++;
+			pts.push([y2,x2]);
+			if(!rayCanPass(y2,x2)) return pts;
+			error -= deltay;
+			if(error < 0) {
+				y2 = y2 + ystep;
+				error = error + deltax;
+			}
+		}
+	} else {
+		var _g11 = x0;
+		var _g2 = x1 + 1;
+		while(_g11 < _g2) {
+			var x3 = _g11++;
+			pts.push([x3,y2]);
+			if(!rayCanPass(x3,y2)) return pts;
+			error -= deltay;
+			if(error < 0) {
+				y2 = y2 + ystep;
+				error = error + deltax;
+			}
+		}
+	}
+	return pts;
+};
+utils.Misc.convertOrthoToIso = function(orthoPos) {
+	var i = 0;
+	while(i < orthoPos.length) {
+		if(i == 0) {
+			++i;
+			continue;
+		}
+		if(orthoPos[i - 1][1] % 2 == 0) {
+			if(orthoPos[i - 1][0] - orthoPos[i][0] < 0) {
+				if(orthoPos[i - 1][1] - orthoPos[i][1] < 0) {
+					if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] + 1,orthoPos[i - 1][1]])) {
+						console.log("addPoint");
+						orthoPos.splice(i,0,[orthoPos[i - 1][0] + 1,orthoPos[i - 1][1]]);
+						++i;
+					} else if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0],orthoPos[i - 1][1] + 1])) {
+						console.log("addPoint");
+						orthoPos.splice(i,0,[orthoPos[i - 1][0],orthoPos[i - 1][1] + 1]);
+						++i;
+					} else {
+						console.log("BREAK");
+						orthoPos.splice(i,orthoPos.length - i - 1);
+						i = 300000;
+					}
+				} else if(orthoPos[i - 1][1] - orthoPos[i][1] > 0) {
+					if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] + 1,orthoPos[i - 1][1]])) {
+						console.log("addPoint");
+						orthoPos.splice(i,0,[orthoPos[i - 1][0] + 1,orthoPos[i - 1][1]]);
+						++i;
+					} else if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0],orthoPos[i - 1][1] - 1])) {
+						console.log("addPoint");
+						orthoPos.splice(i,0,[orthoPos[i - 1][0],orthoPos[i - 1][1] - 1]);
+						++i;
+					} else {
+						console.log("BREAK");
+						orthoPos.splice(i,orthoPos.length - i - 1);
+						i = 300000;
+					}
+				}
+			}
+		} else if(orthoPos[i - 1][0] - orthoPos[i][0] > 0) {
+			if(orthoPos[i - 1][1] - orthoPos[i][1] < 0) {
+				if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] - 1,orthoPos[i - 1][1]])) {
+					console.log("addPoint");
+					orthoPos.splice(i,0,[orthoPos[i - 1][0] - 1,orthoPos[i - 1][1]]);
+					++i;
+				} else if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0],orthoPos[i - 1][1] + 1])) {
+					console.log("addPoint");
+					orthoPos.splice(i,0,[orthoPos[i - 1][0],orthoPos[i - 1][1] + 1]);
+					++i;
+				} else {
+					console.log("BREAK");
+					orthoPos.splice(i,orthoPos.length - i - 1);
+					i = 300000;
+				}
+			} else if(orthoPos[i - 1][1] - orthoPos[i][1] > 0) {
+				if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] - 1,orthoPos[i - 1][1]])) {
+					console.log("addPoint");
+					orthoPos.splice(i,0,[orthoPos[i - 1][0] - 1,orthoPos[i - 1][1]]);
+					++i;
+				} else if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0],orthoPos[i - 1][1] - 1])) {
+					console.log("addPoint");
+					orthoPos.splice(i,0,[orthoPos[i - 1][0],orthoPos[i - 1][1] - 1]);
+					++i;
+				} else {
+					console.log("BREAK");
+					orthoPos.splice(i,orthoPos.length - i - 1);
+					i = 300000;
+				}
+			}
+		}
+		++i;
+	}
+	i = 0;
+	while(i < orthoPos.length) {
+		if(i < 2) {
+			++i;
+			continue;
+		}
+		if(orthoPos[i][0] == orthoPos[i - 1][0] && orthoPos[i][0] == orthoPos[i - 2][0]) {
+			console.log("cutPoint");
+			orthoPos.splice(i - 1,1);
+		}
+		++i;
+	}
+	i = 0;
+	while(i < orthoPos.length) {
+		if(!managers.MapManager.getInstance().activeMap.getWalkableAt(orthoPos[i])) {
+			console.log("unwalkable");
+			orthoPos.splice(i,1);
+		}
+		++i;
+	}
+	return orthoPos;
+};
+utils.Misc.traceRay = function(from,to) {
+	managers.MouseManager.createLilCubes(utils.Misc.convertOrthoToIso(utils.Misc.checkLine(from[0],from[1],to[0],to[1])));
+};
 function $iterator(o) { if( o instanceof Array ) return function() { return HxOverrides.iter(o); }; return typeof(o.iterator) == 'function' ? $bind(o,o.iterator) : o.iterator; }
 var $_, $fid = 0;
 function $bind(o,m) { if( m == null ) return null; if( m.__id__ == null ) m.__id__ = $fid++; var f; if( o.hx__closures__ == null ) o.hx__closures__ = {}; else f = o.hx__closures__[m.__id__]; if( f == null ) { f = function(){ return f.method.apply(f.scope, arguments); }; f.scope = o; f.method = m; o.hx__closures__[m.__id__] = f; } return f; }
@@ -5107,9 +5352,8 @@ Main.tileSize = [0,0];
 Main.screenRatio = [1,1];
 Main.DEBUGMODE = true;
 Main.GAMESTOPPED = false;
-Main.FIGHTMODE = false;
 haxe.ds.ObjectMap.count = 0;
-managers.HudManager.mode = "none";
+managers.FightManager.status = "normal";
 managers.InitManager.CONFIG_PATH = "assets/config/";
 managers.InitManager.ASSETS_PATH = "assets/";
 managers.MapManager.finder = new EasyStar.js();

@@ -3,6 +3,7 @@ import js.Browser;
 import js.html.RGBColor;
 import managers.CharacterManager;
 import managers.DrawManager;
+import managers.FightManager;
 import managers.HudManager;
 import managers.MapManager;
 import managers.PoolManager;
@@ -98,10 +99,11 @@ class Player extends Character{
 		hidePoolTiles();
 		hideHoverTile();
 
-		if(selectedAction == "move"){
-			showPathMovement(findPathTo(newtilePos));
+		if (selectedAction == "move") {
+			if(FightManager.status == "fight")
+				showPathMovement(findPathTo(newtilePos));
 		}
-		else if (attacks.exists(selectedAction)) {
+		else if (attacks.exists(selectedAction) && FightManager.status == "fight") {
 			showRange(attacks.get(selectedAction).minRange, attacks.get(selectedAction).maxRange, 0xFF4747, 0.3);
 			if(Misc.targetInRange(tilePos, newtilePos, activeAttackRange))
 				showHoverTile(newtilePos, 0xFF0000);
@@ -179,6 +181,9 @@ class Player extends Character{
 		 * attention pour le pathfinding bug <= il calcule pas si on peux arriver aux positions.
 		 * need to repredict after every end of path and stock the value.
 		 * */
+		if (FightManager.status == "normal")
+			return;
+		
 		var arrayIter:Array<Array<Int>> = customRange == null ? activeAttackRange : customRange;
 		for (i in arrayIter.iterator())
 		{
@@ -229,6 +234,9 @@ class Player extends Character{
 		targetTile.visible = true;
 		//targetTile.tint = newTint != null ? newTint : 0xFFFFFF;	
 	}
+	
+	public function loseCombat():Void { trace("fight lost!"); }
+	public function winCombat():Void { trace("fight won!"); }
 	
 	public function hideHoverTile(remove:Bool = false):Void {
 		targetTile.visible = false;
