@@ -1,7 +1,14 @@
 package managers;
 import js.html.CustomEvent;
+import objects.character.Character;
 import objects.character.Player;
+import pixi.core.textures.Texture;
 
+enum StatusModes {
+	normal;
+	setup;
+	fight;
+}
 	
 /**
  * ...
@@ -11,24 +18,22 @@ class FightManager {
 	
 	private static var instance: FightManager;
 
-
-	public var alliedCharactersID:Array<String> = [];
-	public var enemyCharactersID:Array<String> = [];
 	
-	public static var status:String = "normal";
-
+	
+	private var alliedCharactersID:Array<String> = [];
+	private var enemyCharactersID:Array<String> = [];
+	
+	public static var status:StatusModes = StatusModes.normal;
+	
 	private function new() {
 			
 	}
 	
 	public function startSetup(enemiesID:Array<String>):Void{
-		status = "setup";
-		alliedCharactersID.push(Player.getInstance().ID);
-		
+		status = StatusModes.setup;
+		addAlliedCharacterToSetup(Player.getInstance().ID);
 		for (i in enemiesID.iterator())
-		{
-			enemyCharactersID.push(i);
-		}
+			addEnemyCharacterToSetup(i);
 		
 		//wait for server timeout
 		startFight();
@@ -36,12 +41,19 @@ class FightManager {
 	
 	public function addAlliedCharacterToSetup(alliedID:String):Void{
 		// contact server
+		CharacterManager.getInstance().findCharacterById(alliedID).generatePosTile(true);
 		alliedCharactersID.push(alliedID);
 	}
 	
+	public function addEnemyCharacterToSetup(enemyID:String):Void{
+		// contact server
+		CharacterManager.getInstance().findCharacterById(enemyID).generatePosTile(false);
+		enemyCharactersID.push(enemyID);
+	}
 	
-	public function startFight():Void{
-		status = "fight";
+	
+	private function startFight():Void{
+		status = StatusModes.fight;
 	}
 	
 	public function testFightOver():Void{
@@ -49,13 +61,13 @@ class FightManager {
 		var numberEnemyDead:Int = 0;
 		for (i in alliedCharactersID.iterator())
 		{
-			if (CharacterManager.getInstance().managedCharacters.get(i).isDead)
+			if (CharacterManager.getInstance().findCharacterById(i).isDead)
 				++numberAlliedDead;
 		}
 		
 		for (i in enemyCharactersID.iterator())
 		{
-			if (CharacterManager.getInstance().managedCharacters.get(i).isDead)
+			if (CharacterManager.getInstance().findCharacterById(i).isDead)
 				++numberEnemyDead;
 		}
 		
@@ -70,10 +82,11 @@ class FightManager {
 	}
 	
 	public function fightEnd():Void{
-		status = "normal";
+		status = StatusModes.normal;
 	}
 	
-	
+	public function isEnemy(elementId:String):Bool{ return alliedCharactersID.indexOf(elementId) == -1; }
+	public function isAllied(elementId:String):Bool{ return alliedCharactersID.indexOf(elementId) != -1; }
 	
 	
 	public static function getInstance (): FightManager {

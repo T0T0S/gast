@@ -48,6 +48,10 @@ class CharacterManager{
 		MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
 	}
 	
+	public function findCharacterById(charaId:String):Character{
+		return managedCharacters.get(charaId);
+	}
+	
 	public function Update():Void{
 		for (i in managedCharacters.iterator()) {
 			if (i == null)

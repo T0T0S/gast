@@ -1,4 +1,5 @@
 package objects;
+import haxe.Json;
 import js.Browser;
 import js.Error;
 import js.JQuery;
@@ -9,6 +10,7 @@ import managers.MouseManager;
 import pixi.core.display.Container;
 import pixi.core.particles.ParticleContainer;
 import pixi.core.sprites.Sprite;
+import utils.Misc;
 
 /**
  * ...
@@ -18,6 +20,8 @@ class GameMap{
 	
 	public var graphicalData:Array<Array<Int>>;
 	public var collisionData:Array<Array<Int>>;
+	
+	private var tileData:Array<Array<Tile>> = [];
 	
 	public var name:String;
 	public var json:Dynamic;
@@ -53,7 +57,10 @@ class GameMap{
 		collisionData = newCollisionData;
 	}
 	
-	public function addTileToMap(tile:Sprite, layer:Int):Void {
+	public function addTileToMap(tile:Tile, layer:Int):Void {
+		if (tileData[tile.tilePos[0]] == null)
+			tileData[tile.tilePos[0]] = [];
+		tileData[tile.tilePos[0]][tile.tilePos[1]] = tile;
 		DrawManager.addToDisplay(tile,mapContainer,layer);
 	}
 	
@@ -71,14 +78,11 @@ class GameMap{
 			DrawManager.removeFromDisplay(mapContainer);
 	}
 
-	public function getTileAt(tilePosition:Array<Int>):String {
-		return json.tiles[graphicalData[tilePosition[1]][tilePosition[0]]];
+	public function getTileAt(tilePosition:Array<Int>):Tile {
+		return tileData[tilePosition[0]][tilePosition[1]];
 	}
 	
-	public function getColliAt(tilePosition:Array<Int>):Bool{
-		trace(mapContainer.y);	
-		return collisionData[tilePosition[1]][tilePosition[0]] != 0;
-	}
+	
 	
 	public function generatePathfinding():Void{
 		var finder:Dynamic = MapManager.finder;

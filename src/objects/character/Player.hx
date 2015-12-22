@@ -24,26 +24,20 @@ import utils.Misc;
 class Player extends Character{
 	private static var instance:Player;
 
-	private var tilePool:Array<Tile> = [];
 	private var targetTile:Tile;
 	
 	public static var selectedAction:String = "move";
 
 	private var APFlash:OSmovieclip;
-	private var pathPositions:Array<Int> = [];
+	private var pathPositions:Array<Dynamic> = [];
 	
 	private var mouseHovering:Bool = false;
+	public var allowInput:Bool = true;
 	
 	private function new() {
 		super("hero");
 		HudManager.getInstance().HPmeter.text = ""+stats.health;
 		HudManager.getInstance().APmeter.text = ""+stats.AP;
-		
-		tilePool = cast PoolManager.pullObject("tile", stats.MaxAP * 2);
-		for (i in tilePool.iterator())
-		{
-			i.tint = 0x00FF00;
-		}
 		
 		targetTile = new Tile(Texture.fromImage("selectedTile.png"));
 		targetTile.visible = false;
@@ -65,6 +59,8 @@ class Player extends Character{
 	}
 	
 	private function mouseOverSelf(e:EventTarget):Void {
+		if(!allowInput)
+			return;
 		if (selectedAction == "move")
 			if (Options.data.player_showHoverMovement = true){
 				showRange(0, stats.AP, 0x00FF00, 0.7, Misc.getRangeTileAround(tilePos, 1, stats.AP));
@@ -72,6 +68,8 @@ class Player extends Character{
 	}
 	
 	private function mouseOutSelf(e:EventTarget):Void{
+		if(!allowInput)
+			return;
 		if (selectedAction == "move")
 			if (Options.data.player_showHoverMovement = true){
 				hidePoolTiles();
@@ -79,9 +77,11 @@ class Player extends Character{
 	}
 	
 	private function mapClick(e:EventTarget):Void {
+		if(!allowInput)
+			return;
 		var newtilePos = Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x, e.data.getLocalPosition(e.target).y);
 
-		if (selectedAction == "move") {
+		if (selectedAction == "move" && !isMoving) {
 			if (!Camera.getInstance().isDragged) {
 				findPathTo(newtilePos,true);
 			}
@@ -95,21 +95,23 @@ class Player extends Character{
 	}
 	
 	private function mapHover(e:EventTarget):Void {
-		var newtilePos = Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x, e.data.getLocalPosition(e.target).y);
+		if(!allowInput)
+			return;
+		var tileHovered = Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x, e.data.getLocalPosition(e.target).y);
 		hidePoolTiles();
 		hideHoverTile();
-
-		if (selectedAction == "move") {
-			if(FightManager.status == "fight")
-				showPathMovement(findPathTo(newtilePos));
+		
+		if (selectedAction == "move" && !isMoving) {
+			if(FightManager.status == StatusModes.fight)
+				showPathMovement(findPathTo(tileHovered));
 		}
-		else if (attacks.exists(selectedAction) && FightManager.status == "fight") {
-			showRange(attacks.get(selectedAction).minRange, attacks.get(selectedAction).maxRange, 0xFF4747, 0.3);
-			if(Misc.targetInRange(tilePos, newtilePos, activeAttackRange))
-				showHoverTile(newtilePos, 0xFF0000);
+		else if (attacks.exists(selectedAction) && FightManager.status == StatusModes.fight) {
+			showAttackRange(selectedAction);
+			if(Misc.targetInRange(tilePos, tileHovered, activeAttackRange))
+				showHoverTile(tileHovered, 0xFF0000);
 		}
 		
-		if (newtilePos[0] == tilePos[0] && newtilePos[1] == tilePos[1])
+		if (tileHovered[0] == tilePos[0] && tileHovered[1] == tilePos[1])
 		{
 			mouseHovering = true;
 			mouseOverSelf(e);
@@ -120,7 +122,10 @@ class Player extends Character{
 			mouseOutSelf(e);
 		}
 
-		Debug.log("" + newtilePos);
+	}
+	
+	private function showAttackRange(attackName:String):Void{
+		showRange(attacks.get(attackName).minRange, attacks.get(attackName).maxRange, 0xFF4747, 0.3);
 	}
 	
 	override public function newTick(tickNumber:Int):Void {
@@ -133,6 +138,10 @@ class Player extends Character{
 		}
 		APFlash.gotoAndPlay(0);
 		
+		if (mouseHovering)
+			mouseOverSelf(null);
+		
+			
 		lockHudButtons();
 	}
 	
@@ -165,14 +174,14 @@ class Player extends Character{
 		
 		for (i in path.iterator())
 		{
-			var tileIndex = getUnusedTileIndex(); 
-			pathPositions.push(tileIndex);
-			tilePool[tileIndex].visible = true;
-			tilePool[tileIndex].tint = 0x00FF00;
-			tilePool[tileIndex].setTilePosition([i.x, i.y]);
-			if (tilePool[tileIndex].parent == null)
+			var newTile:Tile = PoolManager.pullObject("tile"); 
+			newTile.visible = true;
+			newTile.tint = 0x00FF00;
+			newTile.setTilePosition([i.x, i.y]);
+			pathPositions.push(newTile);
+			if (newTile.parent == null)
 				if (parent != null)
-					DrawManager.addToDisplay(tilePool[tileIndex], parent,untyped 0.5);
+					DrawManager.addToDisplay(newTile, parent,untyped 0.5);
 		}
 	}
 	
@@ -181,7 +190,11 @@ class Player extends Character{
 		 * attention pour le pathfinding bug <= il calcule pas si on peux arriver aux positions.
 		 * need to repredict after every end of path and stock the value.
 		 * */
-		if (FightManager.status == "normal")
+		if (!allowInput)
+			return;
+			
+		hidePoolTiles();
+		if (FightManager.status == StatusModes.normal)
 			return;
 		
 		var arrayIter:Array<Array<Int>> = customRange == null ? activeAttackRange : customRange;
@@ -189,42 +202,39 @@ class Player extends Character{
 		{
 			if(!MapManager.getInstance().activeMap.getWalkableAt(i) && CharacterManager.getInstance().findCharacterAtTilePos(i) == null)
 				continue;
-			var tileIndex = getUnusedTileIndex(); 
-			tilePool[tileIndex].visible = true;
-			tilePool[tileIndex].setTilePosition([i[0], i[1]]);
-			if (tilePool[tileIndex].parent == null)
+			var newTile:Tile = PoolManager.pullObject("tile"); 
+			newTile.visible = true;
+			newTile.setTilePosition([i[0], i[1]]);
+			if (newTile.parent == null)
 				if (parent != null)
-					DrawManager.addToDisplay(tilePool[tileIndex], parent, untyped 0.5);
+					DrawManager.addToDisplay(newTile, parent, untyped 0.5);
 			if (color != null)
-				tilePool[tileIndex].tint = color;
+				newTile.tint = color;
 			
 			if (alpha != null)
-				tilePool[tileIndex].alpha = alpha;
+				newTile.alpha = alpha;
 		}
 	}
 	
-	public function hidePoolTiles(?customCont:Container):Void {
-		for (i in tilePool.iterator() ){
-			i.visible = false;
-			i.tint = 0xFFFFFF;
-			i.alpha = 1;
-		}
+	public function hidePoolTiles():Void {
+		PoolManager.applyFunctionToPool("tile", poolHide);
 	}
 	
-	public function hideOnePoolTile(index:Int):Void {
-		tilePool[index].visible = false;
-		tilePool[index].tint = 0xFFFFFF;
-		tilePool[index].alpha = 1;
+	/**
+	 *  DON'T USE
+	 */
+	private function poolHide(i:Dynamic):Void{
+		i.visible = false;
+		i.tint = 0xFFFFFF;
+		i.alpha = 1;
 	}
 	
-	public function getUnusedTileIndex():Int{
-		for (i in tilePool.iterator() ){
-			if (!i.visible)
-				return tilePool.indexOf(i);
-		}
-		tilePool.push(PoolManager.pullObject("tile", 1)[0]);
-		return tilePool.length -1;
+	
+	public function hideOnePoolTile(element:Dynamic):Void {
+		PoolManager.applyFunctionToElement("tile", poolHide, element);
 	}
+	
+	
 	
 	public function showHoverTile(tilePos:Array<Int>, newTint:Int = null):Void {
 		if (targetTile.parent == null){
@@ -252,19 +262,47 @@ class Player extends Character{
 	
 	public function changeSelectedAction(newActionName:String):Void{
 		selectedAction = selectedAction == newActionName ? "move" : newActionName; 
+		
+		hideEveryTile();
+		
+		if (selectedAction != "move"){
+			generateAttackRange(selectedAction);
+			showAttackRange(selectedAction);
+		}
 	}
 	
-	public function generateAttackRange(attackName:String):Void {
-		if(attacks.exists(attackName))
+	private function generateAttackRange(attackName:String):Void {
+		if (attacks.exists(attackName))
+		{
 			activeAttackRange = Misc.getRangeTileAround(tilePos, attacks.get(attackName).minRange, attacks.get(attackName).maxRange);
+			
+			var i:Int = 0;
+			
+			while (i < activeAttackRange.length)
+			{
+				if (!Misc.hasLineOfSight(tilePos, activeAttackRange[i], activeAttackRange))
+				{
+					activeAttackRange.splice(i, 1);
+					--i;
+				}
+				++i;
+			}
+		}
 		else
 			Browser.window.console.warn("Attack not found while generating attackRange of:" + attackName);
-		showRange(attacks.get(attackName).minRange, attacks.get(attackName).maxRange, 0xFF4747, 0.3);
 	}
 	
 	public function hideEveryTile():Void{
 		hideHoverTile();
 		hidePoolTiles();
+	}
+	
+	override public function setTilePosition(position:Array<Int>):Void {
+		super.setTilePosition(position);
+		if (selectedAction != "move"){
+			generateAttackRange(selectedAction);
+			showAttackRange(selectedAction);
+		}
 	}
 	
 	override public function Destroy():Void {

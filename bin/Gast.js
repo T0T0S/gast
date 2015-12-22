@@ -131,6 +131,7 @@ var Main = function() {
 	this.renderer.view.className = "gastCanvas";
 	window.document.body.appendChild(this.renderer.view);
 	window.addEventListener("keydown",$bind(this,this.keyDownListener));
+	window.addEventListener("keyup",$bind(this,this.keyUpListener));
 };
 Main.__name__ = ["Main"];
 Main.main = function() {
@@ -142,6 +143,7 @@ Main.getInstance = function() {
 };
 Main.prototype = {
 	Start: function() {
+		Main.poolManager = managers.PoolManager.getInstance();
 		Main.drawManager = managers.DrawManager.getInstance();
 		Main.timeManager = managers.TimeManager.getInstance();
 		Main.mouseManager = managers.MouseManager.getInstance();
@@ -149,7 +151,6 @@ Main.prototype = {
 		Main.mapManager = managers.MapManager.getInstance();
 		Main.characterManager = managers.CharacterManager.getInstance();
 		Main.fightManager = managers.FightManager.getInstance();
-		Main.poolManager = managers.PoolManager.getInstance();
 		Main.stateManager = managers.StateManager.getInstance();
 		window.addEventListener("resize",$bind(this,this.resize));
 		window.requestAnimationFrame($bind(this,this.Update));
@@ -159,8 +160,8 @@ Main.prototype = {
 	}
 	,Update: function() {
 		window.requestAnimationFrame($bind(this,this.Update));
-		if(Main.timeManager != null) Main.timeManager.Update();
 		if(Main.GAMESTOPPED && Main.DEBUGMODE) return;
+		if(Main.timeManager != null) Main.timeManager.Update();
 		this.mouseUpdate();
 		Main.characterManager.Update();
 		Main.camera.Update();
@@ -175,7 +176,9 @@ Main.prototype = {
 	}
 	,keyDownListener: function(e) {
 		if(String.fromCharCode(e.keyCode) == "A" && e.altKey) Main.GAMESTOPPED = !Main.GAMESTOPPED;
-		if(managers.FightManager.status == "fight") {
+		if(HxOverrides.indexOf(Main.keysDown,e.keyCode,0) != -1) return;
+		Main.keysDown.push(e.keyCode);
+		if(managers.FightManager.status == managers.StatusModes.fight) {
 			var attackIndex = 0;
 			if(e.keyCode >= 48) {
 				attackIndex = e.keyCode - 48;
@@ -187,6 +190,9 @@ Main.prototype = {
 				}
 			}
 		}
+	}
+	,keyUpListener: function(e) {
+		Main.keysDown.splice(HxOverrides.indexOf(Main.keysDown,e.keyCode,0),1);
 	}
 	,destroy: function() {
 		Main.instance = null;
@@ -487,6 +493,9 @@ managers.CharacterManager.prototype = {
 		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
 		managers.MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
 	}
+	,findCharacterById: function(charaId) {
+		return this.managedCharacters.get(charaId);
+	}
 	,Update: function() {
 		var $it0 = this.managedCharacters.iterator();
 		while( $it0.hasNext() ) {
@@ -532,6 +541,13 @@ managers.DrawManager.prototype = {
 	}
 	,__class__: managers.DrawManager
 };
+managers.StatusModes = { __ename__ : true, __constructs__ : ["normal","setup","fight"] };
+managers.StatusModes.normal = ["normal",0];
+managers.StatusModes.normal.__enum__ = managers.StatusModes;
+managers.StatusModes.setup = ["setup",1];
+managers.StatusModes.setup.__enum__ = managers.StatusModes;
+managers.StatusModes.fight = ["fight",2];
+managers.StatusModes.fight.__enum__ = managers.StatusModes;
 managers.FightManager = function() {
 	this.enemyCharactersID = [];
 	this.alliedCharactersID = [];
@@ -543,20 +559,25 @@ managers.FightManager.getInstance = function() {
 };
 managers.FightManager.prototype = {
 	startSetup: function(enemiesID) {
-		managers.FightManager.status = "setup";
-		this.alliedCharactersID.push(objects.character.Player.getInstance().ID);
+		managers.FightManager.status = managers.StatusModes.setup;
+		this.addAlliedCharacterToSetup(objects.character.Player.getInstance().ID);
 		var $it0 = HxOverrides.iter(enemiesID);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
-			this.enemyCharactersID.push(i);
+			this.addEnemyCharacterToSetup(i);
 		}
 		this.startFight();
 	}
 	,addAlliedCharacterToSetup: function(alliedID) {
+		managers.CharacterManager.getInstance().findCharacterById(alliedID).generatePosTile(true);
 		this.alliedCharactersID.push(alliedID);
 	}
+	,addEnemyCharacterToSetup: function(enemyID) {
+		managers.CharacterManager.getInstance().findCharacterById(enemyID).generatePosTile(false);
+		this.enemyCharactersID.push(enemyID);
+	}
 	,startFight: function() {
-		managers.FightManager.status = "fight";
+		managers.FightManager.status = managers.StatusModes.fight;
 	}
 	,testFightOver: function() {
 		var numberAlliedDead = 0;
@@ -564,12 +585,12 @@ managers.FightManager.prototype = {
 		var $it0 = HxOverrides.iter(this.alliedCharactersID);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
-			if(managers.CharacterManager.getInstance().managedCharacters.get(i).isDead) ++numberAlliedDead;
+			if(managers.CharacterManager.getInstance().findCharacterById(i).isDead) ++numberAlliedDead;
 		}
 		var $it1 = HxOverrides.iter(this.enemyCharactersID);
 		while( $it1.hasNext() ) {
 			var i1 = $it1.next();
-			if(managers.CharacterManager.getInstance().managedCharacters.get(i1).isDead) ++numberEnemyDead;
+			if(managers.CharacterManager.getInstance().findCharacterById(i1).isDead) ++numberEnemyDead;
 		}
 		if(this.alliedCharactersID.length == numberAlliedDead) {
 			objects.character.Player.getInstance().loseCombat();
@@ -580,7 +601,13 @@ managers.FightManager.prototype = {
 		}
 	}
 	,fightEnd: function() {
-		managers.FightManager.status = "normal";
+		managers.FightManager.status = managers.StatusModes.normal;
+	}
+	,isEnemy: function(elementId) {
+		return HxOverrides.indexOf(this.alliedCharactersID,elementId,0) == -1;
+	}
+	,isAllied: function(elementId) {
+		return HxOverrides.indexOf(this.alliedCharactersID,elementId,0) != -1;
 	}
 	,destroy: function() {
 		managers.FightManager.instance = null;
@@ -588,6 +615,7 @@ managers.FightManager.prototype = {
 	,__class__: managers.FightManager
 };
 managers.HudManager = function() {
+	this.fightHud = new PIXI.Container();
 	this.buttonPosition = [];
 	this.attackButtons = new haxe.ds.StringMap();
 };
@@ -612,11 +640,11 @@ managers.HudManager.prototype = {
 		attackHud.name = "center";
 		var attackButton = this.addActionButton("button_attack","normal",1);
 		var tripleAttackButton = this.addActionButton("button_triple_attack","triple",2);
-		var tickTimer = new PIXI.Sprite(PIXI.Texture.fromImage("timerFill.png"));
-		tickTimer.anchor.set(0.5,0.5);
-		tickTimer.x = -(tickTimer.width * 0.5 + 50);
-		tickTimer.y = -(tickTimer.height * 0.5 + 48);
-		tickTimer.name = "tickTimer";
+		this.APTicker = new PIXI.Sprite(PIXI.Texture.fromImage("timerFill.png"));
+		this.APTicker.anchor.set(0.5,0.5);
+		this.APTicker.x = -(this.APTicker.width * 0.5 + 50);
+		this.APTicker.y = -(this.APTicker.height * 0.5 + 48);
+		this.APTicker.name = "tickTimer";
 		var HPText = new PIXI.Text("",{ fill : "white", font : "35px gastFont", stroke : "black", strokeThickness : 5});
 		HPText.anchor.set(0.5,0.5);
 		HPText.name = "HP";
@@ -629,11 +657,12 @@ managers.HudManager.prototype = {
 		APText.x = -342;
 		APText.y = -175;
 		this.APmeter = APText;
-		managers.DrawManager.addToDisplay(attackHud,Main.getInstance().hudCont);
+		if(this.fightHud.parent == null) managers.DrawManager.addToDisplay(this.fightHud,Main.getInstance().hudCont);
+		managers.DrawManager.addToDisplay(attackHud,this.fightHud);
 		managers.DrawManager.addToDisplay(attackButton,attackHud);
 		managers.DrawManager.addToDisplay(tripleAttackButton,attackHud);
-		managers.DrawManager.addToDisplay(rightHud,Main.getInstance().hudCont);
-		managers.DrawManager.addToDisplay(tickTimer,rightHud);
+		managers.DrawManager.addToDisplay(rightHud,this.fightHud);
+		managers.DrawManager.addToDisplay(this.APTicker,rightHud);
 		managers.DrawManager.addToDisplay(APText,rightHud);
 		managers.DrawManager.addToDisplay(HPText,rightHud);
 	}
@@ -703,7 +732,7 @@ managers.MapManager.displayDebugColliMap = function(nodes) {
 		while(_g2 < _g3.length) {
 			var x = _g3[_g2];
 			++_g2;
-			if(nodes[y][x] < 2) managers.MouseManager.createLilCubes([[x,y]],255); else managers.MouseManager.createLilCubes([[x,y]],16711680);
+			if(nodes[y][x] < 2) utils.Misc.placeTilePointer([[x,y]],255); else utils.Misc.placeTilePointer([[x,y]],16711680);
 		}
 	}
 };
@@ -730,7 +759,7 @@ managers.MapManager.prototype = {
 					tileSprite = new objects.Tile(PIXI.Texture.fromImage("" + newMap.json.tiles[tileIndex]));
 					tileSprite.setTilePosition([j,i]);
 					tileSprite.x += this.activeMap.OffsetX;
-					tileSprite.y += 16;
+					tileSprite.y += Main.tileSize[1] * 0.5;
 					tileSprite.setZ(newMap.json.tilesHeight[tileIndex]);
 					newMap.addTileToMap(tileSprite,newMap.json.tilesHeight[tileIndex]);
 					if(newMap.tileMap[j] == null) newMap.tileMap[j] = [];
@@ -819,29 +848,6 @@ managers.MouseManager.getSquareTileAround = function(posClicked,size) {
 	}
 	return ArrayOfPos;
 };
-managers.MouseManager.createLilCubes = function(position,color) {
-	var iter = new IntIterator(0,position.length);
-	var tileSize = Main.tileSize;
-	var redPoint;
-	while( iter.hasNext() ) {
-		var i = iter.next();
-		var displayX = position[i][0] * tileSize[0] - 1;
-		var displayY = position[i][1] * tileSize[1] / 2 - 1;
-		if(Math.abs(position[i][1] % 2) == 1) displayX += tileSize[0] * 0.5;
-		displayY += tileSize[1] * 0.5;
-		redPoint = new PIXI.Graphics();
-		var specialColor;
-		if(color != null) specialColor = color; else specialColor = 65280;
-		redPoint.lineStyle(1,specialColor);
-		redPoint.beginFill(16711680);
-		redPoint.drawRect(-1,-1,3,3);
-		redPoint.endFill();
-		redPoint.y = displayY - 1;
-		redPoint.x = displayX - 1;
-		managers.DrawManager.addToDisplay(redPoint,Main.getInstance().tileCont,100);
-	}
-	return redPoint;
-};
 managers.MouseManager.getInstance = function() {
 	if(managers.MouseManager.instance == null) managers.MouseManager.instance = new managers.MouseManager();
 	return managers.MouseManager.instance;
@@ -884,6 +890,7 @@ managers.MouseManager.prototype = {
 managers.PoolManager = function() {
 	managers.PoolManager.Pools.set("tile",[]);
 	managers.PoolManager.Pools.set("dmgText",[]);
+	managers.PoolManager.Pools.set("pointer",[]);
 };
 managers.PoolManager.__name__ = ["managers","PoolManager"];
 managers.PoolManager.generatePool = function() {
@@ -892,31 +899,46 @@ managers.PoolManager.generatePool = function() {
 		var i = _g++;
 		managers.PoolManager.Pools.get("tile").push(new objects.Tile(PIXI.Texture.fromImage("tile.png")));
 		managers.PoolManager.Pools.get("dmgText").push(new objects.particle.DmgText());
+		managers.PoolManager.Pools.get("pointer").push(new objects.Tile(PIXI.Texture.fromImage("debugPointer.png")));
 	}
 };
 managers.PoolManager.pullObject = function(poolName,number) {
-	if(!managers.PoolManager.Pools.exists(poolName)) return [];
-	if(number > managers.PoolManager.Pools.get(poolName).length) {
-		var iter = new IntIterator(0,Math.abs(managers.PoolManager.Pools.get(poolName).length - number));
-		while( iter.hasNext() ) {
-			var i = iter.next();
-			managers.PoolManager.Pools.get(poolName).push(managers.PoolManager.findClass(poolName));
-			if(managers.PoolManager.Pools.get(poolName)[managers.PoolManager.Pools.get(poolName).length - 1] == null) return [];
+	if(number == null) number = 1;
+	if(!managers.PoolManager.Pools.exists(poolName)) {
+		window.console.warn("Unknown pool: " + poolName);
+		return [];
+	}
+	return managers.PoolManager.Pools.get(poolName)[managers.PoolManager.getUnusedPoolIndex(poolName)];
+};
+managers.PoolManager.getUnusedPoolIndex = function(poolName) {
+	var $it0 = (function($this) {
+		var $r;
+		var _this = managers.PoolManager.Pools.get(poolName);
+		$r = HxOverrides.iter(_this);
+		return $r;
+	}(this));
+	while( $it0.hasNext() ) {
+		var i = $it0.next();
+		if(!i.visible && i.visible != null) {
+			var _this1 = managers.PoolManager.Pools.get(poolName);
+			return HxOverrides.indexOf(_this1,i,0);
 		}
 	}
-	var returnArray = [];
+	managers.PoolManager.increasePoolSize(poolName,1);
+	return managers.PoolManager.Pools.get(poolName).length - 1;
+};
+managers.PoolManager.increasePoolSize = function(poolName,number) {
+	console.log("addPoolSize in " + poolName);
 	var _g = 0;
 	while(_g < number) {
-		var i1 = _g++;
-		returnArray.push(managers.PoolManager.Pools.get(poolName).pop());
-		returnArray[i1].visible = true;
+		var i = _g++;
+		managers.PoolManager.Pools.get(poolName).push(managers.PoolManager.findClass(poolName));
+		if(managers.PoolManager.Pools.get(poolName)[managers.PoolManager.Pools.get(poolName).length - 1] == null) return;
 	}
-	return returnArray;
 };
 managers.PoolManager.returnObject = function(poolName,object) {
 	if(!managers.PoolManager.Pools.exists(poolName)) return;
 	object.visible = false;
-	managers.PoolManager.Pools.get(poolName).push(object);
 };
 managers.PoolManager.findClass = function(name) {
 	switch(name) {
@@ -924,9 +946,51 @@ managers.PoolManager.findClass = function(name) {
 		return new objects.Tile(PIXI.Texture.fromImage("tile.png"));
 	case "dmgText":
 		return new objects.particle.DmgText();
+	case "pointer":
+		return new objects.Tile(PIXI.Texture.fromImage("debugPointer.png"));
 	}
 	console.log("class not found in PoolManager: " + name);
 	return null;
+};
+managers.PoolManager.applyFunctionToPool = function(poolName,callback,filter) {
+	if(filter == null) {
+		var $it0 = (function($this) {
+			var $r;
+			var _this = managers.PoolManager.Pools.get(poolName);
+			$r = HxOverrides.iter(_this);
+			return $r;
+		}(this));
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			callback(i);
+		}
+	} else {
+		var $it1 = (function($this) {
+			var $r;
+			var _this1 = managers.PoolManager.Pools.get(poolName);
+			$r = HxOverrides.iter(_this1);
+			return $r;
+		}(this));
+		while( $it1.hasNext() ) {
+			var i1 = $it1.next();
+			if(filter()) callback(i1);
+		}
+	}
+};
+managers.PoolManager.applyFunctionToElement = function(poolName,callback,element) {
+	if((function($this) {
+		var $r;
+		var _this = managers.PoolManager.Pools.get(poolName);
+		var x = element;
+		$r = HxOverrides.indexOf(_this,x,0);
+		return $r;
+	}(this)) != -1) callback(managers.PoolManager.Pools.get(poolName)[(function($this) {
+		var $r;
+		var _this1 = managers.PoolManager.Pools.get(poolName);
+		var x1 = element;
+		$r = HxOverrides.indexOf(_this1,x1,0);
+		return $r;
+	}(this))]); else window.console.warn("Element not found: " + Std.string(element.name));
 };
 managers.PoolManager.getInstance = function() {
 	if(managers.PoolManager.instance == null) managers.PoolManager.instance = new managers.PoolManager();
@@ -1010,7 +1074,7 @@ managers.TimeManager.prototype = {
 		managers.TimeManager.elapsedTime += new Date().getTime() - this.timeNow;
 		managers.TimeManager.deltaTime = (new Date().getTime() - this.timeNow) / 1000;
 		this.timeNow = new Date().getTime();
-		if(managers.FightManager.status == "fight") this.combatTick();
+		if(managers.FightManager.status == managers.StatusModes.fight) this.combatTick();
 		if(3600 * managers.TimeManager.deltaTime > 60) managers.TimeManager.FPS = 60; else managers.TimeManager.FPS = Math.floor(3600 * managers.TimeManager.deltaTime);
 	}
 	,combatTick: function() {
@@ -1019,7 +1083,7 @@ managers.TimeManager.prototype = {
 			++this.numberOfTicks;
 			this.newTick();
 		}
-		if(managers.FightManager.status == "fight") (js.Boot.__cast(Main.getInstance().hudCont.getChildByName("right_bottom") , PIXI.Container)).getChildByName("tickTimer").rotation = 2 * Math.PI * (this.frameElapsed % this.tickInterval / this.tickInterval);
+		if(managers.FightManager.status == managers.StatusModes.fight) (js.Boot.__cast(managers.HudManager.getInstance().APTicker , PIXI.Container)).rotation = 2 * Math.PI * (this.frameElapsed % this.tickInterval / this.tickInterval);
 	}
 	,newTick: function() {
 		var $it0 = managers.CharacterManager.getInstance().managedCharacters.iterator();
@@ -1126,7 +1190,7 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 		this.isDown = false;
 		this.setSpecialTexture("idle");
 		this.arrayCallbacks.out(e);
-		e.stopPropagation();
+		if(e != null) e.stopPropagation();
 	}
 	,p_onHover: function(e) {
 		if(this.locked) return;
@@ -1262,6 +1326,7 @@ objects.GameMap = function(datas,mapName) {
 	this.mapContainer = new PIXI.Container();
 	this.OffsetY = 0;
 	this.OffsetX = 0;
+	this.tileData = [];
 	if(datas == null) return;
 	this.name = mapName;
 	this.json = managers.InitManager.data.config.mapJson[this.name];
@@ -1279,6 +1344,8 @@ objects.GameMap.prototype = {
 		this.collisionData = newCollisionData;
 	}
 	,addTileToMap: function(tile,layer) {
+		if(this.tileData[tile.tilePos[0]] == null) this.tileData[tile.tilePos[0]] = [];
+		this.tileData[tile.tilePos[0]][tile.tilePos[1]] = tile;
 		managers.DrawManager.addToDisplay(tile,this.mapContainer,layer);
 	}
 	,displayMap: function() {
@@ -1292,11 +1359,7 @@ objects.GameMap.prototype = {
 		if(remove) managers.DrawManager.removeFromDisplay(this.mapContainer);
 	}
 	,getTileAt: function(tilePosition) {
-		return this.json.tiles[this.graphicalData[tilePosition[1]][tilePosition[0]]];
-	}
-	,getColliAt: function(tilePosition) {
-		console.log(this.mapContainer.y);
-		return this.collisionData[tilePosition[1]][tilePosition[0]] != 0;
+		return this.tileData[tilePosition[0]][tilePosition[1]];
 	}
 	,generatePathfinding: function() {
 		var finder = managers.MapManager.finder;
@@ -1328,7 +1391,6 @@ objects.HudButton = function(textureName,actionName) {
 	this.name = actionName;
 	this.onUp(function() {
 		objects.character.Player.getInstance().changeSelectedAction(actionName);
-		objects.character.Player.getInstance().generateAttackRange(actionName);
 	});
 };
 objects.HudButton.__name__ = ["objects","HudButton"];
@@ -1350,10 +1412,7 @@ objects.HudElement.prototype = $extend(PIXI.Sprite.prototype,{
 	}
 	,p_onMove: function(e) {
 		this.stopping = this.mouseIsAbove([e.data.global.x,e.data.global.y]);
-		if(this.stopping) {
-			objects.character.Player.getInstance().hideEveryTile();
-			e.stopPropagation();
-		}
+		if(this.stopping) e.stopPropagation();
 	}
 	,__class__: objects.HudElement
 });
@@ -1554,10 +1613,10 @@ objects.character.Character = function(newName) {
 	this.z = 0;
 	this.animationFrame = 0;
 	this.animations = new haxe.ds.StringMap();
-	this.dmgTextPool = [];
 	this.activeAttackRange = [];
 	this.attacks = new haxe.ds.StringMap();
 	this.refreshSpeed = 1;
+	this.isMoving = false;
 	this.pathIndex = 1;
 	this.activePath = [];
 	this.stats = { health : 100, strength : 10, endurance : 10, regeneration : 10, moveSpeed : 2.5, precision : 10, luck : 10, AP : 10, MaxAP : 10};
@@ -1572,7 +1631,6 @@ objects.character.Character = function(newName) {
 	this.loop = true;
 	this.ID = utils.Id.newId();
 	this.anchor.set(0.5,1);
-	this.dmgTextPool = managers.PoolManager.pullObject("dmgText",5);
 	managers.CharacterManager.getInstance().addCharacter(this);
 };
 objects.character.Character.__name__ = ["objects","character","Character"];
@@ -1588,15 +1646,6 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.stats.luck = this.config.stats.luck;
 		this.stats.MaxAP = this.config.stats.MaxAP;
 		this.stats.AP = this.stats.MaxAP;
-	}
-	,getUnusedDmgTextIndex: function() {
-		var $it0 = HxOverrides.iter(this.dmgTextPool);
-		while( $it0.hasNext() ) {
-			var i = $it0.next();
-			if(!i.visible) return HxOverrides.indexOf(this.dmgTextPool,i,0);
-		}
-		this.dmgTextPool.push(managers.PoolManager.pullObject("dmgText",1)[0]);
-		return this.dmgTextPool.length - 1;
 	}
 	,generateTextures: function(newName) {
 		var returnArray = [];
@@ -1634,15 +1683,15 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.animations.set(newName,value);
 	}
 	,damage: function(amount) {
-		var index = this.getUnusedDmgTextIndex();
-		if(amount > 0) this.dmgTextPool[index].text = "-" + amount; else this.dmgTextPool[index].text = "+" + amount;
-		this.dmgTextPool[index].alpha = 1;
-		this.dmgTextPool[index].visible = true;
-		this.dmgTextPool[index].x = this.x + Math.random() * this.width * 0.5 - this.width * 0.25;
-		this.dmgTextPool[index].y = this.y - this.height * 0.5;
-		this.dmgTextPool[index].anchor.set(0.5,0.5);
-		if(this.dmgTextPool[index].parent == null) managers.DrawManager.addToDisplay(this.dmgTextPool[index],Main.getInstance().gameCont);
-		this.dmgTextPool[index].animate(0.5);
+		var dmgText = managers.PoolManager.pullObject("dmgText");
+		if(amount > 0) dmgText.text = "-" + amount; else dmgText.text = "+" + amount;
+		dmgText.alpha = 1;
+		dmgText.visible = true;
+		dmgText.x = this.x + Math.random() * this.width * 0.5 - this.width * 0.25;
+		dmgText.y = this.y - this.height * 0.5;
+		dmgText.anchor.set(0.5,0.5);
+		managers.DrawManager.addToDisplay(dmgText,Main.getInstance().gameCont);
+		dmgText.animate(0.5);
 		this.setAnimation("damage");
 		this.stats.health -= amount;
 		if(this.stats.health <= 0) {
@@ -1653,8 +1702,8 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	,_selfUpdate: function() {
 		this.manageAnim();
 		if(!this.updateBlocked) {
-			if(managers.FightManager.status != "setup") this.managePathFinding();
-			if(managers.FightManager.status == "fight") this.fightUpdate(); else this.normalUpdate();
+			if(managers.FightManager.status != managers.StatusModes.setup) this.managePathFinding();
+			if(managers.FightManager.status == managers.StatusModes.fight) this.fightUpdate(); else this.normalUpdate();
 		}
 	}
 	,manageAnim: function() {
@@ -1696,6 +1745,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 						this.setAnimation("idle");
 						this.activePath = [];
 						this.activePathPoint = null;
+						this.isMoving = false;
 					}
 				}
 			}
@@ -1705,7 +1755,15 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.activePathPoint = this.activePath[this.pathIndex];
 		this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,[this.activePathPoint.x,this.activePathPoint.y]));
 	}
-	,showPosTile: function() {
+	,generatePosTile: function(allied) {
+		if(allied) this.positionTile = new objects.Tile(PIXI.Texture.fromImage("alliedTile.png")); else this.positionTile = new objects.Tile(PIXI.Texture.fromImage("enemyTile.png"));
+		managers.DrawManager.addToDisplay(this.positionTile,managers.MapManager.getInstance().activeMap.mapContainer,0.45);
+		this.positionTile.visible = true;
+		this.showPosTile(this.tilePos);
+	}
+	,showPosTile: function(newPos) {
+		if(managers.FightManager.status == managers.StatusModes.normal || this.positionTile == null) return;
+		this.positionTile.setTilePosition(newPos);
 	}
 	,normalUpdate: function() {
 	}
@@ -1741,6 +1799,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.y = position[1] * Main.tileSize[1] * 0.5 + managers.MapManager.getInstance().activeMap.OffsetY;
 		if(Math.abs(this.tilePos[1] % 2) == 1) this.x += Main.tileSize[0] * 0.5;
 		this.setZ(this.z);
+		this.showPosTile(position);
 	}
 	,getAbsolutePosition: function() {
 		var arrayToReturn = [];
@@ -1769,6 +1828,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	,followPath: function(path) {
 		if(path.length == 0 || path.length - 1 > this.stats.AP) return;
 		this.activePath = path;
+		this.isMoving = true;
 		if(this.activePathPoint != null) this.pathIndex = 0; else this.pathIndex = 1;
 		this.setAnimation("run");
 	}
@@ -1816,18 +1876,12 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	,__class__: objects.character.Character
 });
 objects.character.Player = function() {
+	this.allowInput = true;
 	this.mouseHovering = false;
 	this.pathPositions = [];
-	this.tilePool = [];
 	objects.character.Character.call(this,"hero");
 	managers.HudManager.getInstance().HPmeter.text = "" + this.stats.health;
 	managers.HudManager.getInstance().APmeter.text = "" + this.stats.AP;
-	this.tilePool = managers.PoolManager.pullObject("tile",this.stats.MaxAP * 2);
-	var $it0 = HxOverrides.iter(this.tilePool);
-	while( $it0.hasNext() ) {
-		var i = $it0.next();
-		i.tint = 65280;
-	}
 	this.targetTile = new objects.Tile(PIXI.Texture.fromImage("selectedTile.png"));
 	this.targetTile.visible = false;
 	Main.getInstance().tileCont.on("mousemove",$bind(this,this.mapHover));
@@ -1844,18 +1898,21 @@ objects.character.Player.getInstance = function() {
 objects.character.Player.__super__ = objects.character.Character;
 objects.character.Player.prototype = $extend(objects.character.Character.prototype,{
 	mouseOverSelf: function(e) {
+		if(!this.allowInput) return;
 		if(objects.character.Player.selectedAction == "move") {
 			if(objects.Options.data.player_showHoverMovement = true) this.showRange(0,this.stats.AP,65280,0.7,utils.Misc.getRangeTileAround(this.tilePos,1,this.stats.AP));
 		}
 	}
 	,mouseOutSelf: function(e) {
+		if(!this.allowInput) return;
 		if(objects.character.Player.selectedAction == "move") {
 			if(objects.Options.data.player_showHoverMovement = true) this.hidePoolTiles();
 		}
 	}
 	,mapClick: function(e) {
+		if(!this.allowInput) return;
 		var newtilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
-		if(objects.character.Player.selectedAction == "move") {
+		if(objects.character.Player.selectedAction == "move" && !this.isMoving) {
 			if(!objects.Camera.getInstance().isDragged) this.findPathTo(newtilePos,true);
 		} else if(this.attacks.exists(objects.character.Player.selectedAction)) this.launchAttack(objects.character.Player.selectedAction,newtilePos);
 		this.hideHoverTile();
@@ -1863,23 +1920,26 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		this.changeSelectedAction("move");
 	}
 	,mapHover: function(e) {
-		var newtilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
+		if(!this.allowInput) return;
+		var tileHovered = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
 		this.hidePoolTiles();
 		this.hideHoverTile();
-		if(objects.character.Player.selectedAction == "move") {
-			if(managers.FightManager.status == "fight") this.showPathMovement(this.findPathTo(newtilePos));
-		} else if(this.attacks.exists(objects.character.Player.selectedAction) && managers.FightManager.status == "fight") {
-			this.showRange(this.attacks.get(objects.character.Player.selectedAction).minRange,this.attacks.get(objects.character.Player.selectedAction).maxRange,16729927,0.3);
-			if(utils.Misc.targetInRange(this.tilePos,newtilePos,this.activeAttackRange)) this.showHoverTile(newtilePos,16711680);
+		if(objects.character.Player.selectedAction == "move" && !this.isMoving) {
+			if(managers.FightManager.status == managers.StatusModes.fight) this.showPathMovement(this.findPathTo(tileHovered));
+		} else if(this.attacks.exists(objects.character.Player.selectedAction) && managers.FightManager.status == managers.StatusModes.fight) {
+			this.showAttackRange(objects.character.Player.selectedAction);
+			if(utils.Misc.targetInRange(this.tilePos,tileHovered,this.activeAttackRange)) this.showHoverTile(tileHovered,16711680);
 		}
-		if(newtilePos[0] == this.tilePos[0] && newtilePos[1] == this.tilePos[1]) {
+		if(tileHovered[0] == this.tilePos[0] && tileHovered[1] == this.tilePos[1]) {
 			this.mouseHovering = true;
 			this.mouseOverSelf(e);
 		} else if(this.mouseHovering) {
 			this.mouseHovering = false;
 			this.mouseOutSelf(e);
 		}
-		utils.Debug.log("" + Std.string(newtilePos));
+	}
+	,showAttackRange: function(attackName) {
+		this.showRange(this.attacks.get(attackName).minRange,this.attacks.get(attackName).maxRange,16729927,0.3);
 	}
 	,newTick: function(tickNumber) {
 		objects.character.Character.prototype.newTick.call(this,tickNumber);
@@ -1889,6 +1949,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 			this.APFlash.scale.set(2 * (1 / this.APFlash.parent.parent.scale.x),2 * (1 / this.APFlash.parent.parent.scale.y));
 		}
 		this.APFlash.gotoAndPlay(0);
+		if(this.mouseHovering) this.mouseOverSelf(null);
 		this.lockHudButtons();
 	}
 	,damage: function(amount) {
@@ -1914,56 +1975,46 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		var $it1 = HxOverrides.iter(path);
 		while( $it1.hasNext() ) {
 			var i1 = $it1.next();
-			var tileIndex = this.getUnusedTileIndex();
-			this.pathPositions.push(tileIndex);
-			this.tilePool[tileIndex].visible = true;
-			this.tilePool[tileIndex].tint = 65280;
-			this.tilePool[tileIndex].setTilePosition([i1.x,i1.y]);
-			if(this.tilePool[tileIndex].parent == null) {
-				if(this.parent != null) managers.DrawManager.addToDisplay(this.tilePool[tileIndex],this.parent,0.5);
+			var newTile = managers.PoolManager.pullObject("tile");
+			newTile.visible = true;
+			newTile.tint = 65280;
+			newTile.setTilePosition([i1.x,i1.y]);
+			this.pathPositions.push(newTile);
+			if(newTile.parent == null) {
+				if(this.parent != null) managers.DrawManager.addToDisplay(newTile,this.parent,0.5);
 			}
 		}
 	}
 	,showRange: function(min,max,color,alpha,customRange) {
-		if(managers.FightManager.status == "normal") return;
+		if(!this.allowInput) return;
+		this.hidePoolTiles();
+		if(managers.FightManager.status == managers.StatusModes.normal) return;
 		var arrayIter;
 		if(customRange == null) arrayIter = this.activeAttackRange; else arrayIter = customRange;
 		var $it0 = HxOverrides.iter(arrayIter);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
 			if(!managers.MapManager.getInstance().activeMap.getWalkableAt(i) && managers.CharacterManager.getInstance().findCharacterAtTilePos(i) == null) continue;
-			var tileIndex = this.getUnusedTileIndex();
-			this.tilePool[tileIndex].visible = true;
-			this.tilePool[tileIndex].setTilePosition([i[0],i[1]]);
-			if(this.tilePool[tileIndex].parent == null) {
-				if(this.parent != null) managers.DrawManager.addToDisplay(this.tilePool[tileIndex],this.parent,0.5);
+			var newTile = managers.PoolManager.pullObject("tile");
+			newTile.visible = true;
+			newTile.setTilePosition([i[0],i[1]]);
+			if(newTile.parent == null) {
+				if(this.parent != null) managers.DrawManager.addToDisplay(newTile,this.parent,0.5);
 			}
-			if(color != null) this.tilePool[tileIndex].tint = color;
-			if(alpha != null) this.tilePool[tileIndex].alpha = alpha;
+			if(color != null) newTile.tint = color;
+			if(alpha != null) newTile.alpha = alpha;
 		}
 	}
-	,hidePoolTiles: function(customCont) {
-		var $it0 = HxOverrides.iter(this.tilePool);
-		while( $it0.hasNext() ) {
-			var i = $it0.next();
-			i.visible = false;
-			i.tint = 16777215;
-			i.alpha = 1;
-		}
+	,hidePoolTiles: function() {
+		managers.PoolManager.applyFunctionToPool("tile",$bind(this,this.poolHide));
 	}
-	,hideOnePoolTile: function(index) {
-		this.tilePool[index].visible = false;
-		this.tilePool[index].tint = 16777215;
-		this.tilePool[index].alpha = 1;
+	,poolHide: function(i) {
+		i.visible = false;
+		i.tint = 16777215;
+		i.alpha = 1;
 	}
-	,getUnusedTileIndex: function() {
-		var $it0 = HxOverrides.iter(this.tilePool);
-		while( $it0.hasNext() ) {
-			var i = $it0.next();
-			if(!i.visible) return HxOverrides.indexOf(this.tilePool,i,0);
-		}
-		this.tilePool.push(managers.PoolManager.pullObject("tile",1)[0]);
-		return this.tilePool.length - 1;
+	,hideOnePoolTile: function(element) {
+		managers.PoolManager.applyFunctionToElement("tile",$bind(this,this.poolHide),element);
 	}
 	,showHoverTile: function(tilePos,newTint) {
 		if(this.targetTile.parent == null) managers.DrawManager.addToDisplay(this.targetTile,managers.MapManager.getInstance().activeMap.mapContainer,0.7);
@@ -1988,14 +2039,35 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 	}
 	,changeSelectedAction: function(newActionName) {
 		if(objects.character.Player.selectedAction == newActionName) objects.character.Player.selectedAction = "move"; else objects.character.Player.selectedAction = newActionName;
+		this.hideEveryTile();
+		if(objects.character.Player.selectedAction != "move") {
+			this.generateAttackRange(objects.character.Player.selectedAction);
+			this.showAttackRange(objects.character.Player.selectedAction);
+		}
 	}
 	,generateAttackRange: function(attackName) {
-		if(this.attacks.exists(attackName)) this.activeAttackRange = utils.Misc.getRangeTileAround(this.tilePos,this.attacks.get(attackName).minRange,this.attacks.get(attackName).maxRange); else window.console.warn("Attack not found while generating attackRange of:" + attackName);
-		this.showRange(this.attacks.get(attackName).minRange,this.attacks.get(attackName).maxRange,16729927,0.3);
+		if(this.attacks.exists(attackName)) {
+			this.activeAttackRange = utils.Misc.getRangeTileAround(this.tilePos,this.attacks.get(attackName).minRange,this.attacks.get(attackName).maxRange);
+			var i = 0;
+			while(i < this.activeAttackRange.length) {
+				if(!utils.Misc.hasLineOfSight(this.tilePos,this.activeAttackRange[i],this.activeAttackRange)) {
+					this.activeAttackRange.splice(i,1);
+					--i;
+				}
+				++i;
+			}
+		} else window.console.warn("Attack not found while generating attackRange of:" + attackName);
 	}
 	,hideEveryTile: function() {
 		this.hideHoverTile();
 		this.hidePoolTiles();
+	}
+	,setTilePosition: function(position) {
+		objects.character.Character.prototype.setTilePosition.call(this,position);
+		if(objects.character.Player.selectedAction != "move") {
+			this.generateAttackRange(objects.character.Player.selectedAction);
+			this.showAttackRange(objects.character.Player.selectedAction);
+		}
 	}
 	,Destroy: function() {
 		objects.character.Character.prototype.Destroy.call(this);
@@ -2081,7 +2153,6 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 		victim.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		managers.FightManager.getInstance().startSetup([victim.ID]);
-		utils.Misc.traceRay([3,15],[7,15]);
 	}
 	,Update: function() {
 	}
@@ -4158,35 +4229,6 @@ utils.Debug.__name__ = ["utils","Debug"];
 utils.Debug.log = function(message,color) {
 	managers.StateManager.debugText.text = message;
 };
-utils.DeviceCapabilities = function() { };
-utils.DeviceCapabilities.__name__ = ["utils","DeviceCapabilities"];
-utils.DeviceCapabilities.__properties__ = {get_width:"get_width",get_height:"get_height"}
-utils.DeviceCapabilities.get_height = function() {
-	return window.innerHeight;
-};
-utils.DeviceCapabilities.get_width = function() {
-	return window.innerWidth;
-};
-utils.DeviceCapabilities.getScreenRect = function(pTarget) {
-	if(pTarget.parent == null) return null;
-	var lTopLeft = new PIXI.Point(0,0);
-	var lBottomRight = new PIXI.Point((function($this) {
-		var $r;
-		var this1 = utils.DeviceCapabilities.get_width();
-		var $int = this1;
-		$r = $int < 0?4294967296.0 + $int:$int + 0.0;
-		return $r;
-	}(this)),(function($this) {
-		var $r;
-		var this2 = utils.DeviceCapabilities.get_height();
-		var int1 = this2;
-		$r = int1 < 0?4294967296.0 + int1:int1 + 0.0;
-		return $r;
-	}(this)));
-	lTopLeft = pTarget.parent.toLocal(lTopLeft);
-	lBottomRight = pTarget.parent.toLocal(lBottomRight);
-	return new PIXI.Rectangle(lTopLeft.x,lTopLeft.y,lBottomRight.x - lTopLeft.x,lBottomRight.y - lTopLeft.y);
-};
 utils.Id = function() { };
 utils.Id.__name__ = ["utils","Id"];
 utils.Id.newId = function() {
@@ -4257,11 +4299,11 @@ utils.Misc.getRangeTileAround = function(tilePos,minRange,maxRange) {
 	}
 	var centerAbsolutePos = utils.Misc.convertToAbsolutePosition(tilePos);
 	if(utils.Misc.squareColliMax == null) {
-		utils.Misc.squareColliMax = managers.PoolManager.pullObject("tile",1)[0];
+		utils.Misc.squareColliMax = new objects.Tile(PIXI.Texture.fromImage(""));
 		utils.Misc.squareColliMax.anchor.set(0.5,0.5);
 	}
 	if(utils.Misc.squareColliMin == null) {
-		utils.Misc.squareColliMin = managers.PoolManager.pullObject("tile",1)[0];
+		utils.Misc.squareColliMin = new objects.Tile(PIXI.Texture.fromImage(""));
 		utils.Misc.squareColliMin.anchor.set(0.5,0.5);
 	}
 	utils.Misc.squareColliMin.width = (minRange - 1) * Main.tileSize[0] + 4;
@@ -4303,7 +4345,7 @@ utils.Misc.colliSquareSquare = function(obj1,obj2) {
 	return true;
 };
 utils.Misc.sign = function(number) {
-	if(number > 0) return 1; else return -1;
+	if(number > 0) return 1; else if(number < 0) return -1; else return 0;
 };
 utils.Misc.clamp = function(number,min,max) {
 	if(number < min) return min;
@@ -4328,166 +4370,95 @@ utils.Misc.targetInRange = function(source,target,tilesInRange) {
 	}
 	return false;
 };
-utils.Misc.fastAbs = function(v) {
-	return (v ^ v >> 31) - (v >> 31);
-};
-utils.Misc.fastFloor = function(v) {
-	return v | 0;
-};
-utils.Misc.checkLine = function(x0,y0,x1,y1) {
-	var rayCanPass = function(x,y) {
-		return managers.MapManager.getInstance().activeMap.getWalkableAt([x,y]);
-	};
-	var swapXY = utils.Misc.fastAbs(y1 - y0) > utils.Misc.fastAbs(x1 - x0);
-	var tmp;
-	if(swapXY) {
-		tmp = x0;
-		x0 = y0;
-		y0 = tmp;
-		tmp = x1;
-		x1 = y1;
-		y1 = tmp;
+utils.Misc.hasLineOfSight = function(from,to,tilesInRange) {
+	var absoluteFrom = utils.Misc.convertToAbsolutePosition(from);
+	var absoluteTo = utils.Misc.convertToAbsolutePosition(to);
+	var errorMargin = 4;
+	var obstacleList = [];
+	var $it0 = HxOverrides.iter(tilesInRange);
+	while( $it0.hasNext() ) {
+		var tilePos = $it0.next();
+		if(!managers.MapManager.getInstance().activeMap.getWalkableAt(tilePos)) obstacleList.push(utils.Misc.generateTileCollisions(managers.MapManager.getInstance().activeMap.getTileAt(tilePos),errorMargin));
 	}
-	if(x0 > x1) {
-		tmp = x0;
-		x0 = x1;
-		x1 = tmp;
-		tmp = y0;
-		y0 = y1;
-		y1 = tmp;
-	}
-	var deltax = x1 - x0;
-	var deltay = utils.Misc.fastFloor(utils.Misc.fastAbs(y1 - y0));
-	var error = deltax / 2 | 0;
-	var y2 = y0;
-	var ystep;
-	if(y0 < y1) ystep = 1; else ystep = -1;
-	var pts = [];
-	if(swapXY) {
-		var _g1 = x0;
-		var _g = x1 + 1;
-		while(_g1 < _g) {
-			var x2 = _g1++;
-			pts.push([y2,x2]);
-			if(!rayCanPass(y2,x2)) return pts;
-			error -= deltay;
-			if(error < 0) {
-				y2 = y2 + ystep;
-				error = error + deltax;
-			}
-		}
-	} else {
-		var _g11 = x0;
-		var _g2 = x1 + 1;
-		while(_g11 < _g2) {
-			var x3 = _g11++;
-			pts.push([x3,y2]);
-			if(!rayCanPass(x3,y2)) return pts;
-			error -= deltay;
-			if(error < 0) {
-				y2 = y2 + ystep;
-				error = error + deltax;
+	var $it1 = HxOverrides.iter(obstacleList);
+	while( $it1.hasNext() ) {
+		var tileCollision = $it1.next();
+		var $it2 = HxOverrides.iter(tileCollision);
+		while( $it2.hasNext() ) {
+			var segment = $it2.next();
+			if(utils.Misc.doLinesIntersect(absoluteFrom,absoluteTo,segment[0],segment[1])) {
+				if(tileCollision[0][0][0] == absoluteTo[0] && tileCollision[0][0][1] + errorMargin == absoluteTo[1] + Main.tileSize[1] * 0.5) return true;
+				return false;
 			}
 		}
 	}
-	return pts;
+	return true;
 };
-utils.Misc.convertOrthoToIso = function(orthoPos) {
-	var i = 0;
-	while(i < orthoPos.length) {
-		if(i == 0) {
-			++i;
-			continue;
-		}
-		if(orthoPos[i - 1][1] % 2 == 0) {
-			if(orthoPos[i - 1][0] - orthoPos[i][0] < 0) {
-				if(orthoPos[i - 1][1] - orthoPos[i][1] < 0) {
-					if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] + 1,orthoPos[i - 1][1]])) {
-						console.log("addPoint");
-						orthoPos.splice(i,0,[orthoPos[i - 1][0] + 1,orthoPos[i - 1][1]]);
-						++i;
-					} else if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0],orthoPos[i - 1][1] + 1])) {
-						console.log("addPoint");
-						orthoPos.splice(i,0,[orthoPos[i - 1][0],orthoPos[i - 1][1] + 1]);
-						++i;
-					} else {
-						console.log("BREAK");
-						orthoPos.splice(i,orthoPos.length - i - 1);
-						i = 300000;
-					}
-				} else if(orthoPos[i - 1][1] - orthoPos[i][1] > 0) {
-					if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] + 1,orthoPos[i - 1][1]])) {
-						console.log("addPoint");
-						orthoPos.splice(i,0,[orthoPos[i - 1][0] + 1,orthoPos[i - 1][1]]);
-						++i;
-					} else if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0],orthoPos[i - 1][1] - 1])) {
-						console.log("addPoint");
-						orthoPos.splice(i,0,[orthoPos[i - 1][0],orthoPos[i - 1][1] - 1]);
-						++i;
-					} else {
-						console.log("BREAK");
-						orthoPos.splice(i,orthoPos.length - i - 1);
-						i = 300000;
-					}
-				}
-			}
-		} else if(orthoPos[i - 1][0] - orthoPos[i][0] > 0) {
-			if(orthoPos[i - 1][1] - orthoPos[i][1] < 0) {
-				if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] - 1,orthoPos[i - 1][1]])) {
-					console.log("addPoint");
-					orthoPos.splice(i,0,[orthoPos[i - 1][0] - 1,orthoPos[i - 1][1]]);
-					++i;
-				} else if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0],orthoPos[i - 1][1] + 1])) {
-					console.log("addPoint");
-					orthoPos.splice(i,0,[orthoPos[i - 1][0],orthoPos[i - 1][1] + 1]);
-					++i;
-				} else {
-					console.log("BREAK");
-					orthoPos.splice(i,orthoPos.length - i - 1);
-					i = 300000;
-				}
-			} else if(orthoPos[i - 1][1] - orthoPos[i][1] > 0) {
-				if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] - 1,orthoPos[i - 1][1]])) {
-					console.log("addPoint");
-					orthoPos.splice(i,0,[orthoPos[i - 1][0] - 1,orthoPos[i - 1][1]]);
-					++i;
-				} else if(managers.MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0],orthoPos[i - 1][1] - 1])) {
-					console.log("addPoint");
-					orthoPos.splice(i,0,[orthoPos[i - 1][0],orthoPos[i - 1][1] - 1]);
-					++i;
-				} else {
-					console.log("BREAK");
-					orthoPos.splice(i,orthoPos.length - i - 1);
-					i = 300000;
-				}
+utils.Misc.generateTileCollisions = function(tile,errorMargin) {
+	var returnArray = [];
+	returnArray.push([[tile.x,tile.y - errorMargin],[tile.x - Main.tileSize[0] * 0.5 + errorMargin,tile.y - Main.tileSize[1] * 0.5]]);
+	returnArray.push([[tile.x - Main.tileSize[0] * 0.5 + errorMargin,tile.y - Main.tileSize[1] * 0.5],[tile.x,tile.y - Main.tileSize[1] + errorMargin]]);
+	returnArray.push([[tile.x,tile.y - Main.tileSize[1] + errorMargin],[tile.x + Main.tileSize[0] * 0.5 - errorMargin,tile.y - Main.tileSize[1] * 0.5]]);
+	returnArray.push([[tile.x + Main.tileSize[0] * 0.5 - errorMargin,tile.y - Main.tileSize[1] * 0.5],[tile.x,tile.y - errorMargin]]);
+	return returnArray;
+};
+utils.Misc.doLinesIntersect = function(a1,a2,b1,b2) {
+	var ax = a2[0] - a1[0];
+	var ay = a2[1] - a1[1];
+	var bx = b1[0] - b2[0];
+	var by = b1[1] - b2[1];
+	var cx = a1[0] - b1[0];
+	var cy = a1[1] - b1[1];
+	var alphaNumerator = by * cx - bx * cy;
+	var commonDenominator = ay * bx - ax * by;
+	if(commonDenominator > 0) {
+		if(alphaNumerator < 0 || alphaNumerator > commonDenominator) return false;
+	} else if(commonDenominator < 0) {
+		if(alphaNumerator > 0 || alphaNumerator < commonDenominator) return false;
+	}
+	var betaNumerator = ax * cy - ay * cx;
+	if(commonDenominator > 0) {
+		if(betaNumerator < 0 || betaNumerator > commonDenominator) return false;
+	} else if(commonDenominator < 0) {
+		if(betaNumerator > 0 || betaNumerator < commonDenominator) return false;
+	}
+	if(commonDenominator == 0) {
+		var y3LessY1 = b1[1] - a1[1];
+		var collinearityTestForP3 = a1[0] * (a2[1] - b1[1]) + a2[0] * y3LessY1 + b1[0] * (a1[1] - a2[1]);
+		if(collinearityTestForP3 == 0) {
+			if(a1[0] >= b1[0] && a1[0] <= b2[0] || a1[0] <= b1[0] && a1[0] >= b2[0] || a2[0] >= b1[0] && a2[0] <= b2[0] || a2[0] <= b1[0] && a2[0] >= b2[0] || b1[0] >= a1[0] && b1[0] <= a2[0] || b1[0] <= a1[0] && b1[0] >= a2[0]) {
+				if(a1[1] >= b1[1] && a1[1] <= b2[1] || a1[1] <= b1[1] && a1[1] >= b2[1] || a2[1] >= b1[1] && a2[1] <= b2[1] || a2[1] <= b1[1] && a2[1] >= b2[1] || b1[1] >= a1[1] && b1[1] <= a2[1] || b1[1] <= a1[1] && b1[1] >= a2[1]) return true;
 			}
 		}
-		++i;
+		return false;
 	}
-	i = 0;
-	while(i < orthoPos.length) {
-		if(i < 2) {
-			++i;
-			continue;
-		}
-		if(orthoPos[i][0] == orthoPos[i - 1][0] && orthoPos[i][0] == orthoPos[i - 2][0]) {
-			console.log("cutPoint");
-			orthoPos.splice(i - 1,1);
-		}
-		++i;
-	}
-	i = 0;
-	while(i < orthoPos.length) {
-		if(!managers.MapManager.getInstance().activeMap.getWalkableAt(orthoPos[i])) {
-			console.log("unwalkable");
-			orthoPos.splice(i,1);
-		}
-		++i;
-	}
-	return orthoPos;
+	return true;
 };
-utils.Misc.traceRay = function(from,to) {
-	managers.MouseManager.createLilCubes(utils.Misc.convertOrthoToIso(utils.Misc.checkLine(from[0],from[1],to[0],to[1])));
+utils.Misc.placeTilePointer = function(positions,color,absolute) {
+	if(absolute == null) absolute = false;
+	var $it0 = HxOverrides.iter(positions);
+	while( $it0.hasNext() ) {
+		var i = $it0.next();
+		if(!absolute) {
+			var displayX = i[0] * Main.tileSize[0];
+			var displayY = i[1] * Main.tileSize[1] / 2;
+			if(Math.abs(i[1] % 2) == 1) displayX += Main.tileSize[0] * 0.5;
+			displayY += Main.tileSize[1] * 0.5;
+		}
+		var newPointer = managers.PoolManager.pullObject("pointer");
+		var specialColor;
+		if(color != null) specialColor = color; else specialColor = 16777215;
+		if(!absolute) newPointer.setTilePosition(i); else newPointer.setAbsolutePosition(i[0],i[1]);
+		newPointer.tint = specialColor;
+		newPointer.visible = true;
+		newPointer.anchor.set(0.5,0.5);
+		managers.DrawManager.addToDisplay(newPointer,Main.getInstance().tileCont,100);
+	}
+};
+utils.Misc.removeAllPointers = function() {
+	managers.PoolManager.applyFunctionToPool("pointer",function(element) {
+		element.visible = false;
+	});
 };
 function $iterator(o) { if( o instanceof Array ) return function() { return HxOverrides.iter(o); }; return typeof(o.iterator) == 'function' ? $bind(o,o.iterator) : o.iterator; }
 var $_, $fid = 0;
@@ -5350,10 +5321,11 @@ var Uint8Array = window.Uint8Array;
 })();
 Main.tileSize = [0,0];
 Main.screenRatio = [1,1];
+Main.keysDown = [];
 Main.DEBUGMODE = true;
 Main.GAMESTOPPED = false;
 haxe.ds.ObjectMap.count = 0;
-managers.FightManager.status = "normal";
+managers.FightManager.status = managers.StatusModes.normal;
 managers.InitManager.CONFIG_PATH = "assets/config/";
 managers.InitManager.ASSETS_PATH = "assets/";
 managers.MapManager.finder = new EasyStar.js();

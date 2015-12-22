@@ -25,7 +25,7 @@ class DrawManager
 	
 	
 	
-	public static function addToDisplay(element:DisplayObject, newParent:Container, layer:Int = 0):Void {
+	public static function addToDisplay(element:DisplayObject, newParent:Container, layer:Float = 0):Void {
 		if (untyped element.setZ != null && layer != 0)
 			untyped element.setZ(layer);
 		if (element.parent == null) {

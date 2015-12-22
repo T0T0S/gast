@@ -28,7 +28,6 @@ class HudElement extends Sprite{
 	private function p_onMove(e:EventTarget):Void { 
 		stopping = mouseIsAbove(cast [e.data.global.x, e.data.global.y]);
 		if (stopping) { 
-			Player.getInstance().hideEveryTile();
 			e.stopPropagation(); 
 		}
 	}

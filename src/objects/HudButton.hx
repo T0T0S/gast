@@ -15,7 +15,6 @@ class HudButton extends Button{
 		this.name = actionName;
 		onUp(function() { 
 				Player.getInstance().changeSelectedAction(actionName); 
-				Player.getInstance().generateAttackRange(actionName);
 			} 
 		);
 	}

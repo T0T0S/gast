@@ -3,11 +3,8 @@ package states;
 import managers.PoolManager;
 import managers.StateManager;
 import objects.State;
-import pixi.core.math.shapes.Rectangle;
-import pixi.loaders.Loader;
 import pixi.core.graphics.Graphics;
-import pixi.loaders.Resource;
-import utils.DeviceCapabilities;
+import pixi.loaders.Loader;
 
 /**
  * ...

@@ -15,7 +15,7 @@ class Tile extends Sprite{
 	public var z:Float = 0;
 	public var depth:Float;
 	public var tilePos:Array<Int> = [0,0];
-
+	
 	public function new(texture:Texture) {
 		super(texture);
 		anchor.set(0.5, 1);

@@ -1,19 +1,16 @@
 package utils;
 import js.Browser;
-import managers.InitManager;
+import managers.DrawManager;
 import managers.MapManager;
-import managers.MouseManager;
 import managers.PoolManager;
 import objects.attacks.Attack;
 import objects.attacks.NormalAttack;
 import objects.attacks.TripleAttack;
 import objects.Camera;
-import objects.GameMap;
 import objects.Tile;
-import pixi.core.display.DisplayObject;
-import pixi.core.math.shapes.Rectangle;
-import pixi.core.sprites.Sprite;
 import pixi.core.math.Point;
+import pixi.core.sprites.Sprite;
+import pixi.core.textures.Texture;
 
 /**
  * ...
@@ -132,19 +129,19 @@ class Misc {
 			}
 		}
 		
-		//MouseManager.createLilCubes(cast GridAround,0x0000FF);
+		//Misc.placeTilePointer(cast GridAround,0x0000FF);
 		
 		var centerAbsolutePos:Array<Float> = Misc.convertToAbsolutePosition(cast tilePos);
 		
 		if (squareColliMax == null)
 		{
-			squareColliMax = PoolManager.pullObject("tile",1)[0];
+			squareColliMax = new Tile(Texture.fromImage(""));
 			squareColliMax.anchor.set(0.5, 0.5);
 		}
 		
 		if (squareColliMin == null)
 		{
-			squareColliMin = PoolManager.pullObject("tile",1)[0];
+			squareColliMin = new Tile(Texture.fromImage(""));
 			squareColliMin.anchor.set(0.5, 0.5);
 		}
 		squareColliMin.width = (minRange -1) * Main.tileSize[0] + 4;
@@ -163,8 +160,8 @@ class Misc {
 				if (!Misc.colliSquarePoint(squareColliMin, absolutePosPoint) || minRange == 0)
 					ArrayOfPos.push(i);
 		}
-		//MouseManager.createLilCubes(cast ArrayOfPos,0xFFFF00);
-		//MouseManager.createLilCubes(cast [tilePos],0xFF0000);
+		//Misc.placeTilePointer(cast ArrayOfPos,0xFFFF00);
+		//Misc.placeTilePointer(cast [tilePos],0xFF0000);
 		
 		return ArrayOfPos;
 	}
@@ -204,7 +201,7 @@ class Misc {
 		return true;
 	} 
 	
-	public static function sign(number):Int { return number > 0 ? 1 : -1; }
+	public static function sign(number):Int { return (number > 0) ? 1 : ((number < 0) ? -1 : 0); }
 	
 	/**
 	 * Clamps the value of Number between min and max,
@@ -239,209 +236,133 @@ class Misc {
 				return true;
 			}
 		}
-		
 		return false;
+	}
+	
+	public static function hasLineOfSight(from:Array<Int>, to:Array<Int>, tilesInRange:Array<Array<Int>>):Bool
+	{
+		var absoluteFrom:Array<Float> = convertToAbsolutePosition(from);
+		var absoluteTo:Array<Float> = convertToAbsolutePosition(to);
 		
-	}
-	
-	static inline function fastAbs(v:Dynamic) : Int {
-		return (v ^ (v >> 31)) - (v >> 31);
-	}	
- 
-	static inline function fastFloor(v:Float) : Int {
-		return Std.int(v);
-	}
+		var errorMargin:Int = 4;
+		// OPTIMISATION !!!
+		var obstacleList:Array<Array<Array<Array<Float>>>> = [];
 		
-	
-	// algo de bresenham;
-	public static function checkLine(x0:Int, y0:Int, x1:Int, y1:Int):Array<Array<Int>> {
-		var rayCanPass  = function(x, y) { return MapManager.getInstance().activeMap.getWalkableAt([x, y]); };
-		var swapXY = fastAbs( y1 - y0 ) > fastAbs( x1 - x0 );
-		var tmp : Int;
-		if ( swapXY ) {
-			// swap x and y
-			tmp = x0; x0 = y0; y0 = tmp; // swap x0 and y0
-			tmp = x1; x1 = y1; y1 = tmp; // swap x1 and y1
+		for (tilePos in tilesInRange.iterator())
+		{
+			if (!MapManager.getInstance().activeMap.getWalkableAt(tilePos))
+			{	
+				obstacleList.push(generateTileCollisions(MapManager.getInstance().activeMap.getTileAt(tilePos), errorMargin));
+			}
 		}
-		 
-		if ( x0 > x1 ) {
-			// make sure x0 < x1
-			tmp = x0; x0 = x1; x1 = tmp; // swap x0 and x1
-			tmp = y0; y0 = y1; y1 = tmp; // swap y0 and y1
-		}
-		 
-		var deltax = x1 - x0;
-		var deltay = fastFloor( fastAbs( y1 - y0 ) );
-		var error = fastFloor( deltax / 2 );
-		var y = y0;
-		var ystep = if ( y0 < y1 ) 1 else -1;
-		var pts:Array<Array<Int>> = [];
-		if( swapXY )
-			// Y / X
-			for ( x in x0 ... x1+1 ) {
-				pts.push([y,x]);
-				if( !rayCanPass(y,x) )
-					return pts;
-					 
-				error -= deltay;
-				if ( error < 0 ) {
-					y = y + ystep;
-					error = error + deltax;
-				}
-			}
-		else
-			// X / Y
-			for ( x in x0 ... x1+1 ) {
-				pts.push([x,y]);
-				if( !rayCanPass(x,y) )
-					return pts;
-					 
-				error -= deltay;
-				if ( error < 0 ) {
-					y = y + ystep;
-					error = error + deltax;
-				}
-			}
-		return pts;
-	}
-	
-	public static function convertOrthoToIso(orthoPos:Array<Array<Int>>):Array<Array<Int>>{
-		var i:Int = 0;
-		while (i < orthoPos.length) {
-			if (i == 0){ // skip first
-				++i;
-				continue;
-			}
-			
-			if (orthoPos[i - 1][1] % 2 == 0)
+		
+		for (tileCollision in obstacleList.iterator())
+		{
+			for (segment in tileCollision.iterator())
 			{
-				if (orthoPos[i - 1][0] - orthoPos[i][0] < 0)
+				if (doLinesIntersect(absoluteFrom, absoluteTo, segment[0], segment[1]))
 				{
-					if (orthoPos[i - 1][1] - orthoPos[i][1] < 0)
-					{
-						//wrong diago down right move
-						if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] + 1, orthoPos[i - 1][1]]))
-						{
-							trace("addPoint");
-							orthoPos.insert(i, [orthoPos[i - 1][0] + 1, orthoPos[i - 1][1]]);
-							++i;
-						}
-						else if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0], orthoPos[i - 1][1] +1]))
-						{
-							trace("addPoint");
-							orthoPos.insert(i, [orthoPos[i - 1][0], orthoPos[i - 1][1] +1]);
-							++i;
-						}
-						else
-						{
-							trace("BREAK");
-							orthoPos.splice(i, orthoPos.length - i - 1);
-							i = 300000;
-						}
-					
-					}
-					else if(orthoPos[i - 1][1] - orthoPos[i][1] > 0)
-					{
-						//wrong diago up right move
-						if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] + 1, orthoPos[i - 1][1]]))
-						{
-							trace("addPoint");
-							orthoPos.insert(i, [orthoPos[i - 1][0] + 1, orthoPos[i - 1][1]]);
-							++i;
-						}
-						else if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0], orthoPos[i - 1][1]  - 1]))
-						{
-							trace("addPoint");
-							orthoPos.insert(i, [orthoPos[i - 1][0], orthoPos[i - 1][1] - 1]);
-							++i;
-						}
-						else
-						{
-							trace("BREAK");
-							orthoPos.splice(i, orthoPos.length - i - 1);
-							i = 300000;
-						}
+					//trace("COLLI !");
+					if (tileCollision[0][0][0] == absoluteTo[0] && tileCollision[0][0][1]  + errorMargin == absoluteTo[1] + Main.tileSize[1] * 0.5)
+						return true;
+					return false;
+				}
+			}
+		}
+		return true;		
+	}
+	
+	private static function generateTileCollisions(tile:Tile, errorMargin:Int):Array<Array<Array<Float>>>
+	{
+		var returnArray:Array<Array<Array<Float>>> = [];
+		returnArray.push(	[[tile.x, tile.y - errorMargin],
+							[tile.x - Main.tileSize[0] * 0.5 + errorMargin, tile.y - Main.tileSize[1] * 0.5]]); //bottom left
+							
+		returnArray.push(	[[tile.x - Main.tileSize[0] * 0.5 + errorMargin, tile.y - Main.tileSize[1] * 0.5],
+							[tile.x, tile.y - Main.tileSize[1] + errorMargin]]); //top left
+							
+		returnArray.push(	[[tile.x, tile.y - Main.tileSize[1] + errorMargin], 
+							[tile.x + Main.tileSize[0] * 0.5 - errorMargin, tile.y - Main.tileSize[1] * 0.5]]);//top right
+		
+		returnArray.push(	[[tile.x + Main.tileSize[0] * 0.5 - errorMargin, tile.y - Main.tileSize[1] * 0.5],
+							[tile.x, tile.y - errorMargin]]); //bottom right
+							
+		return returnArray;
+	}
+	
+	private static function doLinesIntersect(a1:Array<Float>, a2:Array<Float>, b1:Array<Float>, b2:Array<Float>):Bool {
+		// Fastest method, based on Franklin Antonio's "Faster Line Segment Intersection" topic "in Graphics Gems III" book (http://www.graphicsgems.org/)
+		var ax = a2[0]-a1[0],
+			ay = a2[1]-a1[1],
+			bx = b1[0]-b2[0],
+			by = b1[1]-b2[1],
+			cx = a1[0]-b1[0],
+			cy = a1[1]-b1[1],
+			alphaNumerator = by*cx - bx*cy,
+			commonDenominator = ay * bx - ax * by;
+			
+		if (commonDenominator > 0){
+			if (alphaNumerator < 0 || alphaNumerator > commonDenominator)
+				return false;
+		} else if (commonDenominator < 0){
+			if (alphaNumerator > 0 || alphaNumerator < commonDenominator)
+				return false;
+		}
+		var betaNumerator = ax*cy - ay*cx;
+		if (commonDenominator > 0){
+			if (betaNumerator < 0 || betaNumerator > commonDenominator)
+				return false;
+		}else if (commonDenominator < 0){
+			if (betaNumerator > 0 || betaNumerator < commonDenominator)
+				return false;
+		}
+		if (commonDenominator == 0){
+			var y3LessY1 = b1[1]-a1[1];
+			var collinearityTestForP3 = a1[0]*(a2[1]-b1[1]) + a2[0]*(y3LessY1) + b1[0]*(a1[1]-a2[1]);   // see http://mathworld.wolfram.com/Collinear.html
+			if (collinearityTestForP3 == 0){
+				if (a1[0] >= b1[0] && a1[0] <= b2[0] || a1[0] <= b1[0] && a1[0] >= b2[0] ||
+					a2[0] >= b1[0] && a2[0] <= b2[0] || a2[0] <= b1[0] && a2[0] >= b2[0] ||
+					b1[0] >= a1[0] && b1[0] <= a2[0] || b1[0] <= a1[0] && b1[0] >= a2[0]){
+					if (a1[1] >= b1[1] && a1[1] <= b2[1] || a1[1] <= b1[1] && a1[1] >= b2[1] ||
+						a2[1] >= b1[1] && a2[1] <= b2[1] || a2[1] <= b1[1] && a2[1] >= b2[1] ||
+						b1[1] >= a1[1] && b1[1] <= a2[1] || b1[1] <= a1[1] && b1[1] >= a2[1]){
+						return true;
 					}
 				}
 			}
+			return false;
+		}
+		return true;
+	}
+	
+	public static function placeTilePointer (positions:Array<Array<Int>>, ?color:Int, ?absolute:Bool = false):Void {
+		for (i in positions.iterator()) {
+			if (!absolute)
+			{
+				var displayX:Float = i[0] * Main.tileSize[0];
+				var displayY:Float = i[1] * Main.tileSize[1] / 2;
+				
+				if (Math.abs(i[1] % 2) == 1)
+					displayX += Main.tileSize[0] * 0.5;
+				
+				displayY += Main.tileSize[1] * 0.5;
+			}
+			var newPointer:Tile = PoolManager.pullObject("pointer");
+			var specialColor = color != null ? color: 0xFFFFFF;
+			if (!absolute)
+				newPointer.setTilePosition(i);
 			else
-			{
-				if (orthoPos[i - 1][0] - orthoPos[i][0] > 0)
-				{
-					if (orthoPos[i - 1][1] - orthoPos[i][1] < 0)
-					{
-						//wrong diago down left move
-						if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] - 1, orthoPos[i - 1][1]]))
-						{
-							trace("addPoint");
-							orthoPos.insert(i, [orthoPos[i - 1][0] - 1, orthoPos[i - 1][1]]);
-							++i;
-						}
-						else if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0], orthoPos[i - 1][1] +1]))
-						{
-							trace("addPoint");
-							orthoPos.insert(i, [orthoPos[i - 1][0], orthoPos[i - 1][1] +1]);
-							++i;
-						}
-						else
-						{
-							trace("BREAK");
-							orthoPos.splice(i, orthoPos.length - i - 1);
-							i = 300000;
-						}
-					
-					}
-					else if(orthoPos[i - 1][1] - orthoPos[i][1] > 0)
-					{
-						//wrong diago up left move
-						if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0] - 1, orthoPos[i - 1][1]]))
-						{
-							trace("addPoint");
-							orthoPos.insert(i, [orthoPos[i - 1][0] - 1, orthoPos[i - 1][1]]);
-							++i;
-						}
-						else if (MapManager.getInstance().activeMap.getWalkableAt([orthoPos[i - 1][0], orthoPos[i - 1][1]  - 1]))
-						{
-							trace("addPoint");
-							orthoPos.insert(i, [orthoPos[i - 1][0], orthoPos[i - 1][1] - 1]);
-							++i;
-						}
-						else
-						{
-							trace("BREAK");
-							orthoPos.splice(i, orthoPos.length - i - 1);
-							i = 300000;
-						}
-					}
-				}
-			}
-			++i;
-		}
-			
-			
-		
-		//PHASE DECOUPE
-		i = 0;
-		while (i < orthoPos.length) {
-			if (i < 2){// skip 2 first
-				++i;
-				continue;
-			}
-			
-			if (orthoPos[i][0] == orthoPos[i - 1][0] && orthoPos[i][0] == orthoPos[i - 2][0])
-			{
-				trace("cutPoint");
-				orthoPos.splice(i - 1, 1);
-			}
-			++i;
+				newPointer.setAbsolutePosition(i[0], i[1]);
+				
+			newPointer.tint = specialColor;
+			newPointer.visible = true;
+			newPointer.anchor.set(0.5, 0.5);
+			DrawManager.addToDisplay(newPointer, Main.getInstance().tileCont, 100);
 		}
 		
-		return orthoPos;
 	}
 	
-	public static function traceRay(from:Array<Int>, to:Array<Int>):Void{
-		//MouseManager.createLilCubes(cast checkLine(from[0],from[1], to[0], to[1]));
-		MouseManager.createLilCubes(cast convertOrthoToIso(checkLine(from[0],from[1], to[0], to[1])));
+	public static function removeAllPointers ():Void {
+		PoolManager.applyFunctionToPool("pointer", function(element) { element.visible = false; } );
 	}
-	
 }

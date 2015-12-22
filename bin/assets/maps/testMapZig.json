@@ -32,7 +32,7 @@
         {
          "firstgid":1,
          "image":"..\/misc\/tile.png",
-         "imageheight":64,
+         "imageheight":32,
          "imagewidth":64,
          "margin":0,
          "name":"mapSpriteSheet",

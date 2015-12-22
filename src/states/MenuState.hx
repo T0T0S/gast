@@ -1,17 +1,9 @@
 package states;
 
-import haxe.Json;
-import js.Browser;
 import managers.DrawManager;
-import managers.MapManager;
 import managers.StateManager;
 import objects.Button;
 import objects.State;
-import pixi.core.sprites.Sprite;
-import pixi.core.math.shapes.Rectangle;
-import pixi.core.text.Text;
-import pixi.core.textures.Texture;
-import utils.DeviceCapabilities;
 
 
 /**

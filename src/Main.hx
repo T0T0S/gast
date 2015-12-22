@@ -20,8 +20,6 @@ import pixi.core.display.Container;
 import pixi.core.graphics.Graphics;
 import pixi.core.renderers.Detector;
 import pixi.core.renderers.webgl.WebGLRenderer;
-import pixi.core.text.Text;
-import utils.Misc;
 
 //import managers.ZoomManager;
 
@@ -62,6 +60,7 @@ class Main
 	public static var tileSize:Array<Float> = [0,0];
 	public static var screenRatio:Array<Float> = [1,1]; // ratio of the scale from 1920x1080 screen
 	
+	public static var keysDown:Array<Int> = [];
 	
 	public static var DEBUGMODE:Bool = true;
 	public static var GAMESTOPPED:Bool = false;
@@ -78,9 +77,6 @@ class Main
 		var font = new Font();
 		font.onload = function() { Browser.window.requestAnimationFrame(cast InitManager.getInstance); };
 		font.fontFamily = "gastFont";
-		//font.src = "assets/fonts/CharlemagneStd-Bold.otf";
-		//font.src = "assets/fonts/LeagueGothic-Regular.otf";
-		//font.src = "assets/fonts/slkscr.ttf";
 		font.src = "assets/fonts/Days.otf";
 		
 		
@@ -119,6 +115,7 @@ class Main
 		
 		Browser.document.body.appendChild(renderer.view);
 		Browser.window.addEventListener("keydown", keyDownListener);
+		Browser.window.addEventListener("keyup", keyUpListener);
 	}
 	
 
@@ -133,6 +130,7 @@ class Main
 	 * */
 	
 	public function Start() {
+		poolManager = PoolManager.getInstance();
 		drawManager = DrawManager.getInstance();
 		timeManager = TimeManager.getInstance();
 		mouseManager = MouseManager.getInstance();
@@ -140,7 +138,6 @@ class Main
 		mapManager = MapManager.getInstance();
 		characterManager = CharacterManager.getInstance();
 		fightManager = FightManager.getInstance();
-		poolManager = PoolManager.getInstance();
 		stateManager = StateManager.getInstance();
 		
 		Browser.window.addEventListener("resize", resize);
@@ -154,11 +151,12 @@ class Main
 	
 	public function Update() {
 		Browser.window.requestAnimationFrame(cast Update);
+		if (GAMESTOPPED && DEBUGMODE)
+			return;
+			
 		if(timeManager !=null)
 			timeManager.Update();
 			
-		if (GAMESTOPPED && DEBUGMODE)
-			return;
 		mouseUpdate();
 		characterManager.Update();
 		camera.Update();
@@ -179,8 +177,11 @@ class Main
 		if (String.fromCharCode(e.keyCode) == "A" && e.altKey) {
 			GAMESTOPPED = !GAMESTOPPED;
 		}
-		
-		if (FightManager.status == "fight")
+		if (keysDown.indexOf(e.keyCode) != -1)
+			return;
+		keysDown.push(e.keyCode);
+
+		if (FightManager.status == StatusModes.fight)
 		{
 			var attackIndex:Int = 0;
 			if (e.keyCode >= 48)
@@ -197,6 +198,13 @@ class Main
 		
 		}
 	}
+	
+	public function keyUpListener (e:KeyboardEvent):Void
+	{
+		keysDown.splice(keysDown.indexOf(e.keyCode) , 1);
+	}
+	
+	
 
 	
 	public function destroy (): Void {

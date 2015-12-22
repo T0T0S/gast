@@ -63,10 +63,6 @@ class DebugState extends State {
 		
 		FightManager.getInstance().startSetup([victim.ID]);
 	
-	
-	
-		//trace(""+Misc.checkLine(0,0,5,20));
-		Misc.traceRay([3,15],[7,15]);
 	}
 	
 	public override function Update() {

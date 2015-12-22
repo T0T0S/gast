@@ -80,16 +80,16 @@
 			"animationName": "normalAttack",
 			"minRange": 1,
 			"maxRange": 10,
-			"apCost" : 2,
+			"apCost" : 5,
 			"damage" : 50,
-			"framesData": [[5,20]]
+			"framesData": [[1,3]]
 		},
 		"triple":{
 			"waitForFinish": true,
 			"animationName": "normalAttack",
 			"minRange": 3,
-			"maxRange": 5,
-			"apCost" : 3,
+			"maxRange": 4,
+			"apCost" : 5,
 			"damage" : 300,
 			"framesData": [[5,2],[5,2],[5,2]]
 		}

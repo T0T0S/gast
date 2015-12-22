@@ -47,7 +47,7 @@ class MapManager{
 					tileSprite = new Tile(Texture.fromImage(""+newMap.json.tiles[tileIndex]));
 					tileSprite.setTilePosition([j, i]);
 					tileSprite.x += activeMap.OffsetX;
-					tileSprite.y += 16;
+					tileSprite.y += Main.tileSize[1] * 0.5;
 					tileSprite.setZ(newMap.json.tilesHeight[tileIndex]);
 					newMap.addTileToMap(tileSprite, newMap.json.tilesHeight[tileIndex]);
 					if (newMap.tileMap[j] == null)
@@ -103,9 +103,9 @@ class MapManager{
 		for(y in Reflect.fields(nodes)){
 			for(x in Reflect.fields(untyped nodes[x])){
 				if (untyped nodes[y][x] < 2)
-					MouseManager.createLilCubes([[cast x,cast y]], 0x0000FF);
+					Misc.placeTilePointer([[cast x,cast y]], 0x0000FF);
 				else
-					MouseManager.createLilCubes([[cast x,cast y]], 0xFF0000);
+					Misc.placeTilePointer([[cast x,cast y]], 0xFF0000);
 			}
 		}
 	}

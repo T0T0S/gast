@@ -3,6 +3,7 @@ import objects.Button;
 import objects.character.Player;
 import objects.HudButton;
 import objects.HudElement;
+import pixi.core.display.Container;
 import pixi.core.sprites.Sprite;
 import pixi.core.text.Text;
 import pixi.core.textures.Texture;
@@ -21,6 +22,9 @@ class HudManager {
 	public var buttonPosition:Array<HudButton> = [];
 	public var HPmeter:Text;
 	public var APmeter:Text;
+	public var APTicker:Sprite;
+	
+	private var fightHud:Container = new Container();
 	
 
 	private function new() {
@@ -52,13 +56,11 @@ class HudManager {
 		
 		var tripleAttackButton:HudButton  =  addActionButton("button_triple_attack", "triple", 2);
 		
-		
-		
-		var tickTimer:Sprite = new Sprite(Texture.fromImage("timerFill.png"));
-		tickTimer.anchor.set(0.5,0.5);
-		tickTimer.x = - (tickTimer.width * 0.5 + 50);
-		tickTimer.y = - (tickTimer.height * 0.5 + 48);
-		tickTimer.name = "tickTimer";
+		APTicker = new Sprite(Texture.fromImage("timerFill.png"));
+		APTicker.anchor.set(0.5,0.5);
+		APTicker.x = - (APTicker.width * 0.5 + 50);
+		APTicker.y = - (APTicker.height * 0.5 + 48);
+		APTicker.name = "tickTimer";
 	
 		var HPText:Text = new Text("", { "fill" :"white", "font":"35px gastFont", "stroke": "black", "strokeThickness":5 } );
 		HPText.anchor.set(0.5,0.5);
@@ -74,12 +76,16 @@ class HudManager {
 		APText.y = - 175;
 		APmeter = APText;
 		
-		DrawManager.addToDisplay(attackHud, Main.getInstance().hudCont);
+		if (fightHud.parent == null)
+			DrawManager.addToDisplay(fightHud, Main.getInstance().hudCont);
+			
+		
+		DrawManager.addToDisplay(attackHud, fightHud);
 		DrawManager.addToDisplay(attackButton, attackHud);
 		DrawManager.addToDisplay(tripleAttackButton, attackHud);
 
-		DrawManager.addToDisplay(rightHud, Main.getInstance().hudCont);
-		DrawManager.addToDisplay(tickTimer, rightHud);
+		DrawManager.addToDisplay(rightHud, fightHud);
+		DrawManager.addToDisplay(APTicker, rightHud);
 		DrawManager.addToDisplay(APText, rightHud);
 		DrawManager.addToDisplay(HPText, rightHud);
 

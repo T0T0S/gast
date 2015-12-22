@@ -1,5 +1,4 @@
 package objects.character;
-import haxe.Constraints.Function;
 import js.Browser;
 import managers.CharacterManager;
 import managers.DrawManager;
@@ -11,6 +10,8 @@ import managers.TimeManager;
 import objects.Animation;
 import objects.attacks.Attack;
 import objects.particle.DmgText;
+import objects.Tile;
+import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
 import pixi.extras.MovieClip;
 import utils.Id;
@@ -56,6 +57,7 @@ class Character extends MovieClip{
 	private var activePath:Array<Dynamic> = [];
 	private var pathIndex:Int = 1;
 	private var activePathPoint:Dynamic;
+	private var isMoving:Bool = false;
 	
 	public var refreshSpeed:Float = 1;
 	
@@ -64,8 +66,6 @@ class Character extends MovieClip{
 	private var activeAttack:Attack;
 	private var activeAttackRange:Array<Array<Int>> = [];
 	
-	
-	private var dmgTextPool:Array<DmgText> = [];
 	
 	public var animations:Map<String,Animation> = new Map.Map();
 	public var animationFrame:Float = 0;
@@ -83,6 +83,8 @@ class Character extends MovieClip{
 	public var waitForNextTick:Bool = false;
 	
 	public var isDead:Bool = false;
+	
+	private var positionTile:Tile;
 
 	
 	/*#################
@@ -101,7 +103,6 @@ class Character extends MovieClip{
 		ID = Id.newId();
 		
 		anchor.set(0.5, 1);
-		dmgTextPool = cast PoolManager.pullObject("dmgText",5);
 		CharacterManager.getInstance().addCharacter(this);
 	}
 	
@@ -118,16 +119,6 @@ class Character extends MovieClip{
 		stats.MaxAP 		= config.stats.MaxAP;
 		stats.AP 			= stats.MaxAP;
 	}
-	
-	public function getUnusedDmgTextIndex():Int{
-		for (i in dmgTextPool.iterator() ){
-			if (!i.visible)
-				return dmgTextPool.indexOf(i);
-		}
-		dmgTextPool.push(PoolManager.pullObject("dmgText", 1)[0]);
-		return dmgTextPool.length -1;
-	}
-	
 	
 	private function generateTextures(newName:String):Array<Texture>{
 		var returnArray:Array<Texture> = [];
@@ -161,19 +152,18 @@ class Character extends MovieClip{
 	}
 		
 	public function damage(amount:Int):Void {
-		var index:Int = getUnusedDmgTextIndex();
+		var dmgText:DmgText = PoolManager.pullObject("dmgText");
 		if (amount > 0)
-			dmgTextPool[index].text = "-"+(amount);
+			dmgText.text = "-"+(amount);
 		else
-			dmgTextPool[index].text = "+"+(amount);
-		dmgTextPool[index].alpha = 1;
-		dmgTextPool[index].visible = true;
-		dmgTextPool[index].x = x + (Math.random() * width * 0.5) - width*0.25;
-		dmgTextPool[index].y = y - height * 0.5;
-		dmgTextPool[index].anchor.set(0.5, 0.5);
-		if(dmgTextPool[index].parent == null)
-			DrawManager.addToDisplay(dmgTextPool[index],Main.getInstance().gameCont);
-		dmgTextPool[index].animate(0.5);
+			dmgText.text = "+"+(amount);
+		dmgText.alpha = 1;
+		dmgText.visible = true;
+		dmgText.x = x + (Math.random() * width * 0.5) - width*0.25;
+		dmgText.y = y - height * 0.5;
+		dmgText.anchor.set(0.5, 0.5);
+		DrawManager.addToDisplay(dmgText,Main.getInstance().gameCont);
+		dmgText.animate(0.5);
 		
 		setAnimation("damage");
 		
@@ -191,11 +181,10 @@ class Character extends MovieClip{
 	public function _selfUpdate():Void {
 		manageAnim();
 		
-		
 		if (!updateBlocked) {
-			if (FightManager.status != "setup")
+			if (FightManager.status != StatusModes.setup)
 				managePathFinding();
-			if (FightManager.status == "fight")
+			if (FightManager.status == StatusModes.fight)
 				fightUpdate();
 			else
 				normalUpdate();
@@ -271,6 +260,7 @@ class Character extends MovieClip{
 						setAnimation("idle");
 						activePath = [];
 						activePathPoint = null;
+						isMoving = false;
 					}
 				}
 			}
@@ -282,8 +272,18 @@ class Character extends MovieClip{
 		setDirection(Misc.getDirectionToPoint(tilePos, [activePathPoint.x,activePathPoint.y]));
 	}
 	
-	public function showPosTile():Void{
-	/* SHOW TILE OF POSITION (BLUE OR RED) */
+	public function generatePosTile(allied:Bool):Void {
+		positionTile = allied ? new Tile(Texture.fromImage("alliedTile.png")) :new Tile(Texture.fromImage("enemyTile.png"));
+		DrawManager.addToDisplay(positionTile, MapManager.getInstance().activeMap.mapContainer, 0.45);
+		positionTile.visible = true;
+		showPosTile(tilePos);
+	}
+	
+	private function showPosTile(newPos:Array<Int>):Void {
+		if (FightManager.status == StatusModes.normal || positionTile == null)
+			return;
+			
+		positionTile.setTilePosition(newPos);
 	}
 	
 	public function normalUpdate():Void{
@@ -352,6 +352,7 @@ class Character extends MovieClip{
 			x += Main.tileSize[0] * 0.5;
 			
 		setZ(z);
+		showPosTile(position);
 	}
 	
 
@@ -389,6 +390,7 @@ class Character extends MovieClip{
 		if (path.length == 0 || path.length-1 > stats.AP)
 			return;
 		activePath = path;
+		isMoving = true;
 		
 		pathIndex = activePathPoint != null ? 0 : 1;
 		setAnimation("run");
