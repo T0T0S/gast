@@ -1,5 +1,6 @@
 package utils;
 import js.Browser;
+import managers.CharacterManager;
 import managers.DrawManager;
 import managers.MapManager;
 import managers.PoolManager;
@@ -11,6 +12,7 @@ import objects.Tile;
 import pixi.core.math.Point;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
+import pixi.interaction.EventTarget;
 
 /**
  * ...
@@ -29,6 +31,13 @@ class Misc {
 		var dx:Float = x1 - x2;
 		var dy:Float = y1 - y2;
 		return Math.sqrt(dx * dx + dy * dy);
+	}
+	
+	
+	public static function getDistanceBetweenTiles(tile1:Array<Int>, tile2:Array<Int>):Float{
+		var tile1Ab = convertToAbsolutePosition(tile1);
+		var tile2Ab = convertToAbsolutePosition(tile2);
+		return getDistance(tile1Ab[0], tile1Ab[1], tile2Ab[0], tile2Ab[1]);
 	}
 	
 	/**
@@ -201,7 +210,7 @@ class Misc {
 		return true;
 	} 
 	
-	public static function sign(number):Int { return (number > 0) ? 1 : ((number < 0) ? -1 : 0); }
+	public static function sign(number:Dynamic):Int { return (number > 0) ? 1 : ((number < 0) ? -1 : 0); }
 	
 	/**
 	 * Clamps the value of Number between min and max,
@@ -216,20 +225,9 @@ class Misc {
 		if (number > max)
 			return max;
 		return number;
-	}
+	}	
 	
-	
-	public static function getAttackFromName(name:String, data:Dynamic):Attack{
-		switch name{
-			case "normal": return new NormalAttack(data);
-			case "triple": return new TripleAttack(data);
-		}
-		Browser.window.console.warn("ATTACK NOT FOUND !");
-		return new Attack(data);
-	}
-	
-	
-	public static function targetInRange(source:Array<Int>, target:Array<Int>, tilesInRange:Array<Array<Int>>):Bool {
+	public static function targetInRange(target:Array<Int>, tilesInRange:Array<Array<Int>>):Bool {
 		for (i in tilesInRange.iterator())
 		{
 			if (i[0] == target[0] && i[1] == target[1]){
@@ -239,41 +237,70 @@ class Misc {
 		return false;
 	}
 	
-	public static function hasLineOfSight(from:Array<Int>, to:Array<Int>, tilesInRange:Array<Array<Int>>):Bool
+	public static function hasLineOfSight(from:Array<Int>, to:Array<Int>, tilesInRange:Array<Array<Int>>, ?precalculatedObstacleList:Array<Array<Array<Array<Float>>>>):Bool
 	{
 		var absoluteFrom:Array<Float> = convertToAbsolutePosition(from);
 		var absoluteTo:Array<Float> = convertToAbsolutePosition(to);
 		
-		var errorMargin:Int = 4;
 		// OPTIMISATION !!!
-		var obstacleList:Array<Array<Array<Array<Float>>>> = [];
 		
-		for (tilePos in tilesInRange.iterator())
-		{
-			if (!MapManager.getInstance().activeMap.getWalkableAt(tilePos))
-			{	
-				obstacleList.push(generateTileCollisions(MapManager.getInstance().activeMap.getTileAt(tilePos), errorMargin));
-			}
-		}
+		var obstacleList:Array<Array<Array<Array<Float>>>>;
+		
+		if (precalculatedObstacleList == null)
+			obstacleList = generateObstacleMap(tilesInRange)
+		else
+			obstacleList = precalculatedObstacleList;
 		
 		for (tileCollision in obstacleList.iterator())
-		{
 			for (segment in tileCollision.iterator())
 			{
-				if (doLinesIntersect(absoluteFrom, absoluteTo, segment[0], segment[1]))
-				{
-					//trace("COLLI !");
-					if (tileCollision[0][0][0] == absoluteTo[0] && tileCollision[0][0][1]  + errorMargin == absoluteTo[1] + Main.tileSize[1] * 0.5)
-						return true;
-					return false;
+				if (isSameTile(convertToGridPosition(segment[0][0],segment[0][1]), to)){
+					if (CharacterManager.getInstance().findCharacterAtTilePos(to) != null)
+						continue;
 				}
+				else if (doLinesIntersect(absoluteFrom, absoluteTo, segment[0], segment[1]))
+					return false;
 			}
-		}
+					
 		return true;		
 	}
 	
-	private static function generateTileCollisions(tile:Tile, errorMargin:Int):Array<Array<Array<Float>>>
+	public static function processLOSRange(from:Array<Int>, range:Array<Array<Int>>):Array<Array<Int>>
 	{
+		var obstacleList:Array<Array<Array<Array<Float>>>> = generateObstacleMap(range);
+		
+		var i:Int = 0;
+		while (i < range.length)
+		{
+			if (!hasLineOfSight(from, range[i], range, obstacleList))
+			{
+				range.splice(i, 1);
+				--i;
+			}
+			++i;
+		}
+		
+		return range;
+	}
+	
+	public static function isSameTile(pos1:Array<Int>, pos2:Array<Int>):Bool{
+		return pos1[0] == pos2[0] && pos1[1] == pos2[1];
+	}
+	
+	
+	private static function generateObstacleMap(range:Array<Array<Int>>):Array<Array<Array<Array<Float>>>>{
+		var obstacleList:Array<Array<Array<Array<Float>>>> = [];
+		for (tilePos in range.iterator())
+			if(MapManager.getInstance().activeMap.getTileAt(tilePos) != null)
+				if (!MapManager.getInstance().activeMap.getLOSAt(tilePos))
+					obstacleList.push(generateTileCollisions(MapManager.getInstance().activeMap.getTileAt(tilePos)));
+				
+		return obstacleList;
+	}
+	
+	private static function generateTileCollisions(tile:Tile):Array<Array<Array<Float>>>
+	{
+		var errorMargin:Int = 1;
 		var returnArray:Array<Array<Array<Float>>> = [];
 		returnArray.push(	[[tile.x, tile.y - errorMargin],
 							[tile.x - Main.tileSize[0] * 0.5 + errorMargin, tile.y - Main.tileSize[1] * 0.5]]); //bottom left
@@ -362,7 +389,57 @@ class Misc {
 		
 	}
 	
+	public static function getClosestPosFromDirection(target:Array<Int>, direction:Int):Array<Int>
+	{
+		var returnPos:Array<Int> = [target[0],target[1]];
+		
+		if (direction == 0)
+		{
+			if (target[1] % 2 == 0){
+				--returnPos[0];
+				++returnPos[1]; 
+			}
+			else
+				++returnPos[1];
+		}
+		else if (direction == 1)
+		{
+			if (target[1] % 2 == 0){
+				--returnPos[0];
+				--returnPos[1]; 
+			}
+			else
+				--returnPos[1];
+		}
+		else if (direction == 2)
+		{
+			if (target[1] % 2 == 0)
+				--returnPos[1];
+			else{
+				++returnPos[0];
+				--returnPos[1];
+			}
+		}
+		else
+		{
+			if (target[1] % 2 == 0)
+				++returnPos[1];
+			else{
+				++returnPos[0];
+				++returnPos[1];
+			}
+		}
+		
+		return returnPos;
+	}
+	
 	public static function removeAllPointers ():Void {
 		PoolManager.applyFunctionToPool("pointer", function(element) { element.visible = false; } );
+	}
+	
+	
+	public static function getTileFromEvent(e:EventTarget):Array<Int>
+	{
+		return  convertToGridPosition(e.data.getLocalPosition(e.target).x, e.data.getLocalPosition(e.target).y);
 	}
 }

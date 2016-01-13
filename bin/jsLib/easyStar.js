@@ -249,7 +249,7 @@ EasyStar.js = function() {
 
 	this.setColliTile = function(x,y,walkable){
 		if (collisionGrid[y])
-			collisionGrid[y][x] = walkable ? acceptableTiles[0] : 32762;
+			collisionGrid[y][x] = walkable ? acceptableTiles[0] : 1;
 	}
 
 	/**
@@ -292,7 +292,7 @@ EasyStar.js = function() {
 
 		//Setup cost map
 		for (var y = 0; y < collisionGrid.length; y++) {
-			for (var x = 0; x < collisionGrid[0].length; x++) {
+			for (var x = 0; x < collisionGrid[y].length; x++) {
 				if (!costMap[collisionGrid[y][x]]) {
 					costMap[collisionGrid[y][x]] = 1
 				}
@@ -474,6 +474,10 @@ EasyStar.js = function() {
 		return collisionGrid;
 	}
 
+	this.getTilesInRange = function(x1, y1, range){
+		this.findPath(startX, startY, collisionGrid[0].length-1, collisionGrid.length-1);
+	}
+
 	/**
 	* This method steps through the A* Algorithm in an attempt to
 	* find your path(s). It will search 4-8 tiles (depending on diagonals) for every calculation.
@@ -493,7 +497,6 @@ EasyStar.js = function() {
 				// If this is a sync instance, we want to make sure that it calculates synchronously. 
 				iterationsSoFar = 0;
 			}
-
 			// Couldn't find a path.
 			if (instances[0].openList.length === 0) {
 				var ic = instances[0];
@@ -576,8 +579,8 @@ EasyStar.js = function() {
 
 			// First sort all of the potential nodes we could search by their cost + heuristic distance.
 			tilesToSearch.sort(function(a, b) {
-				var aCost = a.cost + getDistance(searchNode.x + a.x, searchNode.y + a.y, instances[0].endX, instances[0].endY)
-				var bCost = b.cost + getDistance(searchNode.x + b.x, searchNode.y + b.y, instances[0].endX, instances[0].endY)
+				var aCost = a.cost + getDistance(searchNode.x + a.x, searchNode.y + a.y, instances[0].endX, instances[0].endY),
+					bCost = b.cost + getDistance(searchNode.x + b.x, searchNode.y + b.y, instances[0].endX, instances[0].endY);
 				if (aCost < bCost) {
 					return -1;
 				} else if (aCost === bCost) {
@@ -688,6 +691,9 @@ EasyStar.js = function() {
 		return Math.sqrt( (x2-=x1)*x2 + (y2-=y1)*y2 );
 	};
 
+
+
 	this.isTileWalkable = isTileWalkable;
+
 
 }

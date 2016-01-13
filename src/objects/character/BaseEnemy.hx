@@ -4,7 +4,7 @@ package objects.character;
  * ...
  * @author ToTos
  */
-class BaseEnemy extends Pnj{
+class BaseEnemy extends Npc{
 	
 
 	
@@ -12,11 +12,5 @@ class BaseEnemy extends Pnj{
 		super(newName);
 		
 	}
-	
-	override public function customUpdate():Void {
-		super.customUpdate();
-		
-	}
-	
 
 }

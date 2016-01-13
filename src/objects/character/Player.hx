@@ -14,6 +14,7 @@ import pixi.core.display.Container;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
 import pixi.interaction.EventTarget;
+import states.DebugState;
 import utils.Debug;
 import utils.Misc;
 
@@ -26,7 +27,6 @@ class Player extends Character{
 
 	private var targetTile:Tile;
 	
-	public static var selectedAction:String = "move";
 
 	private var APFlash:OSmovieclip;
 	private var pathPositions:Array<Dynamic> = [];
@@ -36,6 +36,7 @@ class Player extends Character{
 	
 	private function new() {
 		super("hero");
+		
 		HudManager.getInstance().HPmeter.text = ""+stats.health;
 		HudManager.getInstance().APmeter.text = ""+stats.AP;
 		
@@ -62,14 +63,15 @@ class Player extends Character{
 		if(!allowInput)
 			return;
 		if (selectedAction == "move")
-			if (Options.data.player_showHoverMovement = true){
-				showRange(0, stats.AP, 0x00FF00, 0.7, Misc.getRangeTileAround(tilePos, 1, stats.AP));
+			if (Options.data.player_showHoverMovement = true) {
+				showRange(1, cast getMaxMovement(), 0x00FF00, 0.5);
 			}
 	}
 	
 	private function mouseOutSelf(e:EventTarget):Void{
 		if(!allowInput)
 			return;
+			
 		if (selectedAction == "move")
 			if (Options.data.player_showHoverMovement = true){
 				hidePoolTiles();
@@ -79,10 +81,10 @@ class Player extends Character{
 	private function mapClick(e:EventTarget):Void {
 		if(!allowInput)
 			return;
-		var newtilePos = Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x, e.data.getLocalPosition(e.target).y);
+		var newtilePos = Misc.getTileFromEvent(e);
 
 		if (selectedAction == "move" && !isMoving) {
-			if (!Camera.getInstance().isDragged) {
+			if (!Camera.getInstance().isDragged && !Misc.isSameTile(newtilePos, tilePos)) {
 				findPathTo(newtilePos,true);
 			}
 		}
@@ -97,17 +99,17 @@ class Player extends Character{
 	private function mapHover(e:EventTarget):Void {
 		if(!allowInput)
 			return;
-		var tileHovered = Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x, e.data.getLocalPosition(e.target).y);
+		var tileHovered = Misc.getTileFromEvent(e);
 		hidePoolTiles();
 		hideHoverTile();
 		
-		if (selectedAction == "move" && !isMoving) {
+		if (selectedAction == "move" && !isMoving && !Misc.isSameTile(tileHovered, tilePos)) {
 			if(FightManager.status == StatusModes.fight)
 				showPathMovement(findPathTo(tileHovered));
 		}
 		else if (attacks.exists(selectedAction) && FightManager.status == StatusModes.fight) {
 			showAttackRange(selectedAction);
-			if(Misc.targetInRange(tilePos, tileHovered, activeAttackRange))
+			if(Misc.targetInRange(tileHovered, activeAttackRange))
 				showHoverTile(tileHovered, 0xFF0000);
 		}
 		
@@ -121,7 +123,8 @@ class Player extends Character{
 			mouseHovering = false;
 			mouseOutSelf(e);
 		}
-
+		
+		Debug.log(""+tileHovered);
 	}
 	
 	private function showAttackRange(attackName:String):Void{
@@ -129,8 +132,13 @@ class Player extends Character{
 	}
 	
 	override public function newTick(tickNumber:Int):Void {
-		super.newTick(tickNumber);
+		super.newTick(tickNumber * 10);
 		HudManager.getInstance().APmeter.text = ""+stats.AP;
+		
+		// DEBUG
+		if(!DebugState.superEnemy.isDead){
+			DebugState.superEnemy.findPathTo(tilePos,true);
+		}
 		
 		if (APFlash.parent == null) {
 			DrawManager.addToDisplay(APFlash, HudManager.getInstance().APmeter);
@@ -163,7 +171,7 @@ class Player extends Character{
 	
 	public function showPathMovement(path:Array<Dynamic>):Void{
 		path.shift();
-		if (path.length == 0 || path.length > stats.AP)
+		if (path.length == 0 || path.length > getMaxMovement())
 			return;
 		
 		for (i in pathPositions.iterator())
@@ -177,6 +185,7 @@ class Player extends Character{
 			var newTile:Tile = PoolManager.pullObject("tile"); 
 			newTile.visible = true;
 			newTile.tint = 0x00FF00;
+			newTile.alpha = 0.5;
 			newTile.setTilePosition([i.x, i.y]);
 			pathPositions.push(newTile);
 			if (newTile.parent == null)
@@ -188,7 +197,7 @@ class Player extends Character{
 	public function showRange(min:Int, max:Int, ?color:Int, ?alpha:Float, ?customRange:Array<Array<Int>>):Void {
 		/*
 		 * attention pour le pathfinding bug <= il calcule pas si on peux arriver aux positions.
-		 * need to repredict after every end of path and stock the value.
+		 * need to use dijkstra algo
 		 * */
 		if (!allowInput)
 			return;
@@ -197,7 +206,7 @@ class Player extends Character{
 		if (FightManager.status == StatusModes.normal)
 			return;
 		
-		var arrayIter:Array<Array<Int>> = customRange == null ? activeAttackRange : customRange;
+		var arrayIter:Array<Array<Int>> = selectedAction != "move" ? activeAttackRange : Misc.getRangeTileAround(tilePos, min, max);
 		for (i in arrayIter.iterator())
 		{
 			if(!MapManager.getInstance().activeMap.getWalkableAt(i) && CharacterManager.getInstance().findCharacterAtTilePos(i) == null)
@@ -260,7 +269,7 @@ class Player extends Character{
 		HudManager.getInstance().APmeter.text = ""+stats.AP;
 	}
 	
-	public function changeSelectedAction(newActionName:String):Void{
+	override public function changeSelectedAction(newActionName:String):Void {
 		selectedAction = selectedAction == newActionName ? "move" : newActionName; 
 		
 		hideEveryTile();
@@ -269,27 +278,6 @@ class Player extends Character{
 			generateAttackRange(selectedAction);
 			showAttackRange(selectedAction);
 		}
-	}
-	
-	private function generateAttackRange(attackName:String):Void {
-		if (attacks.exists(attackName))
-		{
-			activeAttackRange = Misc.getRangeTileAround(tilePos, attacks.get(attackName).minRange, attacks.get(attackName).maxRange);
-			
-			var i:Int = 0;
-			
-			while (i < activeAttackRange.length)
-			{
-				if (!Misc.hasLineOfSight(tilePos, activeAttackRange[i], activeAttackRange))
-				{
-					activeAttackRange.splice(i, 1);
-					--i;
-				}
-				++i;
-			}
-		}
-		else
-			Browser.window.console.warn("Attack not found while generating attackRange of:" + attackName);
 	}
 	
 	public function hideEveryTile():Void{

@@ -14,7 +14,7 @@ class Options {
 	public static var data:Dynamic = { };
 
 	private function new() {
-		setOption("player_showHoverMovement", true);
+		loadOptions();
 	}
 	
 	public function loadOptions():Void {
@@ -25,9 +25,13 @@ class Options {
 		data = Json.parse(storageString);
 	}
 	
-	public static function setOption(name:String, value:Dynamic):Void{
+	public function setOption(name:String, value:Dynamic):Void{
 		data[untyped name] = value;
 		saveOptions();
+	}
+	
+	public function getOption(name:String):Dynamic{
+		return data[untyped name];
 	}
 	
 	private static function saveOptions():Void{

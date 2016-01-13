@@ -1,5 +1,6 @@
 package managers;
 import js.Browser;
+import objects.particle.Bullet;
 import objects.particle.DmgText;
 import objects.Tile;
 import pixi.core.display.DisplayObject;
@@ -20,23 +21,28 @@ class PoolManager {
 		Pools.set("tile", []);
 		Pools.set("dmgText", []);
 		Pools.set("pointer", []);
+		Pools.set("bulletNormal", []);
 	}
 	
-	public static function generatePool():Void{
-		for(i in 0...30){
-			Pools.get("tile").push(new Tile(Texture.fromImage("tile.png")));
-			Pools.get("dmgText").push(new DmgText());
-			Pools.get("pointer").push(new Tile(Texture.fromImage("debugPointer.png")));
+	public static function generatePool():Void {
+		for (pool in Pools.keys())
+		{
+			for (i in 0...10)
+			{
+				Pools.get(pool).push(findClass(pool));
+			}
 		}
 	}
 	
-	public static function pullObject(poolName:String, number:Int = 1):Dynamic{
+	public static function pullObject(poolName:String):Dynamic{
 		if (!Pools.exists(poolName))
 		{
 			Browser.window.console.warn("Unknown pool: "+poolName);
 			return [];
 		}
 		
+		Pools.get(poolName)[getUnusedPoolIndex(poolName)].alpha = 1;
+		Pools.get(poolName)[getUnusedPoolIndex(poolName)].scale.set(1,1);
 		return Pools.get(poolName)[getUnusedPoolIndex(poolName)];
 	}
 	
@@ -50,7 +56,6 @@ class PoolManager {
 	}
 	
 	private static function increasePoolSize(poolName:String, number:Int):Void {
-		trace("addPoolSize in "+poolName);
 		for (i in 0...number) {
 			Pools.get(poolName).push(findClass(poolName));
 			if (Pools.get(poolName)[Pools.get(poolName).length -1] == null)
@@ -58,22 +63,16 @@ class PoolManager {
 		}
 	}
 	
-	public static function returnObject(poolName:String, object:Dynamic):Void{
-		if(!Pools.exists(poolName))
-			return;
-		
-		object.visible = false;
-	}
-	
 	private static function findClass(name:String):Dynamic{
 		switch name {
 			case "tile": return new Tile(Texture.fromImage("tile.png"));
 			case "dmgText": return new DmgText();
 			case "pointer": return new Tile(Texture.fromImage("debugPointer.png"));
+			case "bulletNormal": return new Bullet([Texture.fromImage("bullet1.png"),Texture.fromImage("bullet2.png"),Texture.fromImage("bullet3.png"),Texture.fromImage("bullet4.png"),Texture.fromImage("bullet5.png")]);
 		}
 		trace("class not found in PoolManager: " +name);
 
-		return null;
+		return {};
 	}
 	
 	public static function applyFunctionToPool(poolName:String, callback:Dynamic, filter:Dynamic = null ):Void {

@@ -15,7 +15,7 @@ class CharacterManager{
 		
 	}
 	
-	public function findCharacterAtTilePos(position:Array<Int>):Dynamic {
+	public function findCharacterAtTilePos(position:Array<Int>):Character {
 		if (positions[position[0]] == null)
 			return null;
 		if (positions[position[0]][position[1]] != null)
@@ -25,17 +25,19 @@ class CharacterManager{
 	}
 	
 	public function updateCharacterCoordinatesFromTo(element:Character, newPosition:Array<Int>):Void{
-		var oldGrid:Array<Array<Int>> = MapManager.finder.getGrid();
-		
 		if (positions[element.tilePos[0]] == null)
 			positions[element.tilePos[0]] = [];
 		positions[element.tilePos[0]][element.tilePos[1]] = null;
-		MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
+		MapManager.getInstance().activeMap.setColliAt(element.tilePos, false);
+		MapManager.getInstance().activeMap.setLOSAt(element.tilePos, false);
 		
 		if (positions[newPosition[0]] == null)
 			positions[newPosition[0]] = [];
 		positions[newPosition[0]][newPosition[1]] = element.ID;
-		MapManager.finder.setColliTile(newPosition[0],newPosition[1],false);
+		MapManager.getInstance().activeMap.setColliAt(newPosition, true);
+		MapManager.getInstance().activeMap.setLOSAt(newPosition, true);
+		
+		ServerManager.getInstance().onCharacterMove(element.ID, newPosition);
 	}
 	
 	public function addCharacter(element:Character):Void{
@@ -45,7 +47,9 @@ class CharacterManager{
 	public function removeCharacter(element:Character):Void{
 		managedCharacters.remove(element.ID);
 		positions[element.tilePos[0]][element.tilePos[1]] = null;
-		MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
+		
+		MapManager.getInstance().activeMap.setLOSAt(element.tilePos, false);
+		MapManager.getInstance().activeMap.setColliAt(element.tilePos, false);
 	}
 	
 	public function findCharacterById(charaId:String):Character{

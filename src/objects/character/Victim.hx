@@ -4,7 +4,7 @@ package objects.character;
  * ...
  * @author ToTos
  */
-class Victim extends Pnj{
+class Victim extends BaseEnemy{
 
 	public function new(newName:String) {
 		super(newName);

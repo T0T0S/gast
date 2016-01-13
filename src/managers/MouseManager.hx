@@ -39,9 +39,9 @@ class MouseManager{
 		//Browser.window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mousedown",mouseDown);
 		//Browser.window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mouseup",mouseUp);
 		//Browser.window.document.getElementsByClassName("gastCanvas").item(0).addEventListener("mousemove",mouseMoveHandler);
-		Main.getInstance().tileCont.on("mousedown", mouseDown);
-		Main.getInstance().tileCont.on("mouseup", mouseUp);
-		Main.getInstance().tileCont.on("mousemove", mouseMoveHandler);
+		//Main.getInstance().tileCont.on("mousedown", mouseDown);
+		//Main.getInstance().tileCont.on("mouseup", mouseUp);
+		//Main.getInstance().tileCont.on("mousemove", mouseMoveHandler);
 	}
 	
 	public function mouseMoveHandler (e:EventTarget){

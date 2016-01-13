@@ -5,7 +5,7 @@ import objects.character.Character;
  * ...
  * @author ToTos
  */
-class Pnj extends Character{
+class Npc extends Character{
 
 	/* AI */
 	private var targetCharacter:Character;

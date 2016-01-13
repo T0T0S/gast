@@ -14,9 +14,9 @@ class TripleAttack extends Attack{
 	}
 	
 	override public function attackEffect(stats:Stats):Void {
-		if (CharacterManager.getInstance().findCharacterAtTilePos(targetPosition)) {
+		if (CharacterManager.getInstance().findCharacterAtTilePos(targetPosition) != null) {
 			CharacterManager.getInstance().findCharacterAtTilePos(targetPosition).damage(
-				damage * (stats.strength / 100 * 10)
+				cast damage * (stats.strength / 100 * 10)
 			);
 		}
 	}

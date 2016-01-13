@@ -63,8 +63,8 @@ class StateManager{
 			statesArray[activeState].switchState();
 		firstLoop = false;
 		DrawManager.switchState();
-		Main.mapManager.switchState();
-		Main.characterManager.switchState();
+		MapManager.getInstance().switchState();
+		CharacterManager.getInstance().switchState();
 		Camera.getInstance().switchState();
 		HudManager.getInstance().switchState();
 		activeState = newState;

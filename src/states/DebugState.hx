@@ -1,25 +1,15 @@
 package states;
-import js.Browser;
 import managers.DrawManager;
 import managers.FightManager;
 import managers.HudManager;
-import managers.InitManager;
 import managers.MapManager;
-import managers.MouseManager;
-import managers.PoolManager;
 import objects.Camera;
 import objects.character.Character;
 import objects.character.Player;
-import objects.character.Pnj;
 import objects.character.Victim;
 import objects.State;
-import objects.Tile;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
-import pixi.extras.MovieClip;
-import pixi.interaction.EventTarget;
-import utils.Debug;
-import utils.Misc;
 
 /**
  * ...
@@ -30,6 +20,8 @@ class DebugState extends State {
 	public function new() {
 		super("Debug");
 	}
+		
+	public static var superEnemy:Character;
 		
 	public override function Preload():Void {
 		
@@ -42,7 +34,7 @@ class DebugState extends State {
 		camShader.scale.set(Main.screenRatio[0], Main.screenRatio[1]);
 		DrawManager.addToDisplay(camShader, Main.getInstance().effectCont);
 		
-		MapManager.getInstance().generateMapDisplay("testMapZig", true);
+		MapManager.getInstance().generateMapDisplay("TestingMap", true);
 
 		
 		//hoverSprite = new Tile(Texture.fromImage("tilehover.png"));
@@ -50,18 +42,46 @@ class DebugState extends State {
 		//DrawManager.addToDisplay(hoverSprite, MapManager.getInstance().activeMap.mapContainer,1);
 		
 		var hero:Player = Player.getInstance();
-		hero.setTilePosition([13, 30]);
+		hero.setTilePosition([8, 50]);
 		hero.scale.set(0.4, 0.4);
 		DrawManager.addToDisplay(hero, MapManager.getInstance().activeMap.mapContainer,1);
 		
 		Camera.getInstance().setFollowTarget(hero);	
 		
-		var victim:Victim = new Victim("victim");
-		victim.setTilePosition([10, 24]);
-		victim.scale.set(0.4, 0.4);
-		DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer,1);
+		var targetsID:Array<String> = [];
 		
-		FightManager.getInstance().startSetup([victim.ID]);
+		var victim:Victim = new Victim("victim");
+		victim.setTilePosition([10, 64]);
+		victim.scale.set(0.4, 0.4);
+		DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer, 1);
+		targetsID.push(victim.ID);
+		
+		victim = new Victim("victim");
+		victim.setTilePosition([5, 25]);
+		victim.scale.set(0.4, 0.4);
+		DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer, 1);
+		targetsID.push(victim.ID);
+		
+		victim = new Victim("victim");
+		victim.setTilePosition([9, 29]);
+		victim.scale.set(0.4, 0.4);
+		DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer, 1);
+		targetsID.push(victim.ID);
+		
+		victim = new Victim("victim");
+		victim.setTilePosition([13, 34]);
+		victim.scale.set(0.4, 0.4);
+		DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer, 1);
+		targetsID.push(victim.ID);
+		
+		victim = new Victim("victim");
+		victim.setTilePosition([17, 40]);
+		victim.scale.set(0.4, 0.4);
+		DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer, 1);
+		superEnemy = victim;
+		targetsID.push(victim.ID);
+		
+		FightManager.getInstance().startSetup(targetsID);
 	
 	}
 	

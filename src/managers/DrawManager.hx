@@ -1,12 +1,8 @@
 package managers;
-import js.Lib;
-import objects.Tile;
+import objects.character.Character;
+import objects.Options;
 import pixi.core.display.Container;
 import pixi.core.display.DisplayObject;
-import pixi.core.sprites.Sprite;
-import js.Browser;
-import pixi.core.math.Point;
-import utils.Misc;
 
 /**
  * ...
@@ -34,12 +30,32 @@ class DrawManager
 	}
 	
 	public function isometricSort(cont:Container, ?layerIndex:Int):Void {
-		cast(cont.children).sort(function (a:DisplayObject,b:DisplayObject):Int {
-			untyped if (b.z == a.z)
-			untyped 	return a.depth - b.depth;
-					else
-			untyped 	return a.z - b.z;
-		});
+		if (Options.getInstance().getOption("alphaCharacter")) {
+			cast(cont.children).sort(characterSortFunction);
+		}	
+		else{
+			cast(cont.children).sort(normalSortFunction);
+		}
+	}
+	
+	private function normalSortFunction(a:DisplayObject,b:DisplayObject):Int{
+		untyped if (b.z == a.z)
+		untyped 	return a.depth - b.depth;
+				else
+		untyped 	return a.z - b.z;
+	}
+	
+	private function characterSortFunction(a:DisplayObject, b:DisplayObject):Int {
+		untyped if (a.charaName || b.charaName) {
+				return !!a.charaName - !!b.charaName;
+		}
+		else{
+			
+		}
+		untyped if (b.z == a.z)
+		untyped 	return a.depth - b.depth;
+				else
+		untyped 	return a.z - b.z;
 	}
 	
 	public static function removeFromDisplay (element:DisplayObject):Void {

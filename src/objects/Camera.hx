@@ -41,9 +41,9 @@ class Camera{
 	public function new() {
 		minimumMovement = Reflect.field(InitManager.data.config.camera, "minimumMovement");
 		dragSensitivity = Reflect.field(InitManager.data.config.camera, "sensitivity");
-		Browser.window.addEventListener("gameMouseDown", mouseDownListener);
-		Browser.window.addEventListener("gameHover", mouseMoveListener);
-		Browser.window.addEventListener("gameMouseUp", mouseUpListener);
+		//Browser.window.addEventListener("gameMouseDown", mouseDownListener);
+		//Browser.window.addEventListener("gameHover", mouseMoveListener);
+		//Browser.window.addEventListener("gameMouseUp", mouseUpListener);
 		Browser.window.addEventListener("resize", getContainerBounds);		
 		getContainerBounds();
 		
@@ -62,6 +62,8 @@ class Camera{
  * 3 - change l'offset de la caméra pour "suivre la souris" et clamp les valeurs pour qu'elle reste sur le terrain
  * */
 	private function mouseMoveListener (e):Void {
+		if (MapManager.getInstance().activeMap == null)
+			return;
 		if(!MapManager.getInstance().activeMap.scrollable || targetToFollow != null)
 			return;
 		if (!clicked)
@@ -107,7 +109,7 @@ class Camera{
 	
 	public function updateMapSize(newMap:GameMap):Void{
 		mapSize.width = newMap.graphicalData[0].length * Main.tileSize[0];
-		mapSize.height = newMap.graphicalData.length * Main.tileSize[1] * 0.5;
+		mapSize.height = newMap.graphicalData.length * Main.tileSize[1] * 0.5 + Main.getInstance().hudCont.height;
 	}
 	
 	public function Update():Void

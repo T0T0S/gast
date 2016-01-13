@@ -61,13 +61,13 @@ class FightManager {
 		var numberEnemyDead:Int = 0;
 		for (i in alliedCharactersID.iterator())
 		{
-			if (CharacterManager.getInstance().findCharacterById(i).isDead)
+			if (CharacterManager.getInstance().findCharacterById(i) == null)
 				++numberAlliedDead;
 		}
 		
 		for (i in enemyCharactersID.iterator())
 		{
-			if (CharacterManager.getInstance().findCharacterById(i).isDead)
+			if (CharacterManager.getInstance().findCharacterById(i) == null)
 				++numberEnemyDead;
 		}
 		

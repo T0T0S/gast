@@ -92,6 +92,8 @@ Lambda.count = function(it,pred) {
 	return n;
 };
 var Main = function() {
+	this.mouseCalled = 0;
+	this.mouseCallPerFrame = 1;
 	this.renderMask = new PIXI.Graphics();
 	this.debugCont = new PIXI.Container();
 	this.effectCont = new PIXI.Container();
@@ -99,8 +101,8 @@ var Main = function() {
 	this.gameCont = new PIXI.Container();
 	this.tileCont = new PIXI.Container();
 	this.fullStage = new PIXI.Container();
-	Main.gameOptions = objects.Options.getInstance();
-	Main.gameOptions.loadOptions();
+	var _g = this;
+	objects.Options.getInstance();
 	var font = new Font();
 	font.onload = function() {
 		window.requestAnimationFrame(managers.InitManager.getInstance);
@@ -129,6 +131,19 @@ var Main = function() {
 	this.debugCont.name = "debugCont";
 	this.renderer.render(this.fullStage);
 	this.renderer.view.className = "gastCanvas";
+	var oldMoveFunction = this.renderer.plugins.interaction.onMouseMove;
+	var tempMoveFunction = function(event) {
+		if(_g.mouseCalled >= _g.mouseCallPerFrame) {
+			console.log("stop");
+			return;
+		}
+		console.log("ok");
+		++_g.mouseCalled;
+		_g.renderer.plugins.interaction.onMouseMove(event);
+	};
+	this.renderer.plugins.interaction.onMouseMove = tempMoveFunction.bind(this.renderer.plugins.interaction);
+	this.renderer.plugins.interaction.setTargetElement(this.renderer.view);
+	window.plugin = this.renderer.plugins;
 	window.document.body.appendChild(this.renderer.view);
 	window.addEventListener("keydown",$bind(this,this.keyDownListener));
 	window.addEventListener("keyup",$bind(this,this.keyUpListener));
@@ -143,15 +158,16 @@ Main.getInstance = function() {
 };
 Main.prototype = {
 	Start: function() {
-		Main.poolManager = managers.PoolManager.getInstance();
-		Main.drawManager = managers.DrawManager.getInstance();
-		Main.timeManager = managers.TimeManager.getInstance();
-		Main.mouseManager = managers.MouseManager.getInstance();
+		this.poolManager = managers.PoolManager.getInstance();
+		this.drawManager = managers.DrawManager.getInstance();
+		this.timeManager = managers.TimeManager.getInstance();
+		this.mouseManager = managers.MouseManager.getInstance();
 		Main.camera = objects.Camera.getInstance();
-		Main.mapManager = managers.MapManager.getInstance();
-		Main.characterManager = managers.CharacterManager.getInstance();
-		Main.fightManager = managers.FightManager.getInstance();
-		Main.stateManager = managers.StateManager.getInstance();
+		this.mapManager = managers.MapManager.getInstance();
+		this.characterManager = managers.CharacterManager.getInstance();
+		this.fightManager = managers.FightManager.getInstance();
+		this.stateManager = managers.StateManager.getInstance();
+		this.serverManager = managers.ServerManager.getInstance();
 		window.addEventListener("resize",$bind(this,this.resize));
 		window.requestAnimationFrame($bind(this,this.Update));
 	}
@@ -159,25 +175,34 @@ Main.prototype = {
 		Main.screenRatio = [this.renderer.width / 1920,this.renderer.height / 1080];
 	}
 	,Update: function() {
+		this.mouseCalled = 0;
 		window.requestAnimationFrame($bind(this,this.Update));
 		if(Main.GAMESTOPPED && Main.DEBUGMODE) return;
-		if(Main.timeManager != null) Main.timeManager.Update();
-		this.mouseUpdate();
-		Main.characterManager.Update();
+		if(this.timeManager != null) this.timeManager.Update();
+		this.characterManager.Update();
 		Main.camera.Update();
-		Main.stateManager.Update();
+		this.stateManager.Update();
 	}
 	,Render: function() {
-		Main.drawManager.isometricSort(managers.MapManager.getInstance().activeMap.mapContainer);
+		this.drawManager.isometricSort(managers.MapManager.getInstance().activeMap.mapContainer);
 		this.renderer.render(this.fullStage);
 	}
 	,mouseUpdate: function() {
-		Main.mouseManager.calledPerFrame = 0;
+		this.mouseManager.calledPerFrame = 0;
 	}
 	,keyDownListener: function(e) {
 		if(String.fromCharCode(e.keyCode) == "A" && e.altKey) Main.GAMESTOPPED = !Main.GAMESTOPPED;
 		if(HxOverrides.indexOf(Main.keysDown,e.keyCode,0) != -1) return;
 		Main.keysDown.push(e.keyCode);
+		if(e.keyCode == 49 && e.shiftKey) {
+			objects.Options.getInstance().setOption("alphaCharacter",!objects.Options.getInstance().getOption("alphaCharacter"));
+			var $it0 = managers.CharacterManager.getInstance().managedCharacters.iterator();
+			while( $it0.hasNext() ) {
+				var character = $it0.next();
+				character.alpha = 1 - 0.2 * objects.Options.getInstance().getOption("alphaCharacter");
+			}
+			return;
+		}
 		if(managers.FightManager.status == managers.StatusModes.fight) {
 			var attackIndex = 0;
 			if(e.keyCode >= 48) {
@@ -477,13 +502,15 @@ managers.CharacterManager.prototype = {
 		if(this.positions[position[0]][position[1]] != null) return this.managedCharacters.get(this.positions[position[0]][position[1]]); else return null;
 	}
 	,updateCharacterCoordinatesFromTo: function(element,newPosition) {
-		var oldGrid = managers.MapManager.finder.getGrid();
 		if(this.positions[element.tilePos[0]] == null) this.positions[element.tilePos[0]] = [];
 		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
-		managers.MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
+		managers.MapManager.getInstance().activeMap.setColliAt(element.tilePos,false);
+		managers.MapManager.getInstance().activeMap.setLOSAt(element.tilePos,false);
 		if(this.positions[newPosition[0]] == null) this.positions[newPosition[0]] = [];
 		this.positions[newPosition[0]][newPosition[1]] = element.ID;
-		managers.MapManager.finder.setColliTile(newPosition[0],newPosition[1],false);
+		managers.MapManager.getInstance().activeMap.setColliAt(newPosition,true);
+		managers.MapManager.getInstance().activeMap.setLOSAt(newPosition,true);
+		managers.ServerManager.getInstance().onCharacterMove(element.ID,newPosition);
 	}
 	,addCharacter: function(element) {
 		this.managedCharacters.set(element.ID,element);
@@ -491,7 +518,8 @@ managers.CharacterManager.prototype = {
 	,removeCharacter: function(element) {
 		this.managedCharacters.remove(element.ID);
 		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
-		managers.MapManager.finder.setColliTile(element.tilePos[0],element.tilePos[1],true);
+		managers.MapManager.getInstance().activeMap.setLOSAt(element.tilePos,false);
+		managers.MapManager.getInstance().activeMap.setColliAt(element.tilePos,false);
 	}
 	,findCharacterById: function(charaId) {
 		return this.managedCharacters.get(charaId);
@@ -535,9 +563,15 @@ managers.DrawManager.getInstance = function() {
 };
 managers.DrawManager.prototype = {
 	isometricSort: function(cont,layerIndex) {
-		cont.children.sort(function(a,b) {
-			if(b.z == a.z) return a.depth - b.depth; else return a.z - b.z;
-		});
+		if(objects.Options.getInstance().getOption("alphaCharacter")) cont.children.sort($bind(this,this.characterSortFunction)); else cont.children.sort($bind(this,this.normalSortFunction));
+	}
+	,normalSortFunction: function(a,b) {
+		if(b.z == a.z) return a.depth - b.depth; else return a.z - b.z;
+	}
+	,characterSortFunction: function(a,b) {
+		if(a.charaName || b.charaName) return !(!a.charaName) - !(!b.charaName); else {
+		}
+		if(b.z == a.z) return a.depth - b.depth; else return a.z - b.z;
 	}
 	,__class__: managers.DrawManager
 };
@@ -585,12 +619,12 @@ managers.FightManager.prototype = {
 		var $it0 = HxOverrides.iter(this.alliedCharactersID);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
-			if(managers.CharacterManager.getInstance().findCharacterById(i).isDead) ++numberAlliedDead;
+			if(managers.CharacterManager.getInstance().findCharacterById(i) == null) ++numberAlliedDead;
 		}
 		var $it1 = HxOverrides.iter(this.enemyCharactersID);
 		while( $it1.hasNext() ) {
 			var i1 = $it1.next();
-			if(managers.CharacterManager.getInstance().findCharacterById(i1).isDead) ++numberEnemyDead;
+			if(managers.CharacterManager.getInstance().findCharacterById(i1) == null) ++numberEnemyDead;
 		}
 		if(this.alliedCharactersID.length == numberAlliedDead) {
 			objects.character.Player.getInstance().loseCombat();
@@ -689,6 +723,7 @@ managers.InitManager = function() {
 	lConfig.add("hero","assets/config/" + "/" + "hero.json");
 	lConfig.add("victim","assets/config/" + "/" + "victim.json");
 	lConfig.add("testMapZig","assets/" + "maps/testMapZig.json");
+	lConfig.add("TestingMap","assets/" + "maps/TestingMap.json");
 	lConfig.once("complete",$bind(this,this.LoadedJson));
 	lConfig.load();
 };
@@ -717,8 +752,10 @@ managers.InitManager.prototype = {
 managers.MapManager = function() {
 	this.maps = new haxe.ds.StringMap();
 	this.activeMap = new objects.GameMap();
-	var value = new objects.GameMap(this.formatMap("testMapZig"),"testMapZig");
+	var value = new objects.GameMap("testMapZig");
 	this.maps.set("testMapZig",value);
+	var value1 = new objects.GameMap("TestingMap");
+	this.maps.set("TestingMap",value1);
 };
 managers.MapManager.__name__ = ["managers","MapManager"];
 managers.MapManager.displayDebugColliMap = function(nodes) {
@@ -746,24 +783,25 @@ managers.MapManager.prototype = {
 		var newMap = this.maps.get(mapName);
 		var i = 0;
 		var j = 0;
-		var tileSprite;
 		var $it0 = HxOverrides.iter(newMap.graphicalData);
 		while( $it0.hasNext() ) {
-			var arrayX = $it0.next();
+			var arrayY = $it0.next();
 			j = 0;
-			var $it1 = HxOverrides.iter(arrayX);
+			var $it1 = HxOverrides.iter(arrayY);
 			while( $it1.hasNext() ) {
 				var tileIndex = $it1.next();
 				if(tileIndex != 0) {
-					if(newMap.json.tiles[tileIndex] == null) throw new Error("[ERROR] tile index " + tileIndex + " not found in " + newMap.name + ".json");
-					tileSprite = new objects.Tile(PIXI.Texture.fromImage("" + newMap.json.tiles[tileIndex]));
-					tileSprite.setTilePosition([j,i]);
-					tileSprite.x += this.activeMap.OffsetX;
-					tileSprite.y += Main.tileSize[1] * 0.5;
-					tileSprite.setZ(newMap.json.tilesHeight[tileIndex]);
-					newMap.addTileToMap(tileSprite,newMap.json.tilesHeight[tileIndex]);
-					if(newMap.tileMap[j] == null) newMap.tileMap[j] = [];
-					newMap.tileMap[j][i] = tileSprite;
+					if(tileIndex.length != null) {
+						var realTileIndex = 0;
+						while(realTileIndex < tileIndex.length) {
+							if(tileIndex[realTileIndex] == null) throw new Error("[ERROR] tile index " + (tileIndex[realTileIndex] + " not found in " + newMap.name + " tileSet"));
+							this.generateTile(j,i,newMap,tileIndex[realTileIndex],realTileIndex);
+							++realTileIndex;
+						}
+					} else {
+						if(newMap.tiles[tileIndex] == null) throw new Error("[ERROR] tile index " + tileIndex + " not found in " + newMap.name + " tileSet");
+						this.generateTile(j,i,newMap,tileIndex,0);
+					}
 				}
 				++j;
 			}
@@ -772,33 +810,14 @@ managers.MapManager.prototype = {
 		newMap.displayMap();
 		if(select) this.setActiveMap(newMap);
 	}
-	,formatMap: function(mapName) {
-		if(managers.InitManager.data[mapName] == null) {
-			window.console.warn("%c[WARNING] unknown map '" + mapName + "'","color:red;");
-			return [[]];
-		}
-		var mapData = managers.InitManager.data[mapName];
-		return this.convertMapDataToXY(mapData);
-	}
-	,convertMapDataToXY: function(newMap) {
-		var mapLayer;
-		var returnObject = { };
-		var i = 0;
-		var j = 0;
-		while(i < newMap.layers.length) {
-			mapLayer = [];
-			j = 0;
-			if(newMap.layers == null) break;
-			var map = newMap.layers[i].data;
-			while(j < newMap.layers[i].data.length) {
-				if(mapLayer[Math.floor(j / newMap.width)] == null) mapLayer[Math.floor(j / newMap.width)] = [];
-				mapLayer[Math.floor(j / newMap.width)][j % newMap.width] = newMap.layers[i].data[j];
-				j++;
-			}
-			returnObject[newMap.layers[i].name] = mapLayer.slice();
-			i++;
-		}
-		return returnObject;
+	,generateTile: function(x,y,newMapRef,tileIndex,specialHeight) {
+		if(specialHeight == null) specialHeight = 0;
+		var tileSprite = new objects.Tile(PIXI.Texture.fromImage("" + newMapRef.tiles[tileIndex]));
+		tileSprite.setTilePosition([x,y]);
+		tileSprite.x += newMapRef.OffsetX;
+		tileSprite.y += newMapRef.OffsetY;
+		tileSprite.setZ(newMapRef.tilesHeight[tileIndex] + specialHeight * 0.001);
+		newMapRef.addTileToMap(tileSprite,newMapRef.tilesHeight[tileIndex]);
 	}
 	,setActiveMap: function(newMap) {
 		this.activeMap = newMap;
@@ -813,9 +832,6 @@ managers.MouseManager = function() {
 	this.arrayPoints = [];
 	this.refreshPerFrame = 1;
 	this.calledPerFrame = 0;
-	Main.getInstance().tileCont.on("mousedown",$bind(this,this.mouseDown));
-	Main.getInstance().tileCont.on("mouseup",$bind(this,this.mouseUp));
-	Main.getInstance().tileCont.on("mousemove",$bind(this,this.mouseMoveHandler));
 };
 managers.MouseManager.__name__ = ["managers","MouseManager"];
 managers.MouseManager.getSquareTileAround = function(posClicked,size) {
@@ -891,23 +907,27 @@ managers.PoolManager = function() {
 	managers.PoolManager.Pools.set("tile",[]);
 	managers.PoolManager.Pools.set("dmgText",[]);
 	managers.PoolManager.Pools.set("pointer",[]);
+	managers.PoolManager.Pools.set("bulletNormal",[]);
 };
 managers.PoolManager.__name__ = ["managers","PoolManager"];
 managers.PoolManager.generatePool = function() {
-	var _g = 0;
-	while(_g < 30) {
-		var i = _g++;
-		managers.PoolManager.Pools.get("tile").push(new objects.Tile(PIXI.Texture.fromImage("tile.png")));
-		managers.PoolManager.Pools.get("dmgText").push(new objects.particle.DmgText());
-		managers.PoolManager.Pools.get("pointer").push(new objects.Tile(PIXI.Texture.fromImage("debugPointer.png")));
+	var $it0 = managers.PoolManager.Pools.keys();
+	while( $it0.hasNext() ) {
+		var pool = $it0.next();
+		var _g = 0;
+		while(_g < 10) {
+			var i = _g++;
+			managers.PoolManager.Pools.get(pool).push(managers.PoolManager.findClass(pool));
+		}
 	}
 };
-managers.PoolManager.pullObject = function(poolName,number) {
-	if(number == null) number = 1;
+managers.PoolManager.pullObject = function(poolName) {
 	if(!managers.PoolManager.Pools.exists(poolName)) {
 		window.console.warn("Unknown pool: " + poolName);
 		return [];
 	}
+	managers.PoolManager.Pools.get(poolName)[managers.PoolManager.getUnusedPoolIndex(poolName)].alpha = 1;
+	managers.PoolManager.Pools.get(poolName)[managers.PoolManager.getUnusedPoolIndex(poolName)].scale.set(1,1);
 	return managers.PoolManager.Pools.get(poolName)[managers.PoolManager.getUnusedPoolIndex(poolName)];
 };
 managers.PoolManager.getUnusedPoolIndex = function(poolName) {
@@ -928,17 +948,12 @@ managers.PoolManager.getUnusedPoolIndex = function(poolName) {
 	return managers.PoolManager.Pools.get(poolName).length - 1;
 };
 managers.PoolManager.increasePoolSize = function(poolName,number) {
-	console.log("addPoolSize in " + poolName);
 	var _g = 0;
 	while(_g < number) {
 		var i = _g++;
 		managers.PoolManager.Pools.get(poolName).push(managers.PoolManager.findClass(poolName));
 		if(managers.PoolManager.Pools.get(poolName)[managers.PoolManager.Pools.get(poolName).length - 1] == null) return;
 	}
-};
-managers.PoolManager.returnObject = function(poolName,object) {
-	if(!managers.PoolManager.Pools.exists(poolName)) return;
-	object.visible = false;
 };
 managers.PoolManager.findClass = function(name) {
 	switch(name) {
@@ -948,9 +963,11 @@ managers.PoolManager.findClass = function(name) {
 		return new objects.particle.DmgText();
 	case "pointer":
 		return new objects.Tile(PIXI.Texture.fromImage("debugPointer.png"));
+	case "bulletNormal":
+		return new objects.particle.Bullet([PIXI.Texture.fromImage("bullet1.png"),PIXI.Texture.fromImage("bullet2.png"),PIXI.Texture.fromImage("bullet3.png"),PIXI.Texture.fromImage("bullet4.png"),PIXI.Texture.fromImage("bullet5.png")]);
 	}
 	console.log("class not found in PoolManager: " + name);
-	return null;
+	return { };
 };
 managers.PoolManager.applyFunctionToPool = function(poolName,callback,filter) {
 	if(filter == null) {
@@ -1002,6 +1019,27 @@ managers.PoolManager.prototype = {
 	}
 	,__class__: managers.PoolManager
 };
+managers.ServerManager = function() {
+	this.onCharacterMove("1",[0,0]);
+};
+managers.ServerManager.__name__ = ["managers","ServerManager"];
+managers.ServerManager.getInstance = function() {
+	if(managers.ServerManager.instance == null) managers.ServerManager.instance = new managers.ServerManager();
+	return managers.ServerManager.instance;
+};
+managers.ServerManager.prototype = {
+	onCharacterMove: function(characterId,newPosition) {
+		var $it0 = managers.CharacterManager.getInstance().managedCharacters.iterator();
+		while( $it0.hasNext() ) {
+			var i = $it0.next();
+			i.onCharacterMove(characterId,newPosition);
+		}
+	}
+	,destroy: function() {
+		managers.ServerManager.instance = null;
+	}
+	,__class__: managers.ServerManager
+};
 managers.StateManager = function() {
 	this.debugActiveState = new PIXI.Text("Init",{ fill : "white", font : "30px gastFont"});
 	this.firstLoop = true;
@@ -1034,8 +1072,8 @@ managers.StateManager.prototype = {
 		if(!this.firstLoop) this.statesArray.get(this.activeState).switchState();
 		this.firstLoop = false;
 		managers.DrawManager.switchState();
-		Main.mapManager.switchState();
-		Main.characterManager.switchState();
+		managers.MapManager.getInstance().switchState();
+		managers.CharacterManager.getInstance().switchState();
 		objects.Camera.getInstance().switchState();
 		managers.HudManager.getInstance().switchState();
 		this.activeState = newState;
@@ -1098,6 +1136,8 @@ managers.TimeManager.prototype = {
 };
 var objects = {};
 objects.Animation = function(newName,newData,endCallback) {
+	this.finished = false;
+	this.activeFrame = 0;
 	this.direction = 0;
 	this.callback = function() {
 	};
@@ -1112,10 +1152,22 @@ objects.Animation.prototype = {
 		this.direction = newDirection;
 		return this.data[this.direction];
 	}
+	,getNextFrameIndex: function() {
+		if(this.activeFrame > this.data[this.direction][1] || this.data[this.direction][1] == null) {
+			if(this.loop) this.activeFrame = this.data[this.direction][0]; else this.endAction();
+		} else this.activeFrame += this.fps / 60;
+		return Math.floor(this.activeFrame);
+	}
+	,resetAnim: function(newDir) {
+		this.activeFrame = this.data[newDir][0];
+		this.finished = false;
+	}
 	,getLastIndex: function() {
-		return this.data[this.direction][this.data[this.direction].length - 1];
+		if(this.data[this.direction][1] != null) return this.data[this.direction][1];
+		return this.data[this.direction][0];
 	}
 	,endAction: function() {
+		this.finished = true;
 		this.callback();
 	}
 	,__class__: objects.Animation
@@ -1240,9 +1292,6 @@ objects.Camera = function() {
 	this.offset = [0,0];
 	this.minimumMovement = Reflect.field(managers.InitManager.data.config.camera,"minimumMovement");
 	this.dragSensitivity = Reflect.field(managers.InitManager.data.config.camera,"sensitivity");
-	window.addEventListener("gameMouseDown",$bind(this,this.mouseDownListener));
-	window.addEventListener("gameHover",$bind(this,this.mouseMoveListener));
-	window.addEventListener("gameMouseUp",$bind(this,this.mouseUpListener));
 	window.addEventListener("resize",$bind(this,this.getContainerBounds));
 	this.getContainerBounds();
 	this.mapSize = Main.getInstance().fullStage.getBounds();
@@ -1259,6 +1308,7 @@ objects.Camera.prototype = {
 		this.oldCameraPosition = this.offset;
 	}
 	,mouseMoveListener: function(e) {
+		if(managers.MapManager.getInstance().activeMap == null) return;
 		if(!managers.MapManager.getInstance().activeMap.scrollable || objects.Camera.targetToFollow != null) return;
 		if(!this.clicked) return;
 		if(this.isDragged == false && Math.abs(this.mouseDownPosition[0] - e.layerX) < this.minimumMovement && Math.abs(this.mouseDownPosition[1] - e.layerY) < this.minimumMovement) return; else if(!this.isDragged) {
@@ -1289,7 +1339,7 @@ objects.Camera.prototype = {
 	}
 	,updateMapSize: function(newMap) {
 		this.mapSize.width = newMap.graphicalData[0].length * Main.tileSize[0];
-		this.mapSize.height = newMap.graphicalData.length * Main.tileSize[1] * 0.5;
+		this.mapSize.height = newMap.graphicalData.length * Main.tileSize[1] * 0.5 + Main.getInstance().hudCont.height;
 	}
 	,Update: function() {
 		if(objects.Camera.targetToFollow != null) {
@@ -1320,30 +1370,30 @@ objects.Camera.prototype = {
 	}
 	,__class__: objects.Camera
 };
-objects.GameMap = function(datas,mapName) {
-	this.tileMap = [];
+objects.GameMap = function(mapName) {
+	this.finder = new EasyStar.js();
+	this.tilesHeight = [0];
+	this.tiles = [""];
 	this.scrollable = false;
 	this.mapContainer = new PIXI.Container();
 	this.OffsetY = 0;
 	this.OffsetX = 0;
+	this.name = "";
 	this.tileData = [];
-	if(datas == null) return;
+	if(mapName == null) return;
 	this.name = mapName;
-	this.json = managers.InitManager.data.config.mapJson[this.name];
+	var datas = this.formatMap(mapName);
+	var mapJson = managers.InitManager.data[this.name];
 	this.OffsetY = Main.tileSize[1] * 0.5;
-	if(this.json == null) window.console.warn("%c[WARNING] no data json found for map '" + mapName + "' ","color:red;");
-	this.json.tiles.unshift(null);
-	this.json.tilesHeight.unshift(null);
-	this.setMapData(datas.graphics,datas.collisions);
+	this.generateTileData(mapJson);
+	this.graphicalData = datas.graphical;
+	this.collisionData = datas.collisions;
+	this.LOSData = datas.LOS;
 	this.generatePathfinding();
 };
 objects.GameMap.__name__ = ["objects","GameMap"];
 objects.GameMap.prototype = {
-	setMapData: function(newGraphicalData,newCollisionData) {
-		this.graphicalData = newGraphicalData;
-		this.collisionData = newCollisionData;
-	}
-	,addTileToMap: function(tile,layer) {
+	addTileToMap: function(tile,layer) {
 		if(this.tileData[tile.tilePos[0]] == null) this.tileData[tile.tilePos[0]] = [];
 		this.tileData[tile.tilePos[0]][tile.tilePos[1]] = tile;
 		managers.DrawManager.addToDisplay(tile,this.mapContainer,layer);
@@ -1351,7 +1401,7 @@ objects.GameMap.prototype = {
 	,displayMap: function() {
 		if(this.mapContainer.parent == null) managers.DrawManager.addToDisplay(this.mapContainer,Main.getInstance().tileCont);
 		this.mapContainer.visible = true;
-		managers.MapManager.displayDebugColliMap(managers.MapManager.finder.getGrid());
+		managers.MapManager.displayDebugColliMap(this.finder.getGrid());
 	}
 	,hideMap: function(remove) {
 		if(remove == null) remove = false;
@@ -1359,28 +1409,115 @@ objects.GameMap.prototype = {
 		if(remove) managers.DrawManager.removeFromDisplay(this.mapContainer);
 	}
 	,getTileAt: function(tilePosition) {
+		if(this.tileData[tilePosition[0]] == null) return null;
 		return this.tileData[tilePosition[0]][tilePosition[1]];
 	}
 	,generatePathfinding: function() {
-		var finder = managers.MapManager.finder;
-		finder.setGrid(this.collisionData);
-		finder.setAcceptableTiles(managers.InitManager.data.config.tileCollisions.walkable);
-		finder.enableDiagonals();
-		finder.enableSync();
-		window.finder = finder;
+		this.finder.setGrid(this.collisionData);
+		this.finder.setAcceptableTiles([0]);
+		this.finder.enableDiagonals();
+		this.finder.enableSync();
+	}
+	,setColliAt: function(pos,collision) {
+		if(collision) this.collisionData[pos[1]][pos[0]] = 1; else this.collisionData[pos[1]][pos[0]] = 0;
+	}
+	,setLOSAt: function(pos,blocked) {
+		if(blocked) this.LOSData[pos[1]][pos[0]] = 1; else this.LOSData[pos[1]][pos[0]] = 0;
 	}
 	,getWalkableAt: function(target) {
-		return managers.MapManager.finder.isTileWalkable(managers.MapManager.finder.getGrid(),[managers.InitManager.data.config.tileCollisions.walkable],target[0],target[1]);
+		if(this.collisionData[target[1]] == null) return false;
+		return this.collisionData[target[1]][target[0]] == 0;
 	}
-	,findPath: function(source,target) {
-		var finder = managers.MapManager.finder;
+	,getLOSAt: function(target) {
+		if(this.LOSData[target[1]] == null) return true;
+		return this.LOSData[target[1]][target[0]] == 0;
+	}
+	,getFinderGrid: function() {
+		return this.finder.getGrid();
+	}
+	,findPath: function(source,target,range) {
 		var path = [];
+		this.finder.setGrid(this.getNewGridPathFinding(range));
 		if(source[0] > this.collisionData[0].length - 1 || target[0] > this.collisionData[0].length - 1 || source[1] > this.collisionData.length - 1 || target[1] > this.collisionData.length - 1 || source[0] < 0 || source[1] < 0 || target[0] < 0 || target[1] < 0) return [];
-		finder.findPath(source[0],source[1],target[0],target[1],function(newpath) {
+		this.finder.findPath(source[0],source[1],target[0],target[1],function(newpath) {
 			if(newpath != null) path = newpath;
 		});
-		finder.calculate();
+		this.finder.calculate();
 		return path;
+	}
+	,getNewGridPathFinding: function(range) {
+		var returnArray = [this.collisionData[0]];
+		var i = 0;
+		while(i < this.collisionData.length) {
+			if(i != 0) returnArray[i] = [];
+			++i;
+		}
+		var $it0 = HxOverrides.iter(range);
+		while( $it0.hasNext() ) {
+			var rangePoint = $it0.next();
+			if(this.collisionData[rangePoint[1]] != null) returnArray[rangePoint[1]][rangePoint[0]] = this.collisionData[rangePoint[1]][rangePoint[0]];
+		}
+		return returnArray;
+	}
+	,formatMap: function(mapName) {
+		if(managers.InitManager.data[mapName] == null) {
+			window.console.warn("%c[WARNING] unknown map '" + mapName + "'","color:red;");
+			return [[]];
+		}
+		return this.convertMapDataToYX(managers.InitManager.data[mapName]);
+	}
+	,convertMapDataToYX: function(newMap) {
+		var mapLayer;
+		var returnObject = { };
+		var i = 0;
+		var j = 0;
+		while(i < newMap.layers.length) {
+			mapLayer = [];
+			j = 0;
+			var layerName = newMap.layers[i].name;
+			if(newMap.layers[i].properties != null) {
+				if(newMap.layers[i].properties.type != null) {
+					if(HxOverrides.indexOf(objects.GameMap.suitableLayerTypes,newMap.layers[i].properties.type,0) == -1) window.console.warn("Warning property 'type' for layer '" + Std.string(layerName) + "' of map '" + this.name + "' is unknown,\nSuitable types are: " + Std.string(objects.GameMap.suitableLayerTypes));
+					layerName = newMap.layers[i].properties.type;
+				} else window.console.warn("Warning no property 'type' found for layer '" + Std.string(layerName) + "' of map '" + this.name + "'.\nSuitable types are: " + Std.string(objects.GameMap.suitableLayerTypes));
+			} else window.console.warn("Warning no property 'type' found for layer '" + Std.string(layerName) + "' of map '" + this.name + "'.\nSuitable types are: " + Std.string(objects.GameMap.suitableLayerTypes));
+			if(newMap.layers == null) break;
+			var map = newMap.layers[i].data;
+			while(j < newMap.layers[i].data.length) {
+				if(mapLayer[Math.floor(j / newMap.width)] == null) mapLayer[Math.floor(j / newMap.width)] = [];
+				mapLayer[Math.floor(j / newMap.width)][j % newMap.width] = newMap.layers[i].data[j];
+				j++;
+			}
+			if(returnObject[layerName] != null) {
+				var x1 = 0;
+				var y1 = 0;
+				while(y1 < mapLayer.length) {
+					x1 = 0;
+					while(x1 < mapLayer[y1].length) {
+						if(mapLayer[y1][x1] != 0) {
+							if(layerName == "graphical") {
+								if(returnObject[layerName][y1][x1].length == null) returnObject[layerName][y1][x1] = [returnObject[layerName][y1][x1],mapLayer[y1][x1]]; else returnObject[layerName][y1][x1] = returnObject[layerName][y1][x1].push(mapLayer[y1][x1]);
+							} else returnObject[layerName][y1][x1] = mapLayer[y1][x1];
+						}
+						++x1;
+					}
+					++y1;
+				}
+			} else returnObject[layerName] = mapLayer.slice();
+			i++;
+		}
+		return returnObject;
+	}
+	,generateTileData: function(mapData) {
+		var tilesets = mapData.tilesets;
+		var $it0 = HxOverrides.iter(tilesets);
+		while( $it0.hasNext() ) {
+			var tileSet = $it0.next();
+			var imageName = (js.Boot.__cast(tileSet.image , String)).split("/");
+			this.tiles[tileSet.firstgid] = imageName[imageName.length - 1];
+			if(tileSet.imageheight / 32 - 1 > 0) this.tilesHeight[tileSet.firstgid] = 1; else this.tilesHeight[tileSet.firstgid] = 0;
+			if(tileSet.firstgid - 1 > tilesets.length) window.console.warn("%c[WARNING] Detected multiple images in tileset of '" + this.name + "' map!","color:red;");
+		}
 	}
 	,__class__: objects.GameMap
 };
@@ -1417,13 +1554,9 @@ objects.HudElement.prototype = $extend(PIXI.Sprite.prototype,{
 	,__class__: objects.HudElement
 });
 objects.Options = function() {
-	objects.Options.setOption("player_showHoverMovement",true);
+	this.loadOptions();
 };
 objects.Options.__name__ = ["objects","Options"];
-objects.Options.setOption = function(name,value) {
-	objects.Options.data[name] = value;
-	objects.Options.saveOptions();
-};
 objects.Options.saveOptions = function() {
 	js.Browser.getLocalStorage().setItem("gastOptions",JSON.stringify(objects.Options.data));
 };
@@ -1436,6 +1569,13 @@ objects.Options.prototype = {
 		var storageString = js.Browser.getLocalStorage().getItem("gastOptions");
 		if(storageString.length == 0) return;
 		objects.Options.data = JSON.parse(storageString);
+	}
+	,setOption: function(name,value) {
+		objects.Options.data[name] = value;
+		objects.Options.saveOptions();
+	}
+	,getOption: function(name) {
+		return objects.Options.data[name];
 	}
 	,__class__: objects.Options
 };
@@ -1553,18 +1693,60 @@ objects.attacks.Attack = function(jsonData) {
 	this.maxRange = jsonData.maxRange;
 	this.damage = jsonData.damage;
 	this.apCost = jsonData.apCost;
+	if(jsonData.effect != null) {
+		this.attackFXName = jsonData.effect.name;
+		this.attackFXType = jsonData.effect.type;
+	}
 };
 objects.attacks.Attack.__name__ = ["objects","attacks","Attack"];
 objects.attacks.Attack.prototype = {
-	updateAttack: function(launcher) {
-		if(this.frameElaped == this.framesData[this.activeFrameData][0]) this.attackEffect(launcher.stats);
+	updateAttack: function(launcherRef) {
+		if(this.frameElaped == this.framesData[this.activeFrameData][0]) {
+			if(this.attackFXType == "bullet") this.shootBullet(launcherRef);
+			this.attackEffect(launcherRef.stats);
+		}
 		if(this.frameElaped == this.framesData[this.activeFrameData][0] + this.framesData[this.activeFrameData][1]) {
-			if(this.activeFrameData == this.framesData.length - 1) this.endAction(launcher); else {
+			if(this.activeFrameData == this.framesData.length - 1) this.endAction(launcherRef); else {
 				this.frameElaped = 0;
 				++this.activeFrameData;
 			}
 		}
 		++this.frameElaped;
+	}
+	,shootBullet: function(launcherRef) {
+		var bullet = managers.PoolManager.pullObject("bulletNormal");
+		bullet.x = launcherRef.x;
+		bullet.y = launcherRef.y - launcherRef.height * 0.75;
+		bullet.anchor.set(0,0.5);
+		bullet.rotation = -utils.Misc.angleBetweenTiles(launcherRef.tilePos,this.targetPosition) + Math.PI * 0.01 * utils.Misc.sign(Math.random() - 0.5);
+		bullet.mask = null;
+		var maxBulletWidth = 0;
+		var _g1 = 0;
+		var _g = bullet.totalFrames;
+		while(_g1 < _g) {
+			var i = _g1++;
+			bullet.gotoAndStop(i);
+			if(bullet.width > maxBulletWidth) maxBulletWidth = bullet.width; else maxBulletWidth = maxBulletWidth;
+		}
+		var distance = utils.Misc.getDistanceBetweenTiles(this.targetPosition,launcherRef.tilePos);
+		var newScale = distance / maxBulletWidth;
+		if(newScale > 1) bullet.scale.x = newScale; else bullet.scale.x = 1;
+		var bulletMask;
+		if(bullet.children.length != 0) bulletMask = bullet.children[0]; else bulletMask = new PIXI.Graphics();
+		bulletMask.clear();
+		bulletMask.beginFill(16777215,0);
+		bulletMask.moveTo(Main.tileSize[0] * 0.25,-bullet.height * 0.5);
+		bulletMask.lineTo(maxBulletWidth * newScale,-bullet.height * 0.5);
+		bulletMask.lineTo(maxBulletWidth * newScale,bullet.height * 0.5);
+		bulletMask.lineTo(Main.tileSize[0] * 0.25,bullet.height * 0.5);
+		bulletMask.lineTo(Main.tileSize[0] * 0.25,-bullet.height * 0.5);
+		bulletMask.endFill();
+		if(bulletMask.parent == null) bullet.addChild(bulletMask);
+		bullet.mask = bulletMask;
+		bullet.visible = true;
+		managers.DrawManager.addToDisplay(bullet,Main.getInstance().gameCont,0);
+		bullet.gotoAndStop(0);
+		bullet.gotoAndPlay(0);
 	}
 	,activateAttack: function(position) {
 		this.targetPosition = position;
@@ -1588,7 +1770,7 @@ objects.attacks.NormalAttack.__super__ = objects.attacks.Attack;
 objects.attacks.NormalAttack.prototype = $extend(objects.attacks.Attack.prototype,{
 	attackEffect: function(stats) {
 		objects.attacks.Attack.prototype.attackEffect.call(this,stats);
-		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition)) managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition).damage(this.damage * (stats.strength / 100 * 10));
+		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition) != null) managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition).damage(this.damage * (stats.strength / 100 * 10));
 	}
 	,__class__: objects.attacks.NormalAttack
 });
@@ -1599,7 +1781,7 @@ objects.attacks.TripleAttack.__name__ = ["objects","attacks","TripleAttack"];
 objects.attacks.TripleAttack.__super__ = objects.attacks.Attack;
 objects.attacks.TripleAttack.prototype = $extend(objects.attacks.Attack.prototype,{
 	attackEffect: function(stats) {
-		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition)) managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition).damage(this.damage * (stats.strength / 100 * 10));
+		if(managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition) != null) managers.CharacterManager.getInstance().findCharacterAtTilePos(this.targetPosition).damage(this.damage * (stats.strength / 100 * 10));
 	}
 	,__class__: objects.attacks.TripleAttack
 });
@@ -1611,7 +1793,6 @@ objects.character.Character = function(newName) {
 	this.lastTickRegistered = 0;
 	this.depth = 0;
 	this.z = 0;
-	this.animationFrame = 0;
 	this.animations = new haxe.ds.StringMap();
 	this.activeAttackRange = [];
 	this.attacks = new haxe.ds.StringMap();
@@ -1619,9 +1800,10 @@ objects.character.Character = function(newName) {
 	this.isMoving = false;
 	this.pathIndex = 1;
 	this.activePath = [];
-	this.stats = { health : 100, strength : 10, endurance : 10, regeneration : 10, moveSpeed : 2.5, precision : 10, luck : 10, AP : 10, MaxAP : 10};
+	this.stats = { health : 100, strength : 10, endurance : 10, APregeneration : 10, moveSpeed : 2.5, moveCost : 1, precision : 10, luck : 10, AP : 100, MaxAP : 100};
 	this.directionFacing = 0;
 	this.tilePos = [0,0];
+	this.selectedAction = "move";
 	this.charaName = newName;
 	this.config = managers.InitManager.data[newName];
 	PIXI.extras.MovieClip.call(this,this.generateTextures(this.charaName));
@@ -1640,12 +1822,13 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.stats.health = this.config.stats.health;
 		this.stats.strength = this.config.stats.strength;
 		this.stats.endurance = this.config.stats.endurance;
-		this.stats.regeneration = this.config.stats.regeneration;
+		this.stats.APregeneration = this.config.stats.APregeneration;
 		this.stats.moveSpeed = this.config.stats.moveSpeed;
 		this.stats.precision = this.config.stats.precision;
 		this.stats.luck = this.config.stats.luck;
 		this.stats.MaxAP = this.config.stats.MaxAP;
 		this.stats.AP = this.stats.MaxAP;
+		this.stats.moveCost = this.config.stats.moveCost;
 	}
 	,generateTextures: function(newName) {
 		var returnArray = [];
@@ -1664,9 +1847,19 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		while(_g < _g1.length) {
 			var i = _g1[_g];
 			++_g;
-			var value = utils.Misc.getAttackFromName(i,Reflect.field(this.config.attacks,i));
+			var value = this.getAttackFromName(i,Reflect.field(this.config.attacks,i));
 			this.attacks.set(i,value);
 		}
+	}
+	,getAttackFromName: function(name,data) {
+		switch(name) {
+		case "normal":
+			return new objects.attacks.NormalAttack(data);
+		case "triple":
+			return new objects.attacks.TripleAttack(data);
+		}
+		window.console.warn("ATTACK NOT FOUND !");
+		return new objects.attacks.Attack(data);
 	}
 	,generateAnimations: function() {
 		var _g = 0;
@@ -1701,6 +1894,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	}
 	,_selfUpdate: function() {
 		this.manageAnim();
+		if(this.isDead) return;
 		if(!this.updateBlocked) {
 			if(managers.FightManager.status != managers.StatusModes.setup) this.managePathFinding();
 			if(managers.FightManager.status == managers.StatusModes.fight) this.fightUpdate(); else this.normalUpdate();
@@ -1717,19 +1911,8 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 				}
 			}
 		}
-		if(this.activeAnimation.data[0].length > 1) {
-			if(this.animationFrame >= this.activeAnimation.getFrames(this.directionFacing).length - 1) {
-				if(!this.activeAnimation.loop) {
-					this.stop();
-					this.setAnimation("idle");
-					this.activeAnimation.endAction();
-				} else this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[0]);
-				this.animationFrame = 0;
-			} else {
-				this.animationFrame += this.activeAnimation.fps / 60;
-				this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[Math.floor(this.animationFrame)]);
-			}
-		}
+		this.gotoAndStop(this.activeAnimation.getNextFrameIndex());
+		if(this.activeAnimation.finished) this.setAnimation("idle");
 	}
 	,managePathFinding: function() {
 		if(this.activePath.length != 0 && this.stats.AP > 0) {
@@ -1740,25 +1923,30 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 				if(utils.Misc.getDistance(this.x,this.y,utils.Misc.convertToAbsolutePosition(arrayPos)[0],utils.Misc.convertToAbsolutePosition(arrayPos)[1] + Main.tileSize[1] * 0.5) < this.stats.moveSpeed * managers.TimeManager.deltaTime) {
 					this.setTilePosition(arrayPos);
 					this.pathIndex++;
-					this.useAp(1);
-					if(this.pathIndex <= this.activePath.length - 1) this.getNextPathPoint(); else {
-						this.setAnimation("idle");
-						this.activePath = [];
-						this.activePathPoint = null;
-						this.isMoving = false;
-					}
+					this.useAp(this.stats.moveCost);
+					if(this.pathIndex <= this.activePath.length - 1) {
+						if(!managers.MapManager.getInstance().activeMap.getWalkableAt([this.activePath[this.pathIndex].x,this.activePath[this.pathIndex].y])) this.stopPath(); else this.getNextPathPoint();
+					} else this.stopPath();
 				}
 			}
 		}
 	}
 	,getNextPathPoint: function() {
 		this.activePathPoint = this.activePath[this.pathIndex];
+		managers.CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this,[this.activePathPoint.x,this.activePathPoint.y]);
 		this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,[this.activePathPoint.x,this.activePathPoint.y]));
+	}
+	,stopPath: function() {
+		this.setAnimation("idle");
+		this.activePath = [];
+		this.activePathPoint = null;
+		this.isMoving = false;
 	}
 	,generatePosTile: function(allied) {
 		if(allied) this.positionTile = new objects.Tile(PIXI.Texture.fromImage("alliedTile.png")); else this.positionTile = new objects.Tile(PIXI.Texture.fromImage("enemyTile.png"));
 		managers.DrawManager.addToDisplay(this.positionTile,managers.MapManager.getInstance().activeMap.mapContainer,0.45);
 		this.positionTile.visible = true;
+		this.positionTile.charaName = this.charaName;
 		this.showPosTile(this.tilePos);
 	}
 	,showPosTile: function(newPos) {
@@ -1769,27 +1957,32 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	}
 	,fightUpdate: function() {
 	}
+	,onCharacterMove: function(characterId,newPosition) {
+		if(this.selectedAction != "move") this.generateAttackRange(this.selectedAction);
+	}
 	,setAnimation: function(animName) {
+		if(this.activeAnimation != null) this.activeAnimation.resetAnim(this.directionFacing);
 		if(!this.animations.exists(animName)) {
 			window.console.warn("anim not found: " + animName);
 			return;
 		}
 		this.activeAnimation = this.animations.get(animName);
-		this.activeAnimationName = this.activeAnimation.name;
-		if(this.activeAnimation.getFrames(this.directionFacing).length == 1) this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[0]); else this.gotoAndPlay(this.activeAnimation.getFrames(this.directionFacing)[0]);
+		this.activeAnimation.resetAnim(this.directionFacing);
 		this.animationSpeed = this.activeAnimation.fps / 60;
+		this.gotoAndStop(this.activeAnimation.getFrames(this.directionFacing)[0]);
 	}
 	,setDirection: function(newDir) {
 		this.directionFacing = newDir % 4;
-		this.setAnimation(this.activeAnimationName);
+		this.setAnimation(this.activeAnimation.name);
 	}
 	,kill: function() {
 		console.log("TARGET '" + this.charaName + "' is dead !");
 		this.setAnimation("death");
 		this.updateBlocked = true;
+		managers.DrawManager.removeFromDisplay(this.positionTile);
 		this.isDead = true;
-		managers.FightManager.getInstance().testFightOver();
 		this.Destroy();
+		managers.FightManager.getInstance().testFightOver();
 	}
 	,setTilePosition: function(position) {
 		managers.CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this,position);
@@ -1819,25 +2012,35 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	}
 	,findPathTo: function(target,follow) {
 		if(follow == null) follow = false;
-		managers.MapManager.finder.setColliTile(this.tilePos[0],this.tilePos[1],true);
-		var returnPath = managers.MapManager.getInstance().activeMap.findPath(this.getPathFindingPoint(),target);
-		managers.MapManager.finder.setColliTile(this.tilePos[0],this.tilePos[1],false);
+		var maxDistance = this.getMaxMovement() * Main.tileSize[0] * 0.5 + this.getMaxMovement() * Main.tileSize[1] * 0.25;
+		var absoluteTarget = utils.Misc.convertToAbsolutePosition(target);
+		if(utils.Misc.getDistance(this.x,this.y,absoluteTarget[0],absoluteTarget[1]) > maxDistance) return [];
+		if(utils.Misc.isSameTile(target,objects.character.Player.getInstance().tilePos)) target = utils.Misc.getClosestPosFromDirection(target,utils.Misc.getDirectionToPoint(target,this.tilePos));
+		managers.MapManager.getInstance().activeMap.setColliAt(this.tilePos,false);
+		var returnPath = managers.MapManager.getInstance().activeMap.findPath(this.getPathFindingPoint(),target,utils.Misc.getRangeTileAround(this.tilePos,0,this.getMaxMovement()));
+		managers.MapManager.getInstance().activeMap.setColliAt(this.tilePos,true);
 		if(follow) this.followPath(returnPath);
 		return returnPath;
 	}
 	,followPath: function(path) {
-		if(path.length == 0 || path.length - 1 > this.stats.AP) return;
+		if(path.length == 0 || path.length - 1 > this.getMaxMovement()) return;
 		this.activePath = path;
 		this.isMoving = true;
 		if(this.activePathPoint != null) this.pathIndex = 0; else this.pathIndex = 1;
 		this.setAnimation("run");
+	}
+	,generateAttackRange: function(attackName) {
+		if(this.attacks.exists(attackName)) {
+			this.activeAttackRange = utils.Misc.getRangeTileAround(this.tilePos,this.attacks.get(attackName).minRange,this.attacks.get(attackName).maxRange);
+			this.activeAttackRange = utils.Misc.processLOSRange(this.tilePos,this.activeAttackRange);
+		} else window.console.warn("Attack not found while generating attackRange of:" + attackName);
 	}
 	,launchAttack: function(attackName,targetPosition) {
 		if(this.attacks.get(attackName) == null) {
 			window.console.warn("attack not found: " + attackName);
 			return;
 		}
-		if(!utils.Misc.targetInRange(this.tilePos,targetPosition,this.activeAttackRange)) {
+		if(!utils.Misc.targetInRange(targetPosition,this.activeAttackRange)) {
 			window.console.warn("target not in range");
 			return;
 		}
@@ -1857,7 +2060,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		return this.tilePos;
 	}
 	,newTick: function(tickNumber) {
-		if(this.stats.AP < this.stats.MaxAP) this.stats.AP += tickNumber - this.lastTickRegistered;
+		this.stats.AP = Math.min(this.stats.MaxAP,this.stats.AP + (tickNumber - this.lastTickRegistered) * this.stats.APregeneration);
 		this.lastTickRegistered = tickNumber;
 		if(this.waitForNextTick) {
 			this.waitForNextTick = false;
@@ -1867,6 +2070,13 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	,useAp: function(amount) {
 		this.stats.AP -= amount;
 	}
+	,getMaxMovement: function() {
+		return Math.floor(this.stats.AP / this.stats.moveCost);
+	}
+	,changeSelectedAction: function(newActionName) {
+		if(this.selectedAction == newActionName) this.selectedAction = "move"; else this.selectedAction = newActionName;
+		if(this.selectedAction != "move") this.generateAttackRange(this.selectedAction);
+	}
 	,Destroy: function() {
 		managers.CharacterManager.getInstance().removeCharacter(this);
 		managers.DrawManager.removeFromDisplay(this);
@@ -1874,6 +2084,24 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.destroy();
 	}
 	,__class__: objects.character.Character
+});
+objects.character.Npc = function(newName) {
+	objects.character.Character.call(this,newName);
+};
+objects.character.Npc.__name__ = ["objects","character","Npc"];
+objects.character.Npc.__super__ = objects.character.Character;
+objects.character.Npc.prototype = $extend(objects.character.Character.prototype,{
+	processAI: function() {
+	}
+	,__class__: objects.character.Npc
+});
+objects.character.BaseEnemy = function(newName) {
+	objects.character.Npc.call(this,newName);
+};
+objects.character.BaseEnemy.__name__ = ["objects","character","BaseEnemy"];
+objects.character.BaseEnemy.__super__ = objects.character.Npc;
+objects.character.BaseEnemy.prototype = $extend(objects.character.Npc.prototype,{
+	__class__: objects.character.BaseEnemy
 });
 objects.character.Player = function() {
 	this.allowInput = true;
@@ -1899,36 +2127,36 @@ objects.character.Player.__super__ = objects.character.Character;
 objects.character.Player.prototype = $extend(objects.character.Character.prototype,{
 	mouseOverSelf: function(e) {
 		if(!this.allowInput) return;
-		if(objects.character.Player.selectedAction == "move") {
-			if(objects.Options.data.player_showHoverMovement = true) this.showRange(0,this.stats.AP,65280,0.7,utils.Misc.getRangeTileAround(this.tilePos,1,this.stats.AP));
+		if(this.selectedAction == "move") {
+			if(objects.Options.data.player_showHoverMovement = true) this.showRange(1,this.getMaxMovement(),65280,0.5);
 		}
 	}
 	,mouseOutSelf: function(e) {
 		if(!this.allowInput) return;
-		if(objects.character.Player.selectedAction == "move") {
+		if(this.selectedAction == "move") {
 			if(objects.Options.data.player_showHoverMovement = true) this.hidePoolTiles();
 		}
 	}
 	,mapClick: function(e) {
 		if(!this.allowInput) return;
-		var newtilePos = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
-		if(objects.character.Player.selectedAction == "move" && !this.isMoving) {
-			if(!objects.Camera.getInstance().isDragged) this.findPathTo(newtilePos,true);
-		} else if(this.attacks.exists(objects.character.Player.selectedAction)) this.launchAttack(objects.character.Player.selectedAction,newtilePos);
+		var newtilePos = utils.Misc.getTileFromEvent(e);
+		if(this.selectedAction == "move" && !this.isMoving) {
+			if(!objects.Camera.getInstance().isDragged && !utils.Misc.isSameTile(newtilePos,this.tilePos)) this.findPathTo(newtilePos,true);
+		} else if(this.attacks.exists(this.selectedAction)) this.launchAttack(this.selectedAction,newtilePos);
 		this.hideHoverTile();
 		this.hidePoolTiles();
 		this.changeSelectedAction("move");
 	}
 	,mapHover: function(e) {
 		if(!this.allowInput) return;
-		var tileHovered = utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
+		var tileHovered = utils.Misc.getTileFromEvent(e);
 		this.hidePoolTiles();
 		this.hideHoverTile();
-		if(objects.character.Player.selectedAction == "move" && !this.isMoving) {
+		if(this.selectedAction == "move" && !this.isMoving && !utils.Misc.isSameTile(tileHovered,this.tilePos)) {
 			if(managers.FightManager.status == managers.StatusModes.fight) this.showPathMovement(this.findPathTo(tileHovered));
-		} else if(this.attacks.exists(objects.character.Player.selectedAction) && managers.FightManager.status == managers.StatusModes.fight) {
-			this.showAttackRange(objects.character.Player.selectedAction);
-			if(utils.Misc.targetInRange(this.tilePos,tileHovered,this.activeAttackRange)) this.showHoverTile(tileHovered,16711680);
+		} else if(this.attacks.exists(this.selectedAction) && managers.FightManager.status == managers.StatusModes.fight) {
+			this.showAttackRange(this.selectedAction);
+			if(utils.Misc.targetInRange(tileHovered,this.activeAttackRange)) this.showHoverTile(tileHovered,16711680);
 		}
 		if(tileHovered[0] == this.tilePos[0] && tileHovered[1] == this.tilePos[1]) {
 			this.mouseHovering = true;
@@ -1937,13 +2165,15 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 			this.mouseHovering = false;
 			this.mouseOutSelf(e);
 		}
+		utils.Debug.log("" + Std.string(tileHovered));
 	}
 	,showAttackRange: function(attackName) {
 		this.showRange(this.attacks.get(attackName).minRange,this.attacks.get(attackName).maxRange,16729927,0.3);
 	}
 	,newTick: function(tickNumber) {
-		objects.character.Character.prototype.newTick.call(this,tickNumber);
+		objects.character.Character.prototype.newTick.call(this,tickNumber * 10);
 		managers.HudManager.getInstance().APmeter.text = "" + this.stats.AP;
+		if(!states.DebugState.superEnemy.isDead) states.DebugState.superEnemy.findPathTo(this.tilePos,true);
 		if(this.APFlash.parent == null) {
 			managers.DrawManager.addToDisplay(this.APFlash,managers.HudManager.getInstance().APmeter);
 			this.APFlash.scale.set(2 * (1 / this.APFlash.parent.parent.scale.x),2 * (1 / this.APFlash.parent.parent.scale.y));
@@ -1965,7 +2195,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 	}
 	,showPathMovement: function(path) {
 		path.shift();
-		if(path.length == 0 || path.length > this.stats.AP) return;
+		if(path.length == 0 || path.length > this.getMaxMovement()) return;
 		var $it0 = HxOverrides.iter(this.pathPositions);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
@@ -1978,6 +2208,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 			var newTile = managers.PoolManager.pullObject("tile");
 			newTile.visible = true;
 			newTile.tint = 65280;
+			newTile.alpha = 0.5;
 			newTile.setTilePosition([i1.x,i1.y]);
 			this.pathPositions.push(newTile);
 			if(newTile.parent == null) {
@@ -1990,7 +2221,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		this.hidePoolTiles();
 		if(managers.FightManager.status == managers.StatusModes.normal) return;
 		var arrayIter;
-		if(customRange == null) arrayIter = this.activeAttackRange; else arrayIter = customRange;
+		if(this.selectedAction != "move") arrayIter = this.activeAttackRange; else arrayIter = utils.Misc.getRangeTileAround(this.tilePos,min,max);
 		var $it0 = HxOverrides.iter(arrayIter);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
@@ -2038,25 +2269,12 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		managers.HudManager.getInstance().APmeter.text = "" + this.stats.AP;
 	}
 	,changeSelectedAction: function(newActionName) {
-		if(objects.character.Player.selectedAction == newActionName) objects.character.Player.selectedAction = "move"; else objects.character.Player.selectedAction = newActionName;
+		if(this.selectedAction == newActionName) this.selectedAction = "move"; else this.selectedAction = newActionName;
 		this.hideEveryTile();
-		if(objects.character.Player.selectedAction != "move") {
-			this.generateAttackRange(objects.character.Player.selectedAction);
-			this.showAttackRange(objects.character.Player.selectedAction);
+		if(this.selectedAction != "move") {
+			this.generateAttackRange(this.selectedAction);
+			this.showAttackRange(this.selectedAction);
 		}
-	}
-	,generateAttackRange: function(attackName) {
-		if(this.attacks.exists(attackName)) {
-			this.activeAttackRange = utils.Misc.getRangeTileAround(this.tilePos,this.attacks.get(attackName).minRange,this.attacks.get(attackName).maxRange);
-			var i = 0;
-			while(i < this.activeAttackRange.length) {
-				if(!utils.Misc.hasLineOfSight(this.tilePos,this.activeAttackRange[i],this.activeAttackRange)) {
-					this.activeAttackRange.splice(i,1);
-					--i;
-				}
-				++i;
-			}
-		} else window.console.warn("Attack not found while generating attackRange of:" + attackName);
 	}
 	,hideEveryTile: function() {
 		this.hideHoverTile();
@@ -2064,9 +2282,9 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 	}
 	,setTilePosition: function(position) {
 		objects.character.Character.prototype.setTilePosition.call(this,position);
-		if(objects.character.Player.selectedAction != "move") {
-			this.generateAttackRange(objects.character.Player.selectedAction);
-			this.showAttackRange(objects.character.Player.selectedAction);
+		if(this.selectedAction != "move") {
+			this.generateAttackRange(this.selectedAction);
+			this.showAttackRange(this.selectedAction);
 		}
 	}
 	,Destroy: function() {
@@ -2076,26 +2294,32 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 	}
 	,__class__: objects.character.Player
 });
-objects.character.Pnj = function(newName) {
-	objects.character.Character.call(this,newName);
-};
-objects.character.Pnj.__name__ = ["objects","character","Pnj"];
-objects.character.Pnj.__super__ = objects.character.Character;
-objects.character.Pnj.prototype = $extend(objects.character.Character.prototype,{
-	processAI: function() {
-	}
-	,__class__: objects.character.Pnj
-});
 objects.character.Victim = function(newName) {
-	objects.character.Pnj.call(this,newName);
+	objects.character.BaseEnemy.call(this,newName);
 	this.stats.health = 1000;
 };
 objects.character.Victim.__name__ = ["objects","character","Victim"];
-objects.character.Victim.__super__ = objects.character.Pnj;
-objects.character.Victim.prototype = $extend(objects.character.Pnj.prototype,{
+objects.character.Victim.__super__ = objects.character.BaseEnemy;
+objects.character.Victim.prototype = $extend(objects.character.BaseEnemy.prototype,{
 	__class__: objects.character.Victim
 });
 objects.particle = {};
+objects.particle.Bullet = function(textures) {
+	var _g = this;
+	PIXI.extras.MovieClip.call(this,textures);
+	this.loop = false;
+	this.anchor.set(0.5,0);
+	this.onComplete = function() {
+		_g.gotoAndStop(0);
+		_g.visible = false;
+		_g.scale.set(1,1);
+	};
+};
+objects.particle.Bullet.__name__ = ["objects","particle","Bullet"];
+objects.particle.Bullet.__super__ = PIXI.extras.MovieClip;
+objects.particle.Bullet.prototype = $extend(PIXI.extras.MovieClip.prototype,{
+	__class__: objects.particle.Bullet
+});
 objects.particle.DmgText = function() {
 	PIXI.Text.call(this,"",{ fill : "#ff6c00", font : "30px gastFont", stroke : "#790000", strokeThickness : 10});
 };
@@ -2142,17 +2366,40 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 		var camShader = new PIXI.Sprite(PIXI.Texture.fromImage("camShader.png"));
 		camShader.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
 		managers.DrawManager.addToDisplay(camShader,Main.getInstance().effectCont);
-		managers.MapManager.getInstance().generateMapDisplay("testMapZig",true);
+		managers.MapManager.getInstance().generateMapDisplay("TestingMap",true);
 		var hero = objects.character.Player.getInstance();
-		hero.setTilePosition([13,30]);
+		hero.setTilePosition([8,50]);
 		hero.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(hero,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		objects.Camera.getInstance().setFollowTarget(hero);
+		var targetsID = [];
 		var victim = new objects.character.Victim("victim");
-		victim.setTilePosition([10,24]);
+		victim.setTilePosition([10,64]);
 		victim.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
-		managers.FightManager.getInstance().startSetup([victim.ID]);
+		targetsID.push(victim.ID);
+		victim = new objects.character.Victim("victim");
+		victim.setTilePosition([5,25]);
+		victim.scale.set(0.4,0.4);
+		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
+		targetsID.push(victim.ID);
+		victim = new objects.character.Victim("victim");
+		victim.setTilePosition([9,29]);
+		victim.scale.set(0.4,0.4);
+		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
+		targetsID.push(victim.ID);
+		victim = new objects.character.Victim("victim");
+		victim.setTilePosition([13,34]);
+		victim.scale.set(0.4,0.4);
+		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
+		targetsID.push(victim.ID);
+		victim = new objects.character.Victim("victim");
+		victim.setTilePosition([17,40]);
+		victim.scale.set(0.4,0.4);
+		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
+		states.DebugState.superEnemy = victim;
+		targetsID.push(victim.ID);
+		managers.FightManager.getInstance().startSetup(targetsID);
 	}
 	,Update: function() {
 	}
@@ -2202,16 +2449,16 @@ states.PreloadState.__name__ = ["states","PreloadState"];
 states.PreloadState.__super__ = objects.State;
 states.PreloadState.prototype = $extend(objects.State.prototype,{
 	Preload: function() {
-		this.loadJson.set("buttonTripleAttack","assets/spriteSheets/buttonTripleAttack.json");
-		this.loadJson.set("buttonAttack","assets/spriteSheets/buttonAttack.json");
-		this.loadJson.set("buttonMove","assets/spriteSheets/buttonMove.json");
+		this.loadJson.set("TripleAttack","assets/spriteSheets/buttonTripleAttack.json");
+		this.loadJson.set("Attack","assets/spriteSheets/buttonAttack.json");
 		this.loadJson.set("hud_bottom","assets/spriteSheets/hud_bottom.json");
 		this.loadJson.set("tileSh2","assets/spriteSheets/loadSpriteSheet.json");
 		this.loadJson.set("buttons","assets/spriteSheets/buttonSpriteSheet.json");
 		this.loadJson.set("hero","assets/spriteSheets/heroSpriteSheet.json");
 		this.loadJson.set("hero2","assets/spriteSheets/heroSpriteSheet2.json");
 		this.loadJson.set("explosion","assets/spriteSheets/testExplosion.json");
-		this.loadJson.set("enemy","assets/spriteSheets/victim.json");
+		this.loadJson.set("victim","assets/spriteSheets/victim.json");
+		this.loadJson.set("bullet","assets/spriteSheets/bullet.json");
 		this.loadJson.set("camShader","assets/effects/camShade.json");
 		Main.getInstance().hudCont.addChild(this.loadingRecangle);
 		Main.getInstance().hudCont.addChild(this.loadingFill);
@@ -4243,6 +4490,11 @@ utils.Misc.getDistance = function(x1,y1,x2,y2) {
 	var dy = y1 - y2;
 	return Math.sqrt(dx * dx + dy * dy);
 };
+utils.Misc.getDistanceBetweenTiles = function(tile1,tile2) {
+	var tile1Ab = utils.Misc.convertToAbsolutePosition(tile1);
+	var tile2Ab = utils.Misc.convertToAbsolutePosition(tile2);
+	return utils.Misc.getDistance(tile1Ab[0],tile1Ab[1],tile2Ab[0],tile2Ab[1]);
+};
 utils.Misc.angleBetween = function(s,t) {
 	return -Math.atan2(t[1] - s[1],t[0] - s[0]);
 };
@@ -4352,17 +4604,7 @@ utils.Misc.clamp = function(number,min,max) {
 	if(number > max) return max;
 	return number;
 };
-utils.Misc.getAttackFromName = function(name,data) {
-	switch(name) {
-	case "normal":
-		return new objects.attacks.NormalAttack(data);
-	case "triple":
-		return new objects.attacks.TripleAttack(data);
-	}
-	window.console.warn("ATTACK NOT FOUND !");
-	return new objects.attacks.Attack(data);
-};
-utils.Misc.targetInRange = function(source,target,tilesInRange) {
+utils.Misc.targetInRange = function(target,tilesInRange) {
 	var $it0 = HxOverrides.iter(tilesInRange);
 	while( $it0.hasNext() ) {
 		var i = $it0.next();
@@ -4370,31 +4612,52 @@ utils.Misc.targetInRange = function(source,target,tilesInRange) {
 	}
 	return false;
 };
-utils.Misc.hasLineOfSight = function(from,to,tilesInRange) {
+utils.Misc.hasLineOfSight = function(from,to,tilesInRange,precalculatedObstacleList) {
 	var absoluteFrom = utils.Misc.convertToAbsolutePosition(from);
 	var absoluteTo = utils.Misc.convertToAbsolutePosition(to);
-	var errorMargin = 4;
-	var obstacleList = [];
-	var $it0 = HxOverrides.iter(tilesInRange);
+	var obstacleList;
+	if(precalculatedObstacleList == null) obstacleList = utils.Misc.generateObstacleMap(tilesInRange); else obstacleList = precalculatedObstacleList;
+	var $it0 = HxOverrides.iter(obstacleList);
 	while( $it0.hasNext() ) {
-		var tilePos = $it0.next();
-		if(!managers.MapManager.getInstance().activeMap.getWalkableAt(tilePos)) obstacleList.push(utils.Misc.generateTileCollisions(managers.MapManager.getInstance().activeMap.getTileAt(tilePos),errorMargin));
-	}
-	var $it1 = HxOverrides.iter(obstacleList);
-	while( $it1.hasNext() ) {
-		var tileCollision = $it1.next();
-		var $it2 = HxOverrides.iter(tileCollision);
-		while( $it2.hasNext() ) {
-			var segment = $it2.next();
-			if(utils.Misc.doLinesIntersect(absoluteFrom,absoluteTo,segment[0],segment[1])) {
-				if(tileCollision[0][0][0] == absoluteTo[0] && tileCollision[0][0][1] + errorMargin == absoluteTo[1] + Main.tileSize[1] * 0.5) return true;
-				return false;
-			}
+		var tileCollision = $it0.next();
+		var $it1 = HxOverrides.iter(tileCollision);
+		while( $it1.hasNext() ) {
+			var segment = $it1.next();
+			if(utils.Misc.isSameTile(utils.Misc.convertToGridPosition(segment[0][0],segment[0][1]),to)) {
+				if(managers.CharacterManager.getInstance().findCharacterAtTilePos(to) != null) continue;
+			} else if(utils.Misc.doLinesIntersect(absoluteFrom,absoluteTo,segment[0],segment[1])) return false;
 		}
 	}
 	return true;
 };
-utils.Misc.generateTileCollisions = function(tile,errorMargin) {
+utils.Misc.processLOSRange = function(from,range) {
+	var obstacleList = utils.Misc.generateObstacleMap(range);
+	var i = 0;
+	while(i < range.length) {
+		if(!utils.Misc.hasLineOfSight(from,range[i],range,obstacleList)) {
+			range.splice(i,1);
+			--i;
+		}
+		++i;
+	}
+	return range;
+};
+utils.Misc.isSameTile = function(pos1,pos2) {
+	return pos1[0] == pos2[0] && pos1[1] == pos2[1];
+};
+utils.Misc.generateObstacleMap = function(range) {
+	var obstacleList = [];
+	var $it0 = HxOverrides.iter(range);
+	while( $it0.hasNext() ) {
+		var tilePos = $it0.next();
+		if(managers.MapManager.getInstance().activeMap.getTileAt(tilePos) != null) {
+			if(!managers.MapManager.getInstance().activeMap.getLOSAt(tilePos)) obstacleList.push(utils.Misc.generateTileCollisions(managers.MapManager.getInstance().activeMap.getTileAt(tilePos)));
+		}
+	}
+	return obstacleList;
+};
+utils.Misc.generateTileCollisions = function(tile) {
+	var errorMargin = 1;
 	var returnArray = [];
 	returnArray.push([[tile.x,tile.y - errorMargin],[tile.x - Main.tileSize[0] * 0.5 + errorMargin,tile.y - Main.tileSize[1] * 0.5]]);
 	returnArray.push([[tile.x - Main.tileSize[0] * 0.5 + errorMargin,tile.y - Main.tileSize[1] * 0.5],[tile.x,tile.y - Main.tileSize[1] + errorMargin]]);
@@ -4455,10 +4718,36 @@ utils.Misc.placeTilePointer = function(positions,color,absolute) {
 		managers.DrawManager.addToDisplay(newPointer,Main.getInstance().tileCont,100);
 	}
 };
+utils.Misc.getClosestPosFromDirection = function(target,direction) {
+	var returnPos = [target[0],target[1]];
+	if(direction == 0) {
+		if(target[1] % 2 == 0) {
+			--returnPos[0];
+			++returnPos[1];
+		} else ++returnPos[1];
+	} else if(direction == 1) {
+		if(target[1] % 2 == 0) {
+			--returnPos[0];
+			--returnPos[1];
+		} else --returnPos[1];
+	} else if(direction == 2) {
+		if(target[1] % 2 == 0) --returnPos[1]; else {
+			++returnPos[0];
+			--returnPos[1];
+		}
+	} else if(target[1] % 2 == 0) ++returnPos[1]; else {
+		++returnPos[0];
+		++returnPos[1];
+	}
+	return returnPos;
+};
 utils.Misc.removeAllPointers = function() {
 	managers.PoolManager.applyFunctionToPool("pointer",function(element) {
 		element.visible = false;
 	});
+};
+utils.Misc.getTileFromEvent = function(e) {
+	return utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
 };
 function $iterator(o) { if( o instanceof Array ) return function() { return HxOverrides.iter(o); }; return typeof(o.iterator) == 'function' ? $bind(o,o.iterator) : o.iterator; }
 var $_, $fid = 0;
@@ -5328,7 +5617,6 @@ haxe.ds.ObjectMap.count = 0;
 managers.FightManager.status = managers.StatusModes.normal;
 managers.InitManager.CONFIG_PATH = "assets/config/";
 managers.InitManager.ASSETS_PATH = "assets/";
-managers.MapManager.finder = new EasyStar.js();
 managers.MouseManager.gamehover = new CustomEvent("gameHover");
 managers.MouseManager.gameMouseUp = new CustomEvent("gameMouseUp");
 managers.MouseManager.gameMouseDown = new CustomEvent("gameMouseDown");
@@ -5339,9 +5627,9 @@ managers.StateManager.loadingState = false;
 managers.TimeManager.elapsedTime = 0;
 managers.TimeManager.deltaTime = 0;
 managers.TimeManager.FPS = 0;
+objects.GameMap.suitableLayerTypes = ["collisions","graphical","LOS"];
 objects.Options.data = { };
 objects.State.FTUEStateBool = false;
-objects.character.Player.selectedAction = "move";
 tweenx909.EaseX.PI = 3.1415926535897932384626433832795;
 tweenx909.EaseX.PI_H = 1.5707963267948966;
 tweenx909.EaseX.overshoot = 1.70158;

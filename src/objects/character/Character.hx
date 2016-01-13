@@ -9,6 +9,8 @@ import managers.PoolManager;
 import managers.TimeManager;
 import objects.Animation;
 import objects.attacks.Attack;
+import objects.attacks.NormalAttack;
+import objects.attacks.TripleAttack;
 import objects.particle.DmgText;
 import objects.Tile;
 import pixi.core.sprites.Sprite;
@@ -27,31 +29,35 @@ typedef Stats = {
 	var strength 		: Int;
 	var endurance 		: Int;
 	var moveSpeed 		: Float;
-	var regeneration 	: Int;
+	var moveCost 		: Float;
+	
+	var APregeneration 	: Int;
 	var precision 		: Int;
 	var luck 			: Int;
-	var AP 				: Int;
-	var MaxAP 			: Int;
+	var AP 				: Float;
+	var MaxAP 			: Float;
 }
 
 
 class Character extends MovieClip{
 
 	public var ID:String;
+	public var selectedAction:String = "move";
 
 	public var tilePos:Array<Int> = [0,0];
 	public var directionFacing:Int = 0;
 	
 	public var stats:Stats = {
-		health 		: 100,
-		strength 	: 10,
-		endurance 	: 10,
-		regeneration: 10,
-		moveSpeed	: 2.5,
-		precision 	: 10,
-		luck 		: 10,
-		AP 			: 10,
-		MaxAP		: 10
+		health 			: 100,
+		strength 		: 10,
+		endurance 		: 10,
+		APregeneration	: 10,
+		moveSpeed		: 2.5,
+		moveCost		: 1,
+		precision 		: 10,
+		luck 			: 10,
+		AP 				: 100,
+		MaxAP			: 100
 	};
 	
 	private var activePath:Array<Dynamic> = [];
@@ -68,9 +74,7 @@ class Character extends MovieClip{
 	
 	
 	public var animations:Map<String,Animation> = new Map.Map();
-	public var animationFrame:Float = 0;
 	public var activeAnimation:Animation;
-	public var activeAnimationName:String;
 	
 	public var config:Dynamic;
 	
@@ -84,7 +88,7 @@ class Character extends MovieClip{
 	
 	public var isDead:Bool = false;
 	
-	private var positionTile:Tile;
+	public var positionTile:Tile;
 
 	
 	/*#################
@@ -101,7 +105,6 @@ class Character extends MovieClip{
 		loop = true;
 		
 		ID = Id.newId();
-		
 		anchor.set(0.5, 1);
 		CharacterManager.getInstance().addCharacter(this);
 	}
@@ -112,12 +115,14 @@ class Character extends MovieClip{
 		stats.health 		= config.stats.health;
 		stats.strength 		= config.stats.strength;
 		stats.endurance 	= config.stats.endurance;
-		stats.regeneration 	= config.stats.regeneration;
+		stats.APregeneration= config.stats.APregeneration;
 		stats.moveSpeed		= config.stats.moveSpeed;
 		stats.precision		= config.stats.precision;
 		stats.luck 			= config.stats.luck;
 		stats.MaxAP 		= config.stats.MaxAP;
 		stats.AP 			= stats.MaxAP;
+		stats.moveCost 		= config.stats.moveCost;
+		
 	}
 	
 	private function generateTextures(newName:String):Array<Texture>{
@@ -136,8 +141,17 @@ class Character extends MovieClip{
 	
 	private function generateAttacks():Void{
 		for (i in Reflect.fields(config.attacks)) {
-			attacks.set(i, Misc.getAttackFromName(i, Reflect.field(config.attacks, i)));
+			attacks.set(i, getAttackFromName(i, Reflect.field(config.attacks, i)));
 		}	
+	}
+	
+	private function getAttackFromName(name:String, data:Dynamic):Attack{
+		switch name{
+			case "normal": return new NormalAttack(data);
+			case "triple": return new TripleAttack(data);
+		}
+		Browser.window.console.warn("ATTACK NOT FOUND !");
+		return new Attack(data);
 	}
 	
 	private function generateAnimations():Void {
@@ -181,9 +195,13 @@ class Character extends MovieClip{
 	public function _selfUpdate():Void {
 		manageAnim();
 		
+		if (isDead)
+			return;
+			
 		if (!updateBlocked) {
-			if (FightManager.status != StatusModes.setup)
+			if (FightManager.status != StatusModes.setup){
 				managePathFinding();
+			}
 			if (FightManager.status == StatusModes.fight)
 				fightUpdate();
 			else
@@ -216,23 +234,9 @@ class Character extends MovieClip{
 			}
 		}
 		
-		if(activeAnimation.data[0].length > 1){
-			if (animationFrame >= activeAnimation.getFrames(directionFacing).length - 1) {
-				if (!activeAnimation.loop) {
-					stop();
-					setAnimation("idle");
-					activeAnimation.endAction();
-				}
-				else {
-					gotoAndStop(activeAnimation.getFrames(directionFacing)[0]);
-				}
-				animationFrame = 0;
-			}
-			else {
-				animationFrame += 1 * (activeAnimation.fps / 60);
-				gotoAndStop(activeAnimation.getFrames(directionFacing)[Math.floor(animationFrame)]);
-			}
-		}
+		gotoAndStop(activeAnimation.getNextFrameIndex());
+		if (activeAnimation.finished) 
+			setAnimation("idle");
 	}
 	
 	private function managePathFinding():Void {
@@ -242,7 +246,6 @@ class Character extends MovieClip{
 			if (tilePos[0] != activePath[activePath.length - 1].x || tilePos[1] != activePath[activePath.length - 1].y){
 				var arrayPos = [activePathPoint.x, activePathPoint.y];
 				
-				//trace(Misc.getDistance(x,y,Misc.convertToAbsolutePosition(arrayPos)[0],Misc.convertToAbsolutePosition(arrayPos)[1]));
 				setAbsolutePosition(x + Math.cos(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed * TimeManager.deltaTime, y - Math.sin(Misc.angleBetweenTiles(tilePos, arrayPos)) * stats.moveSpeed * TimeManager.deltaTime);
 				if(Misc.getDistance(x,y,Misc.convertToAbsolutePosition(arrayPos)[0],Misc.convertToAbsolutePosition(arrayPos)[1] + Main.tileSize[1] * 0.5) < stats.moveSpeed * TimeManager.deltaTime)
 				{
@@ -250,18 +253,16 @@ class Character extends MovieClip{
 					setTilePosition(arrayPos);
 					pathIndex++;
 					
-					useAp(1); // - 1 AP
+					useAp(cast stats.moveCost);
 					
-					if(pathIndex <= activePath.length -1)
-						getNextPathPoint();
-					else
-					{
-						//finish Path
-						setAnimation("idle");
-						activePath = [];
-						activePathPoint = null;
-						isMoving = false;
+					if(pathIndex <= activePath.length -1){					
+						if (!MapManager.getInstance().activeMap.getWalkableAt([activePath[pathIndex].x, activePath[pathIndex].y]))
+							stopPath();
+						else
+							getNextPathPoint();
 					}
+					else
+						stopPath();
 				}
 			}
 		}
@@ -269,13 +270,22 @@ class Character extends MovieClip{
 	
 	private function getNextPathPoint():Void{
 		activePathPoint = activePath[pathIndex];
+		CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this, [activePathPoint.x, activePathPoint.y]);
 		setDirection(Misc.getDirectionToPoint(tilePos, [activePathPoint.x,activePathPoint.y]));
+	}
+	
+	private function stopPath():Void{
+		setAnimation("idle");
+		activePath = [];
+		activePathPoint = null;
+		isMoving = false;
 	}
 	
 	public function generatePosTile(allied:Bool):Void {
 		positionTile = allied ? new Tile(Texture.fromImage("alliedTile.png")) :new Tile(Texture.fromImage("enemyTile.png"));
 		DrawManager.addToDisplay(positionTile, MapManager.getInstance().activeMap.mapContainer, 0.45);
 		positionTile.visible = true;
+		untyped positionTile.charaName = charaName;
 		showPosTile(tilePos);
 	}
 	
@@ -294,26 +304,29 @@ class Character extends MovieClip{
 	
 	}
 	
-	
+	public function onCharacterMove(characterId:String, ?newPosition:Array<Int>):Void
+	{
+		if(selectedAction != "move")
+			generateAttackRange(selectedAction);
+	}
 	
 	public function setAnimation(animName:String):Void {
+		if(activeAnimation != null)
+			activeAnimation.resetAnim(directionFacing);
 		if (!animations.exists(animName)){
 			Browser.window.console.warn("anim not found: "+animName);
 			return;
 		}
 		activeAnimation = animations.get(animName);
-		activeAnimationName = activeAnimation.name;	
-		
-		if (activeAnimation.getFrames(directionFacing).length == 1)
-			gotoAndStop(activeAnimation.getFrames(directionFacing)[0]);
-		else
-			gotoAndPlay(activeAnimation.getFrames(directionFacing)[0]);
+		activeAnimation.resetAnim(directionFacing);
 		animationSpeed = activeAnimation.fps / 60;
+		
+		gotoAndStop(activeAnimation.getFrames(directionFacing)[0]);
 	}
 	
 	public function setDirection(newDir:Int):Void{
 		directionFacing = newDir % 4;
-		setAnimation(activeAnimationName);
+		setAnimation(activeAnimation.name);
 	}
 	
 	
@@ -324,10 +337,13 @@ class Character extends MovieClip{
 		setAnimation("death");
 		/* callback of death animation */  
 		updateBlocked = true;
-		isDead = true;
 		
-		FightManager.getInstance().testFightOver();
+		
+		/* end */
+		DrawManager.removeFromDisplay(positionTile);
+		isDead = true;
 		Destroy();
+		FightManager.getInstance().testFightOver();
 		
 		
 		// penser a anim de mort
@@ -378,22 +394,44 @@ class Character extends MovieClip{
 	
 	public function findPathTo(target:Array<Int>, follow:Bool = false):Array<Dynamic>
 	{
-		MapManager.finder.setColliTile(tilePos[0], tilePos[1], true);
-		var returnPath = MapManager.getInstance().activeMap.findPath(getPathFindingPoint(), target);
-		MapManager.finder.setColliTile(tilePos[0], tilePos[1], false);
+		var maxDistance:Float = getMaxMovement() * Main.tileSize[0] * 0.5 + getMaxMovement() * Main.tileSize[1] * 0.25;
+		var absoluteTarget:Array<Float> = Misc.convertToAbsolutePosition(target);
+		
+		if (Misc.getDistance(x, y, absoluteTarget[0], absoluteTarget[1]) > maxDistance)//target is too far anyway.
+			return [];
+		
+		if (Misc.isSameTile(target, Player.getInstance().tilePos))
+		{
+			target = Misc.getClosestPosFromDirection(target,Misc.getDirectionToPoint(target, tilePos));
+		}
+		
+		MapManager.getInstance().activeMap.setColliAt(tilePos, false);
+		var returnPath = MapManager.getInstance().activeMap.findPath(getPathFindingPoint(), target, Misc.getRangeTileAround(tilePos,0, cast getMaxMovement()));
+		MapManager.getInstance().activeMap.setColliAt(tilePos, true);
+		
 		if (follow)
 			followPath(returnPath);
+			
 		return returnPath;
 	}
 	
 	public function followPath(path:Array<Dynamic>):Void{
-		if (path.length == 0 || path.length-1 > stats.AP)
+		if (path.length == 0 || path.length-1 > getMaxMovement())
 			return;
 		activePath = path;
 		isMoving = true;
-		
 		pathIndex = activePathPoint != null ? 0 : 1;
 		setAnimation("run");
+	}
+	
+	private function generateAttackRange(attackName:String):Void {
+		if (attacks.exists(attackName))
+		{
+			activeAttackRange = Misc.getRangeTileAround(tilePos, attacks.get(attackName).minRange, attacks.get(attackName).maxRange);
+			activeAttackRange = Misc.processLOSRange(tilePos, activeAttackRange);
+		}
+		else
+			Browser.window.console.warn("Attack not found while generating attackRange of:" + attackName);
 	}
 	
 	public function launchAttack(attackName:String, targetPosition:Array<Int>):Void {
@@ -401,7 +439,7 @@ class Character extends MovieClip{
 			Browser.window.console.warn("attack not found: " + attackName);
 			return;
 		}
-		if (!Misc.targetInRange(tilePos, targetPosition, activeAttackRange)){
+		if (!Misc.targetInRange(targetPosition, activeAttackRange)){
 			Browser.window.console.warn("target not in range");
 			return;
 		}
@@ -425,8 +463,7 @@ class Character extends MovieClip{
 	}
 	
 	public function newTick(tickNumber:Int):Void { 
-		if (stats.AP < stats.MaxAP)
-			stats.AP += tickNumber - lastTickRegistered;
+		stats.AP = cast Math.min(stats.MaxAP,stats.AP + (tickNumber - lastTickRegistered) * stats.APregeneration);
 			
 		lastTickRegistered = tickNumber;
 		
@@ -440,6 +477,19 @@ class Character extends MovieClip{
 	public function useAp(amount:Int):Void
 	{
 		stats.AP -= amount;
+	}
+	
+	public function getMaxMovement():Float
+	{
+		return Math.floor(stats.AP / stats.moveCost);
+	}
+	
+	public function changeSelectedAction(newActionName:String):Void{
+		selectedAction = selectedAction == newActionName ? "move" : newActionName; 
+		
+		if (selectedAction != "move"){
+			generateAttackRange(selectedAction);
+		}
 	}
 
 	/**

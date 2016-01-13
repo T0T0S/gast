@@ -1,32 +1,5 @@
 {
 	"tileSize": [64,32],
-	"tileCollisions": {
-		"walkable" : 1,
-		"collision" : 2
-	},
-	"tileTypes":{
-		"tile":{
-			"image":"tile.png"
-
-		}
-	},
-	"mapJson":{
-		"testMapZig":{
-			"tiles":[
-				"tile.png",
-				"tile2.png",
-				"tile4.png",
-				"tile6.png"
-			],
-			"tilesHeight":[
-				0,
-				0,
-				1,
-				1
-			]
-			
-		}
-	},
 	"camera":{
 		"sensitivity": 1,
 		"minimumMovement": 25

@@ -20,39 +20,43 @@ class MapManager{
 	private var mapSpriteSheet:Sprite;
 	
 	public var maps:Map<String,GameMap> = new Map.Map();
-	
-	public static var finder:Dynamic = untyped  __new__("EasyStar.js");
 
 	public function new() {
 		activeMap = new GameMap();
-		maps.set("testMapZig", new GameMap(formatMap("testMapZig"), "testMapZig"));
+		maps.set("testMapZig", new GameMap("testMapZig"));
+		maps.set("TestingMap", new GameMap("TestingMap"));
 	}
 	
 	
 	public function generateMapDisplay(mapName:String, select:Bool = false):Void {
 		var newMap = maps.get(mapName);
 		
-		
 		var i:Int = 0;
 		var j:Int = 0;
-		var tileSprite:Tile;
-		for (arrayX in newMap.graphicalData.iterator()) {
+		for (arrayY in newMap.graphicalData.iterator()) {
 			j = 0;
-			for(tileIndex in arrayX.iterator()){
+			for(tileIndex in arrayY.iterator()){
 				if (tileIndex != 0) // ignore empty tiles
 				{
-					if (newMap.json.tiles[tileIndex] == null)
-						throw new Error("[ERROR] tile index "+tileIndex+" not found in "+newMap.name+".json");
-					
-					tileSprite = new Tile(Texture.fromImage(""+newMap.json.tiles[tileIndex]));
-					tileSprite.setTilePosition([j, i]);
-					tileSprite.x += activeMap.OffsetX;
-					tileSprite.y += Main.tileSize[1] * 0.5;
-					tileSprite.setZ(newMap.json.tilesHeight[tileIndex]);
-					newMap.addTileToMap(tileSprite, newMap.json.tilesHeight[tileIndex]);
-					if (newMap.tileMap[j] == null)
-						newMap.tileMap[j] = [];
-					newMap.tileMap[j][i] = tileSprite;
+					if ( untyped tileIndex.length != null) //if Is Array
+					{
+						var realTileIndex:Int = 0;
+						while ( untyped realTileIndex < tileIndex.length)
+						{
+							if ( untyped tileIndex[realTileIndex] == null)
+								throw new Error("[ERROR] tile index " + untyped tileIndex[realTileIndex] + " not found in " + newMap.name+" tileSet");
+
+							untyped generateTile(j, i, newMap, tileIndex[realTileIndex], realTileIndex);
+							++realTileIndex;
+						}
+					}
+					else
+					{
+						if (newMap.tiles[tileIndex] == null)
+							throw new Error("[ERROR] tile index " + tileIndex + " not found in " + newMap.name+" tileSet");
+							
+						generateTile(j, i, newMap, tileIndex, 0);
+					}
 				}
 				++j;
 			}
@@ -63,41 +67,16 @@ class MapManager{
 			setActiveMap(newMap);
 	}
 	
-	public function formatMap(mapName:String):Array<Array<Int>> {
-		if (InitManager.data[untyped mapName] == null) {
-			Browser.window.console.warn("%c[WARNING] unknown map '" + mapName+"'", "color:red;");
-			return [[]];
-		}
-		var mapData = InitManager.data[untyped mapName];
-		
-		return convertMapDataToXY(mapData);
+	private function generateTile(x:Int, y:Int, newMapRef:GameMap, tileIndex:Int, ?specialHeight:Int = 0){
+		var tileSprite = new Tile(Texture.fromImage(""+newMapRef.tiles[tileIndex]));
+		tileSprite.setTilePosition([x, y]);
+		tileSprite.x += newMapRef.OffsetX;
+		tileSprite.y += newMapRef.OffsetY;
+		tileSprite.setZ(newMapRef.tilesHeight[tileIndex] + specialHeight * 0.001);
+		newMapRef.addTileToMap(tileSprite, newMapRef.tilesHeight[tileIndex]);
 	}
 	
-	private function convertMapDataToXY(newMap:Dynamic):Dynamic {
-		var mapLayer:Array<Array<Int>>;
-		var returnObject:Dynamic = { };
-		var i:Int = 0;
-		var j:Int = 0;	
-		while(i < newMap.layers.length){
-			mapLayer = [];
-			j = 0;
-			
-			if (newMap.layers == null)
-				break;
-			var map = newMap.layers[i].data;
-			while (j < newMap.layers[i].data.length) {
-				if (mapLayer[Math.floor(j / newMap.width)] == null)
-					mapLayer[Math.floor(j / newMap.width)] = [];
-				mapLayer[Math.floor(j / newMap.width)][cast j % newMap.width] = newMap.layers[i].data[j];
-				j++;
-			}
-			
-			returnObject[newMap.layers[i].name] = mapLayer.copy();
-			i++;
-		}
-		//trace(returnObject);
-		return returnObject;
-	}
+	
 	
 	public static function displayDebugColliMap (nodes:Array<Array<Int>>):Void {
 		for(y in Reflect.fields(nodes)){

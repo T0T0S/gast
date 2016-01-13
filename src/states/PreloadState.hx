@@ -28,20 +28,18 @@ class PreloadState extends State{
 	}
 	
 	public override function Preload():Void {
-	
-		loadJson.set("buttonTripleAttack", "assets/spriteSheets/buttonTripleAttack.json");
-		loadJson.set("buttonAttack", "assets/spriteSheets/buttonAttack.json");
-		loadJson.set("buttonMove", "assets/spriteSheets/buttonMove.json");
-		loadJson.set("hud_bottom", "assets/spriteSheets/hud_bottom.json");
-		loadJson.set("tileSh2", "assets/spriteSheets/loadSpriteSheet.json");
-		loadJson.set("buttons", "assets/spriteSheets/buttonSpriteSheet.json");
-		loadJson.set("hero", "assets/spriteSheets/heroSpriteSheet.json");
-		loadJson.set("hero2", "assets/spriteSheets/heroSpriteSheet2.json");
-		loadJson.set("explosion", "assets/spriteSheets/testExplosion.json");
-		loadJson.set("enemy", "assets/spriteSheets/victim.json");
+		loadJson.set("TripleAttack", 	"assets/spriteSheets/buttonTripleAttack.json");
+		loadJson.set("Attack", 			"assets/spriteSheets/buttonAttack.json");
+		loadJson.set("hud_bottom", 		"assets/spriteSheets/hud_bottom.json");
+		loadJson.set("tileSh2", 		"assets/spriteSheets/loadSpriteSheet.json");
+		loadJson.set("buttons", 		"assets/spriteSheets/buttonSpriteSheet.json");
+		loadJson.set("hero", 			"assets/spriteSheets/heroSpriteSheet.json");
+		loadJson.set("hero2", 			"assets/spriteSheets/heroSpriteSheet2.json");
+		loadJson.set("explosion", 		"assets/spriteSheets/testExplosion.json");
+		loadJson.set("victim", 			"assets/spriteSheets/victim.json");
+		loadJson.set("bullet", 			"assets/spriteSheets/bullet.json");
 		
-		
-		loadJson.set("camShader","assets/effects/camShade.json");
+		loadJson.set("camShader", 		"assets/effects/camShade.json");
 		
 		
 		Main.getInstance().hudCont.addChild(loadingRecangle);

@@ -12,6 +12,7 @@ import managers.InitManager;
 import managers.MapManager;
 import managers.MouseManager;
 import managers.PoolManager;
+import managers.ServerManager;
 import managers.StateManager;
 import managers.TimeManager;
 import objects.Camera;
@@ -20,6 +21,7 @@ import pixi.core.display.Container;
 import pixi.core.graphics.Graphics;
 import pixi.core.renderers.Detector;
 import pixi.core.renderers.webgl.WebGLRenderer;
+import pixi.interaction.InteractionManager;
 
 //import managers.ZoomManager;
 
@@ -33,18 +35,18 @@ class Main
 	private static var instance: Main;
 	
 	private var Init:InitManager;
-	public static var drawManager:DrawManager;	
-	public static var mouseManager:MouseManager;	
-	public static var stateManager:StateManager;
-	public static var mapManager:MapManager;
-	public static var timeManager:TimeManager;
-	public static var characterManager:CharacterManager;
-	public static var poolManager:PoolManager;
-	public static var fightManager:FightManager;
+	private var drawManager:DrawManager;	
+	private var mouseManager:MouseManager;	
+	private var stateManager:StateManager;
+	private var mapManager:MapManager;
+	private var timeManager:TimeManager;
+	private var characterManager:CharacterManager;
+	private var poolManager:PoolManager;
+	private var fightManager:FightManager;
+	private var serverManager:ServerManager;
 	
 	
 	public static var camera:Camera;
-	public static var gameOptions:Options;
 	
 	public var renderer:WebGLRenderer;
 
@@ -60,6 +62,9 @@ class Main
 	public static var tileSize:Array<Float> = [0,0];
 	public static var screenRatio:Array<Float> = [1,1]; // ratio of the scale from 1920x1080 screen
 	
+	private var mouseCallPerFrame:Int = 1;
+	private var mouseCalled:Int = 0;
+	
 	public static var keysDown:Array<Int> = [];
 	
 	public static var DEBUGMODE:Bool = true;
@@ -71,8 +76,7 @@ class Main
 	
 	private function new () {
 	
-		gameOptions = Options.getInstance();
-		gameOptions.loadOptions();
+		Options.getInstance();
 		
 		var font = new Font();
 		font.onload = function() { Browser.window.requestAnimationFrame(cast InitManager.getInstance); };
@@ -93,7 +97,7 @@ class Main
 		tileCont.interactive = true;
 		gameCont.interactive = true;
 		hudCont.interactive = true;
-
+		
 		fullStage.mask = renderMask;
 		Reflect.setField(tileCont, "isoSort", true);
 		Reflect.setField(gameCont, "isoSort", true);
@@ -107,11 +111,24 @@ class Main
 		if (DEBUGMODE) {
 			fullStage.addChildAt(debugCont, 4);
 		}
+		
 		debugCont.name = "debugCont";
 		
 		renderer.render(fullStage);
 		renderer.view.className = "gastCanvas";
+		var oldMoveFunction = renderer.plugins.interaction.onMouseMove;
 		
+		var tempMoveFunction:Dynamic = function(event):Void {
+			if (mouseCalled >= mouseCallPerFrame)
+				return;
+			++mouseCalled;
+
+			renderer.plugins.interaction.onMouseMove(event);
+		}
+		
+		renderer.plugins.interaction.onMouseMove = untyped tempMoveFunction.bind(renderer.plugins.interaction);
+		
+		renderer.plugins.interaction.setTargetElement(renderer.view);
 		
 		Browser.document.body.appendChild(renderer.view);
 		Browser.window.addEventListener("keydown", keyDownListener);
@@ -139,6 +156,7 @@ class Main
 		characterManager = CharacterManager.getInstance();
 		fightManager = FightManager.getInstance();
 		stateManager = StateManager.getInstance();
+		serverManager = ServerManager.getInstance();
 		
 		Browser.window.addEventListener("resize", resize);
 		Browser.window.requestAnimationFrame(cast Update);
@@ -150,14 +168,16 @@ class Main
 	}
 	
 	public function Update() {
+		mouseCalled = 0;
 		Browser.window.requestAnimationFrame(cast Update);
 		if (GAMESTOPPED && DEBUGMODE)
 			return;
-			
+
+		
 		if(timeManager !=null)
 			timeManager.Update();
 			
-		mouseUpdate();
+		//mouseUpdate();
 		characterManager.Update();
 		camera.Update();
 		stateManager.Update();
@@ -180,13 +200,22 @@ class Main
 		if (keysDown.indexOf(e.keyCode) != -1)
 			return;
 		keysDown.push(e.keyCode);
+		
+		if (e.keyCode == 49 && e.shiftKey){
+			Options.getInstance().setOption("alphaCharacter", !Options.getInstance().getOption("alphaCharacter"));
+			for (character in CharacterManager.getInstance().managedCharacters.iterator())
+			{
+				untyped character.alpha = 1 - 0.2 * Options.getInstance().getOption("alphaCharacter");
+			}
+			
+			return;
+		}
 
 		if (FightManager.status == StatusModes.fight)
 		{
-			var attackIndex:Int = 0;
-			if (e.keyCode >= 48)
+			if (e.keyCode >= 48 && e.keyCode < 58)
 			{
-				attackIndex = e.keyCode - 48;
+				var attackIndex = e.keyCode - 48;
 				attackIndex = attackIndex == 0 ? 10 : attackIndex;
 				
 				if (HudManager.getInstance().buttonPosition[attackIndex] != null){
@@ -195,7 +224,6 @@ class Main
 					HudManager.getInstance().buttonPosition[attackIndex].emit("mouseout");
 				}
 			}
-		
 		}
 	}
 	
@@ -216,8 +244,11 @@ class Main
 /*
  *	 TODO: 
  * 		
- * 	view angle (ranges)
- * 	====> ajouter ça au player, tester, tester, tester, tester, tester, et voir avec tout les points sur le tour de la range. ou de la range en elle meme. pute.
+ * 	event player move
+ * 
+ * 
+ *  
+ * 	server nodejs  !!!
  * 
  * 
  *   IA ENEMY ZOMBIE
@@ -227,8 +258,6 @@ class Main
  * 	
  * 	new map survival
  * 	mode survival
- * 
- * 	server nodejs  !!!
  * 
  * 	mode normal vs mode fight
  * 	

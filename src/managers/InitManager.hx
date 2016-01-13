@@ -13,16 +13,6 @@ import pixi.loaders.Resource;
  * Classe de définition de variables relative au jeu
  * @author ToTos
  */
-typedef Config = {
-	var images:Array<String>;
-	var tileSize:Array<Int>;
-	var tileTypes:Dynamic;
-	var champions:Dynamic;
-	var mapSize:Array<Int>;
-	var camera:Map<String,Float>;
-}
- 
- 
 class InitManager
 {
 	private static var instance: InitManager;
@@ -41,6 +31,7 @@ class InitManager
 		
 		/* maps */
 		lConfig.add("testMapZig",ASSETS_PATH + "maps/testMapZig.json");
+		lConfig.add("TestingMap",ASSETS_PATH + "maps/TestingMap.json");
 		
 		
 		lConfig.once("complete", untyped LoadedJson);
