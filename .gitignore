@@ -2,3 +2,4 @@
 *.map
 psd/
 docs/poubelle/
+save/bin/node_modules/
