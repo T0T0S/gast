@@ -1,6 +1,7 @@
 package objects;
 
 import objects.character.Player;
+import pixi.core.math.Point;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
 import pixi.interaction.EventTarget;
@@ -21,12 +22,13 @@ class HudElement extends Sprite{
 		on("mousemove", p_onMove);
 	}
 		
-	private function mouseIsAbove(point:Array<Int>):Bool{
-		return Misc.colliSquarePoint(this, cast point);
+	private function mouseIsAbove(point:Point):Bool {
+		return Misc.colliSquarePoint(this, point);
 	}
 		
 	private function p_onMove(e:EventTarget):Void { 
-		stopping = mouseIsAbove(cast [e.data.global.x, e.data.global.y]);
+		stopping = mouseIsAbove(e.data.global);
+
 		if (stopping) { 
 			e.stopPropagation(); 
 		}

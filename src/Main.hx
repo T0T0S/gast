@@ -19,9 +19,10 @@ import objects.Camera;
 import objects.Options;
 import pixi.core.display.Container;
 import pixi.core.graphics.Graphics;
+import pixi.core.math.Point;
 import pixi.core.renderers.Detector;
 import pixi.core.renderers.webgl.WebGLRenderer;
-import pixi.interaction.InteractionManager;
+import utils.TilePoint;
 
 //import managers.ZoomManager;
 
@@ -59,8 +60,8 @@ class Main
 	
 	public var renderMask:Graphics = new Graphics();
 	
-	public static var tileSize:Array<Float> = [0,0];
-	public static var screenRatio:Array<Float> = [1,1]; // ratio of the scale from 1920x1080 screen
+	public static var tileSize:TilePoint = new TilePoint();
+	public static var screenRatio:Point = new Point(); // ratio of the scale from 1920x1080 screen
 	
 	private var mouseCallPerFrame:Int = 1;
 	private var mouseCalled:Int = 0;
@@ -75,14 +76,7 @@ class Main
 	}
 	
 	private function new () {
-	
 		Options.getInstance();
-		
-		var font = new Font();
-		font.onload = function() { Browser.window.requestAnimationFrame(cast InitManager.getInstance); };
-		font.fontFamily = "gastFont";
-		font.src = "assets/fonts/Days.otf";
-		
 		
 		renderer = Detector.autoDetectRenderer(1600, 900, {});
 		renderer.backgroundColor = 0x171824;
@@ -90,7 +84,8 @@ class Main
 		renderMask.drawRect(0, 0, renderer.width, renderer.height);
 		renderMask.endFill();
 		
-		screenRatio = [renderer.width / 1920, renderer.height / 1080];
+		screenRatio.x = renderer.width / 1920;
+		screenRatio.y = renderer.height / 1080;
 		
 		fullStage.addChild(renderMask);
 		
@@ -133,6 +128,12 @@ class Main
 		Browser.document.body.appendChild(renderer.view);
 		Browser.window.addEventListener("keydown", keyDownListener);
 		Browser.window.addEventListener("keyup", keyUpListener);
+		
+		
+		var font = new Font();
+		font.onload = function() { Browser.window.requestAnimationFrame(cast InitManager.getInstance); };
+		font.fontFamily = "gastFont";
+		font.src = "assets/fonts/Days.otf";
 	}
 	
 
@@ -164,7 +165,8 @@ class Main
 	
 	public function resize (pEvent:Event): Void {
 		//renderer.resize(DeviceCapabilities.width, DeviceCapabilities.height);
-		screenRatio = [renderer.width / 1920, renderer.height / 1080];
+		screenRatio.x = renderer.width / 1920;
+		screenRatio.y = renderer.height / 1080;
 	}
 	
 	public function Update() {
@@ -177,7 +179,6 @@ class Main
 		if(timeManager !=null)
 			timeManager.Update();
 			
-		//mouseUpdate();
 		characterManager.Update();
 		camera.Update();
 		stateManager.Update();
@@ -188,9 +189,7 @@ class Main
 		renderer.render(fullStage);
 	}
 	
-	public function mouseUpdate() {
-		mouseManager.calledPerFrame = 0;
-	}
+	
 	
 	public function keyDownListener (e:KeyboardEvent):Void
 	{
@@ -243,13 +242,20 @@ class Main
 
 /*
  *	 TODO: 
- * 		
  * 	event player move
  * 
- * 
- *  
+ * 	Input manager
+ * 	Button.hx => peux être bind a une touche (window.onkeydown listener)
+ * 	tenter de faire comme Unity 
+ * 	if(Button.isClicked())
+	{
+		do you shit !
+	}
+	
  * 	server nodejs  !!!
  * 
+ * 	passer en iso diamond !
+ * 	integrer le joueur <=== 
  * 
  *   IA ENEMY ZOMBIE
  * 		1 - rush player
@@ -261,6 +267,10 @@ class Main
  * 
  * 	mode normal vs mode fight
  * 	
+ * add 2D vector support
+ * 
+ * sortir des fonctions de miscs
+ * 
  * 
  **/
 

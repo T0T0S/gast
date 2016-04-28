@@ -41,20 +41,6 @@ HxOverrides.iter = function(a) {
 		return this.arr[this.cur++];
 	}};
 };
-var IntIterator = function(min,max) {
-	this.min = min;
-	this.max = max;
-};
-IntIterator.__name__ = ["IntIterator"];
-IntIterator.prototype = {
-	hasNext: function() {
-		return this.min < this.max;
-	}
-	,next: function() {
-		return this.min++;
-	}
-	,__class__: IntIterator
-};
 var Lambda = function() { };
 Lambda.__name__ = ["Lambda"];
 Lambda.array = function(it) {
@@ -91,6 +77,36 @@ Lambda.count = function(it,pred) {
 	}
 	return n;
 };
+var utils = {};
+utils.TilePoint = function(nx,ny) {
+	if(ny == null) ny = 0;
+	if(nx == null) nx = 0;
+	this.y = 0;
+	this.x = 0;
+	this.x = nx;
+	this.y = ny;
+};
+utils.TilePoint.__name__ = ["utils","TilePoint"];
+utils.TilePoint.prototype = {
+	add: function(point) {
+		this.x += point.x;
+		this.y += point.y;
+		return this;
+	}
+	,addUnAlter: function(point) {
+		return new utils.TilePoint(this.x + point.x,this.y + point.y);
+	}
+	,equals: function(pos2) {
+		return this.x == pos2.x && this.y == pos2.y;
+	}
+	,getDistance: function(tile2) {
+		return Math.abs(this.x - tile2.x) + Math.abs(this.y - tile2.y);
+	}
+	,toArray: function() {
+		return [this.x,this.y];
+	}
+	,__class__: utils.TilePoint
+};
 var Main = function() {
 	this.mouseCalled = 0;
 	this.mouseCallPerFrame = 1;
@@ -103,18 +119,13 @@ var Main = function() {
 	this.fullStage = new PIXI.Container();
 	var _g = this;
 	objects.Options.getInstance();
-	var font = new Font();
-	font.onload = function() {
-		window.requestAnimationFrame(managers.InitManager.getInstance);
-	};
-	font.fontFamily = "gastFont";
-	font.src = "assets/fonts/Days.otf";
 	this.renderer = PIXI.autoDetectRenderer(1600,900,{ });
 	this.renderer.backgroundColor = 1513508;
 	this.renderMask.beginFill();
 	this.renderMask.drawRect(0,0,this.renderer.width,this.renderer.height);
 	this.renderMask.endFill();
-	Main.screenRatio = [this.renderer.width / 1920,this.renderer.height / 1080];
+	Main.screenRatio.x = this.renderer.width / 1920;
+	Main.screenRatio.y = this.renderer.height / 1080;
 	this.fullStage.addChild(this.renderMask);
 	this.tileCont.interactive = true;
 	this.gameCont.interactive = true;
@@ -133,20 +144,21 @@ var Main = function() {
 	this.renderer.view.className = "gastCanvas";
 	var oldMoveFunction = this.renderer.plugins.interaction.onMouseMove;
 	var tempMoveFunction = function(event) {
-		if(_g.mouseCalled >= _g.mouseCallPerFrame) {
-			console.log("stop");
-			return;
-		}
-		console.log("ok");
+		if(_g.mouseCalled >= _g.mouseCallPerFrame) return;
 		++_g.mouseCalled;
 		_g.renderer.plugins.interaction.onMouseMove(event);
 	};
 	this.renderer.plugins.interaction.onMouseMove = tempMoveFunction.bind(this.renderer.plugins.interaction);
 	this.renderer.plugins.interaction.setTargetElement(this.renderer.view);
-	window.plugin = this.renderer.plugins;
 	window.document.body.appendChild(this.renderer.view);
 	window.addEventListener("keydown",$bind(this,this.keyDownListener));
 	window.addEventListener("keyup",$bind(this,this.keyUpListener));
+	var font = new Font();
+	font.onload = function() {
+		window.requestAnimationFrame(managers.InitManager.getInstance);
+	};
+	font.fontFamily = "gastFont";
+	font.src = "assets/fonts/Days.otf";
 };
 Main.__name__ = ["Main"];
 Main.main = function() {
@@ -172,7 +184,8 @@ Main.prototype = {
 		window.requestAnimationFrame($bind(this,this.Update));
 	}
 	,resize: function(pEvent) {
-		Main.screenRatio = [this.renderer.width / 1920,this.renderer.height / 1080];
+		Main.screenRatio.x = this.renderer.width / 1920;
+		Main.screenRatio.y = this.renderer.height / 1080;
 	}
 	,Update: function() {
 		this.mouseCalled = 0;
@@ -186,9 +199,6 @@ Main.prototype = {
 	,Render: function() {
 		this.drawManager.isometricSort(managers.MapManager.getInstance().activeMap.mapContainer);
 		this.renderer.render(this.fullStage);
-	}
-	,mouseUpdate: function() {
-		this.mouseManager.calledPerFrame = 0;
 	}
 	,keyDownListener: function(e) {
 		if(String.fromCharCode(e.keyCode) == "A" && e.altKey) Main.GAMESTOPPED = !Main.GAMESTOPPED;
@@ -204,9 +214,8 @@ Main.prototype = {
 			return;
 		}
 		if(managers.FightManager.status == managers.StatusModes.fight) {
-			var attackIndex = 0;
-			if(e.keyCode >= 48) {
-				attackIndex = e.keyCode - 48;
+			if(e.keyCode >= 48 && e.keyCode < 58) {
+				var attackIndex = e.keyCode - 48;
 				if(attackIndex == 0) attackIndex = 10; else attackIndex = attackIndex;
 				if(managers.HudManager.getInstance().buttonPosition[attackIndex] != null) {
 					managers.HudManager.getInstance().buttonPosition[attackIndex].emit("mousedown");
@@ -282,6 +291,32 @@ Type.getClass = function(o) {
 Type.getClassName = function(c) {
 	var a = c.__name__;
 	return a.join(".");
+};
+Type.createInstance = function(cl,args) {
+	var _g = args.length;
+	switch(_g) {
+	case 0:
+		return new cl();
+	case 1:
+		return new cl(args[0]);
+	case 2:
+		return new cl(args[0],args[1]);
+	case 3:
+		return new cl(args[0],args[1],args[2]);
+	case 4:
+		return new cl(args[0],args[1],args[2],args[3]);
+	case 5:
+		return new cl(args[0],args[1],args[2],args[3],args[4]);
+	case 6:
+		return new cl(args[0],args[1],args[2],args[3],args[4],args[5]);
+	case 7:
+		return new cl(args[0],args[1],args[2],args[3],args[4],args[5],args[6]);
+	case 8:
+		return new cl(args[0],args[1],args[2],args[3],args[4],args[5],args[6],args[7]);
+	default:
+		throw "Too many arguments";
+	}
+	return null;
 };
 var haxe = {};
 haxe.Timer = function(time_ms) {
@@ -498,26 +533,26 @@ managers.CharacterManager.getInstance = function() {
 };
 managers.CharacterManager.prototype = {
 	findCharacterAtTilePos: function(position) {
-		if(this.positions[position[0]] == null) return null;
-		if(this.positions[position[0]][position[1]] != null) return this.managedCharacters.get(this.positions[position[0]][position[1]]); else return null;
+		if(this.positions[position.x] == null) return null;
+		if(this.positions[position.x][position.y] != null) return this.managedCharacters.get(this.positions[position.x][position.y]); else return null;
 	}
-	,updateCharacterCoordinatesFromTo: function(element,newPosition) {
-		if(this.positions[element.tilePos[0]] == null) this.positions[element.tilePos[0]] = [];
-		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
+	,updateCharacterCoordinatesFromTo: function(element,nx,ny) {
+		if(this.positions[element.tilePos.x] == null) this.positions[element.tilePos.x] = [];
+		this.positions[element.tilePos.x][element.tilePos.y] = null;
 		managers.MapManager.getInstance().activeMap.setColliAt(element.tilePos,false);
 		managers.MapManager.getInstance().activeMap.setLOSAt(element.tilePos,false);
-		if(this.positions[newPosition[0]] == null) this.positions[newPosition[0]] = [];
-		this.positions[newPosition[0]][newPosition[1]] = element.ID;
-		managers.MapManager.getInstance().activeMap.setColliAt(newPosition,true);
-		managers.MapManager.getInstance().activeMap.setLOSAt(newPosition,true);
-		managers.ServerManager.getInstance().onCharacterMove(element.ID,newPosition);
+		if(this.positions[nx] == null) this.positions[nx] = [];
+		this.positions[nx][ny] = element.ID;
+		managers.MapManager.getInstance().activeMap.setColliAt(new utils.TilePoint(nx,ny),true);
+		managers.MapManager.getInstance().activeMap.setLOSAt(new utils.TilePoint(nx,ny),true);
+		managers.ServerManager.getInstance().onCharacterMove(element.ID,nx,ny);
 	}
 	,addCharacter: function(element) {
 		this.managedCharacters.set(element.ID,element);
 	}
 	,removeCharacter: function(element) {
 		this.managedCharacters.remove(element.ID);
-		this.positions[element.tilePos[0]][element.tilePos[1]] = null;
+		this.positions[element.tilePos.x][element.tilePos.y] = null;
 		managers.MapManager.getInstance().activeMap.setLOSAt(element.tilePos,false);
 		managers.MapManager.getInstance().activeMap.setColliAt(element.tilePos,false);
 	}
@@ -569,9 +604,8 @@ managers.DrawManager.prototype = {
 		if(b.z == a.z) return a.depth - b.depth; else return a.z - b.z;
 	}
 	,characterSortFunction: function(a,b) {
-		if(a.charaName || b.charaName) return !(!a.charaName) - !(!b.charaName); else {
-		}
-		if(b.z == a.z) return a.depth - b.depth; else return a.z - b.z;
+		if(a.charaName || b.charaName) return !(!a.charaName) - !(!b.charaName);
+		return this.normalSortFunction(a,b);
 	}
 	,__class__: managers.DrawManager
 };
@@ -661,13 +695,13 @@ managers.HudManager.getInstance = function() {
 managers.HudManager.prototype = {
 	generateFightHud: function() {
 		var rightHud = new objects.HudElement(PIXI.Texture.fromImage("hud_bottom_right.png"));
-		rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+		rightHud.scale.set(Main.screenRatio.x,Main.screenRatio.y);
 		rightHud.anchor.set(1,1);
 		rightHud.x = Main.getInstance().renderer.width;
 		rightHud.y = Main.getInstance().renderer.height;
 		rightHud.name = "right_bottom";
 		var attackHud = new objects.HudElement(PIXI.Texture.fromImage("hud_bottom_center.png"));
-		attackHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+		attackHud.scale.set(Main.screenRatio.x,Main.screenRatio.y);
 		attackHud.anchor.set(1,1);
 		attackHud.x = rightHud.x - (rightHud.width + 20);
 		attackHud.y = Main.getInstance().renderer.height;
@@ -724,6 +758,7 @@ managers.InitManager = function() {
 	lConfig.add("victim","assets/config/" + "/" + "victim.json");
 	lConfig.add("testMapZig","assets/" + "maps/testMapZig.json");
 	lConfig.add("TestingMap","assets/" + "maps/TestingMap.json");
+	lConfig.add("DiamondMap","assets/" + "maps/mapDiamondIso.json");
 	lConfig.once("complete",$bind(this,this.LoadedJson));
 	lConfig.load();
 };
@@ -752,24 +787,20 @@ managers.InitManager.prototype = {
 managers.MapManager = function() {
 	this.maps = new haxe.ds.StringMap();
 	this.activeMap = new objects.GameMap();
-	var value = new objects.GameMap("testMapZig");
-	this.maps.set("testMapZig",value);
-	var value1 = new objects.GameMap("TestingMap");
-	this.maps.set("TestingMap",value1);
+	var value = new objects.GameMap("DiamondMap");
+	this.maps.set("DiamondMap",value);
 };
 managers.MapManager.__name__ = ["managers","MapManager"];
 managers.MapManager.displayDebugColliMap = function(nodes) {
-	var _g = 0;
-	var _g1 = Reflect.fields(nodes);
-	while(_g < _g1.length) {
-		var y = _g1[_g];
-		++_g;
-		var _g2 = 0;
-		var _g3 = Reflect.fields(nodes[x]);
-		while(_g2 < _g3.length) {
-			var x = _g3[_g2];
-			++_g2;
-			if(nodes[y][x] < 2) utils.Misc.placeTilePointer([[x,y]],255); else utils.Misc.placeTilePointer([[x,y]],16711680);
+	var _g1 = 0;
+	var _g = nodes.length;
+	while(_g1 < _g) {
+		var row = _g1++;
+		var _g3 = 0;
+		var _g2 = nodes[row].length;
+		while(_g3 < _g2) {
+			var col = _g3++;
+			if(nodes[row][col] < 2) utils.Misc.placeTilePointer([new utils.TilePoint(col,row)]); else utils.Misc.placeTilePointer([new utils.TilePoint(col,row)],16711680);
 		}
 	}
 };
@@ -813,7 +844,7 @@ managers.MapManager.prototype = {
 	,generateTile: function(x,y,newMapRef,tileIndex,specialHeight) {
 		if(specialHeight == null) specialHeight = 0;
 		var tileSprite = new objects.Tile(PIXI.Texture.fromImage("" + newMapRef.tiles[tileIndex]));
-		tileSprite.setTilePosition([x,y]);
+		tileSprite.setTilePosition(x,y);
 		tileSprite.x += newMapRef.OffsetX;
 		tileSprite.y += newMapRef.OffsetY;
 		tileSprite.setZ(newMapRef.tilesHeight[tileIndex] + specialHeight * 0.001);
@@ -830,49 +861,19 @@ managers.MapManager.prototype = {
 };
 managers.MouseManager = function() {
 	this.arrayPoints = [];
-	this.refreshPerFrame = 1;
-	this.calledPerFrame = 0;
+	Main.getInstance().tileCont.on("mousedown",$bind(this,this.mouseDown));
+	Main.getInstance().tileCont.on("mouseup",$bind(this,this.mouseUp));
+	Main.getInstance().tileCont.on("mousemove",$bind(this,this.mouseMoveHandler));
 };
 managers.MouseManager.__name__ = ["managers","MouseManager"];
-managers.MouseManager.getSquareTileAround = function(posClicked,size) {
-	if(size == null) size = 1;
-	if(size == 0) return [posClicked];
-	var ArrayOfPos = [];
-	var tileSize = Main.tileSize;
-	var GridAround = [];
-	var iter = new IntIterator(Math.floor(-size),Math.floor(1 + size));
-	while( iter.hasNext() ) {
-		var i = iter.next();
-		var iter2 = new IntIterator(-size * 2,size * 4);
-		while( iter2.hasNext() ) {
-			var j = iter2.next();
-			GridAround.push([posClicked[0] + i,posClicked[1] - j]);
-		}
-	}
-	var centerPosition = posClicked;
-	ArrayOfPos.push([centerPosition[0],centerPosition[1]]);
-	var dx;
-	var dy;
-	var centerAbsolutePos = utils.Misc.convertToAbsolutePosition(centerPosition);
-	var $it0 = HxOverrides.iter(GridAround);
-	while( $it0.hasNext() ) {
-		var i1 = $it0.next();
-		var absolutePosPoint = utils.Misc.convertToAbsolutePosition(i1);
-		dx = (centerAbsolutePos[0] - absolutePosPoint[0]) / tileSize[0];
-		dy = (centerAbsolutePos[1] - absolutePosPoint[1]) / tileSize[1];
-		if(Math.abs(dx) + Math.abs(dy) <= size && HxOverrides.indexOf(ArrayOfPos,i1,0) == -1) ArrayOfPos.push(i1);
-	}
-	return ArrayOfPos;
-};
 managers.MouseManager.getInstance = function() {
 	if(managers.MouseManager.instance == null) managers.MouseManager.instance = new managers.MouseManager();
 	return managers.MouseManager.instance;
 };
 managers.MouseManager.prototype = {
 	mouseMoveHandler: function(e) {
-		if(this.calledPerFrame > this.refreshPerFrame || managers.StateManager.loadingState || managers.MouseManager.lockedMouseEvents) return;
-		++this.calledPerFrame;
-		var clicPoint = [e.data.global.x + Main.camera.offset[0],e.data.global.y + Main.camera.offset[1]];
+		if(managers.StateManager.loadingState || managers.MouseManager.lockedMouseEvents) return;
+		var clicPoint = [e.data.global.x + Main.camera.offset.x,e.data.global.y + Main.camera.offset.y];
 		var tilePos = utils.Misc.convertToGridPosition(clicPoint[0],clicPoint[1]);
 		managers.MouseManager.gamehover.layerX = e.data.global.x;
 		managers.MouseManager.gamehover.layerY = e.data.global.y;
@@ -883,7 +884,7 @@ managers.MouseManager.prototype = {
 	,mouseUp: function(e) {
 		if(managers.StateManager.loadingState || managers.MouseManager.lockedMouseEvents) return;
 		var event = managers.MouseManager.gameMouseUp;
-		var clicPoint = [e.data.global.x + Main.camera.offset[0],e.data.global.y + Main.camera.offset[1]];
+		var clicPoint = [e.data.global.x + Main.camera.offset.x,e.data.global.y + Main.camera.offset.y];
 		event.layerX = e.data.global.x;
 		event.layerY = e.data.global.y;
 		Reflect.setField(event,"tilePos",utils.Misc.convertToGridPosition(clicPoint[0],clicPoint[1]));
@@ -894,7 +895,7 @@ managers.MouseManager.prototype = {
 	,mouseDown: function(e) {
 		if(managers.StateManager.loadingState || managers.MouseManager.lockedMouseEvents) return;
 		var event = managers.MouseManager.gameMouseDown;
-		var clicPoint = [e.data.global.x + Main.camera.offset[0],e.data.global.y + Main.camera.offset[1]];
+		var clicPoint = [e.data.global.x + Main.camera.offset.x,e.data.global.y + Main.camera.offset.y];
 		event.layerX = e.data.global.x;
 		event.layerY = e.data.global.y;
 		Reflect.setField(event,"tilePos",utils.Misc.convertToGridPosition(clicPoint[0],clicPoint[1]));
@@ -1020,7 +1021,6 @@ managers.PoolManager.prototype = {
 	,__class__: managers.PoolManager
 };
 managers.ServerManager = function() {
-	this.onCharacterMove("1",[0,0]);
 };
 managers.ServerManager.__name__ = ["managers","ServerManager"];
 managers.ServerManager.getInstance = function() {
@@ -1028,11 +1028,11 @@ managers.ServerManager.getInstance = function() {
 	return managers.ServerManager.instance;
 };
 managers.ServerManager.prototype = {
-	onCharacterMove: function(characterId,newPosition) {
+	onCharacterMove: function(characterId,nx,ny) {
 		var $it0 = managers.CharacterManager.getInstance().managedCharacters.iterator();
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
-			i.onCharacterMove(characterId,newPosition);
+			i.onCharacterMove(characterId,nx,ny);
 		}
 	}
 	,destroy: function() {
@@ -1049,6 +1049,7 @@ managers.StateManager = function() {
 	this.addState(new states.PreloadState());
 	this.addState(new states.MenuState());
 	this.addState(new states.DebugState());
+	this.addState(new states.DiamondTestState());
 	Main.getInstance().debugCont.addChild(this.debugActiveState);
 	this.debugActiveState.x = 10;
 	this.debugActiveState.y = Main.getInstance().renderer.height - 30;
@@ -1076,6 +1077,9 @@ managers.StateManager.prototype = {
 		managers.CharacterManager.getInstance().switchState();
 		objects.Camera.getInstance().switchState();
 		managers.HudManager.getInstance().switchState();
+		var v = Type.createInstance(Type.getClass(this.statesArray.get(this.activeState)),[]);
+		this.statesArray.set(this.activeState,v);
+		v;
 		this.activeState = newState;
 		this.activatedState = this.statesArray.get(this.activeState);
 		this.debugActiveState.text = this.activeState;
@@ -1250,7 +1254,7 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 		this.arrayCallbacks.hover(e);
 	}
 	,mouseIsAbove: function(e) {
-		return utils.Misc.colliSquarePoint(this,[e.data.global.x,e.data.global.y]);
+		return utils.Misc.colliSquarePoint(this,e.data.global);
 	}
 	,Destroy: function() {
 		this.destroy();
@@ -1281,17 +1285,20 @@ objects.Button.prototype = $extend(PIXI.extras.MovieClip.prototype,{
 	,__class__: objects.Button
 });
 objects.Camera = function() {
-	this.clampedCam = true;
+	this.clampedCam = false;
 	this.isDragged = false;
 	this.clicked = false;
-	this.oldCameraPosition = [];
-	this.mouseDownPosition = [];
+	this.oldCameraPosition = new PIXI.Point();
+	this.mouseDownPosition = new PIXI.Point();
 	this.dragSensitivity = 2;
 	this.minimumMovement = 10;
-	this.size = [0,0];
-	this.offset = [0,0];
+	this.size = new PIXI.Point();
+	this.offset = new PIXI.Point();
 	this.minimumMovement = Reflect.field(managers.InitManager.data.config.camera,"minimumMovement");
 	this.dragSensitivity = Reflect.field(managers.InitManager.data.config.camera,"sensitivity");
+	window.addEventListener("gameMouseDown",$bind(this,this.mouseDownListener));
+	window.addEventListener("gameHover",$bind(this,this.mouseMoveListener));
+	window.addEventListener("gameMouseUp",$bind(this,this.mouseUpListener));
 	window.addEventListener("resize",$bind(this,this.getContainerBounds));
 	this.getContainerBounds();
 	this.mapSize = Main.getInstance().fullStage.getBounds();
@@ -1304,19 +1311,21 @@ objects.Camera.getInstance = function() {
 objects.Camera.prototype = {
 	mouseDownListener: function(e) {
 		this.clicked = true;
-		this.mouseDownPosition = [e.layerX,e.layerY];
-		this.oldCameraPosition = this.offset;
+		this.mouseDownPosition.x = e.layerX;
+		this.mouseDownPosition.y = e.layerY;
+		this.oldCameraPosition = this.offset.clone();
 	}
 	,mouseMoveListener: function(e) {
 		if(managers.MapManager.getInstance().activeMap == null) return;
 		if(!managers.MapManager.getInstance().activeMap.scrollable || objects.Camera.targetToFollow != null) return;
 		if(!this.clicked) return;
-		if(this.isDragged == false && Math.abs(this.mouseDownPosition[0] - e.layerX) < this.minimumMovement && Math.abs(this.mouseDownPosition[1] - e.layerY) < this.minimumMovement) return; else if(!this.isDragged) {
-			this.mouseDownPosition[0] = e.layerX;
-			this.mouseDownPosition[1] = e.layerY;
+		if(this.isDragged == false && Math.abs(this.mouseDownPosition.x - e.layerX) < this.minimumMovement && Math.abs(this.mouseDownPosition.y - e.layerY) < this.minimumMovement) return; else if(!this.isDragged) {
+			this.mouseDownPosition.x = e.layerX;
+			this.mouseDownPosition.y = e.layerY;
 		}
 		this.isDragged = true;
-		this.offset = [this.oldCameraPosition[0] - (e.layerX - this.mouseDownPosition[0]) * this.dragSensitivity,this.oldCameraPosition[1] - (e.layerY - this.mouseDownPosition[1]) * this.dragSensitivity];
+		this.offset.x = this.oldCameraPosition.x - (e.layerX - this.mouseDownPosition.x) * this.dragSensitivity;
+		this.offset.y = this.oldCameraPosition.y - (e.layerY - this.mouseDownPosition.y) * this.dragSensitivity;
 		if(this.clampedCam) this.constrainCam();
 		this.translateOffsetToConts();
 	}
@@ -1329,29 +1338,30 @@ objects.Camera.prototype = {
 		this.translateOffsetToConts();
 	}
 	,translateOffsetToConts: function() {
-		Main.getInstance().tileCont.x = -this.offset[0];
-		Main.getInstance().tileCont.y = -this.offset[1];
-		Main.getInstance().gameCont.x = -this.offset[0];
-		Main.getInstance().gameCont.y = -this.offset[1];
+		Main.getInstance().tileCont.x = -this.offset.x;
+		Main.getInstance().tileCont.y = -this.offset.y;
+		Main.getInstance().gameCont.x = -this.offset.x;
+		Main.getInstance().gameCont.y = -this.offset.y;
 	}
 	,getContainerBounds: function(e) {
-		this.size = [Main.getInstance().renderer.width,Main.getInstance().renderer.height];
+		this.size.x = Main.getInstance().renderer.width;
+		this.size.y = Main.getInstance().renderer.height;
 	}
 	,updateMapSize: function(newMap) {
-		this.mapSize.width = newMap.graphicalData[0].length * Main.tileSize[0];
-		this.mapSize.height = newMap.graphicalData.length * Main.tileSize[1] * 0.5 + Main.getInstance().hudCont.height;
+		this.mapSize.width = newMap.graphicalData[0].length * Main.tileSize.x;
+		this.mapSize.height = newMap.graphicalData.length * Main.tileSize.y * 0.5 + Main.getInstance().hudCont.height;
 	}
 	,Update: function() {
 		if(objects.Camera.targetToFollow != null) {
-			this.offset[0] = objects.Camera.targetToFollow.x - this.size[0] * 0.5;
-			this.offset[1] = objects.Camera.targetToFollow.y - this.size[1] * 0.5;
+			this.offset.x = objects.Camera.targetToFollow.x - this.size.x * 0.5;
+			this.offset.y = objects.Camera.targetToFollow.y - this.size.y * 0.5;
 			if(this.clampedCam) this.constrainCam();
 			this.translateOffsetToConts();
 		}
 	}
 	,constrainCam: function() {
-		this.offset[0] = utils.Misc.clamp(this.offset[0],0,Math.max(this.mapSize.width - this.size[0] - Main.tileSize[0],0));
-		this.offset[1] = utils.Misc.clamp(this.offset[1],0,Math.max(this.mapSize.height - this.size[1] - Main.tileSize[1] * 1.5,0));
+		this.offset.x = utils.Misc.clamp(this.offset.x,-this.mapSize.width * 0.5,this.mapSize.width * 0.5 - this.size.x);
+		this.offset.y = utils.Misc.clamp(this.offset.y,-this.mapSize.height * 0.5 + this.size.y * 0.5,this.mapSize.height * 0.5 + Main.tileSize.y * 1.5 - this.size.y * 0.5);
 	}
 	,clampCam: function() {
 		this.clampedCam = true;
@@ -1365,7 +1375,7 @@ objects.Camera.prototype = {
 		this.clampedCam = !absolutePos;
 	}
 	,switchState: function() {
-		this.setCameraPosition([0,0]);
+		this.setCameraPosition(new PIXI.Point(0,0));
 		objects.Camera.targetToFollow = null;
 	}
 	,__class__: objects.Camera
@@ -1384,7 +1394,6 @@ objects.GameMap = function(mapName) {
 	this.name = mapName;
 	var datas = this.formatMap(mapName);
 	var mapJson = managers.InitManager.data[this.name];
-	this.OffsetY = Main.tileSize[1] * 0.5;
 	this.generateTileData(mapJson);
 	this.graphicalData = datas.graphical;
 	this.collisionData = datas.collisions;
@@ -1394,14 +1403,13 @@ objects.GameMap = function(mapName) {
 objects.GameMap.__name__ = ["objects","GameMap"];
 objects.GameMap.prototype = {
 	addTileToMap: function(tile,layer) {
-		if(this.tileData[tile.tilePos[0]] == null) this.tileData[tile.tilePos[0]] = [];
-		this.tileData[tile.tilePos[0]][tile.tilePos[1]] = tile;
+		if(this.tileData[tile.tilePos.x] == null) this.tileData[tile.tilePos.x] = [];
+		this.tileData[tile.tilePos.x][tile.tilePos.y] = tile;
 		managers.DrawManager.addToDisplay(tile,this.mapContainer,layer);
 	}
 	,displayMap: function() {
 		if(this.mapContainer.parent == null) managers.DrawManager.addToDisplay(this.mapContainer,Main.getInstance().tileCont);
 		this.mapContainer.visible = true;
-		managers.MapManager.displayDebugColliMap(this.finder.getGrid());
 	}
 	,hideMap: function(remove) {
 		if(remove == null) remove = false;
@@ -1409,37 +1417,36 @@ objects.GameMap.prototype = {
 		if(remove) managers.DrawManager.removeFromDisplay(this.mapContainer);
 	}
 	,getTileAt: function(tilePosition) {
-		if(this.tileData[tilePosition[0]] == null) return null;
-		return this.tileData[tilePosition[0]][tilePosition[1]];
+		if(this.tileData[tilePosition.x] == null) return null;
+		return this.tileData[tilePosition.x][tilePosition.y];
 	}
 	,generatePathfinding: function() {
 		this.finder.setGrid(this.collisionData);
 		this.finder.setAcceptableTiles([0]);
-		this.finder.enableDiagonals();
 		this.finder.enableSync();
 	}
 	,setColliAt: function(pos,collision) {
-		if(collision) this.collisionData[pos[1]][pos[0]] = 1; else this.collisionData[pos[1]][pos[0]] = 0;
+		if(collision) this.collisionData[pos.y][pos.x] = 1; else this.collisionData[pos.y][pos.x] = 0;
 	}
 	,setLOSAt: function(pos,blocked) {
-		if(blocked) this.LOSData[pos[1]][pos[0]] = 1; else this.LOSData[pos[1]][pos[0]] = 0;
+		if(blocked) this.LOSData[pos.y][pos.x] = 1; else this.LOSData[pos.y][pos.x] = 0;
 	}
 	,getWalkableAt: function(target) {
-		if(this.collisionData[target[1]] == null) return false;
-		return this.collisionData[target[1]][target[0]] == 0;
+		if(this.collisionData[target.y] == null) return false;
+		return this.collisionData[target.y][target.x] == 0;
 	}
 	,getLOSAt: function(target) {
-		if(this.LOSData[target[1]] == null) return true;
-		return this.LOSData[target[1]][target[0]] == 0;
+		if(this.LOSData[target.y] == null) return true;
+		return this.LOSData[target.y][target.x] == 0;
 	}
 	,getFinderGrid: function() {
 		return this.finder.getGrid();
 	}
-	,findPath: function(source,target,range) {
+	,findPath: function(source,target,rangeToSearch) {
 		var path = [];
-		this.finder.setGrid(this.getNewGridPathFinding(range));
-		if(source[0] > this.collisionData[0].length - 1 || target[0] > this.collisionData[0].length - 1 || source[1] > this.collisionData.length - 1 || target[1] > this.collisionData.length - 1 || source[0] < 0 || source[1] < 0 || target[0] < 0 || target[1] < 0) return [];
-		this.finder.findPath(source[0],source[1],target[0],target[1],function(newpath) {
+		this.finder.setGrid(this.getNewGridPathFinding(rangeToSearch));
+		if(source.x > this.collisionData[0].length - 1 || target.x > this.collisionData[0].length - 1 || source.y > this.collisionData.length - 1 || target.y > this.collisionData.length - 1 || source.x < 0 || source.y < 0 || target.x < 0 || target.y < 0) return [];
+		this.finder.findPath(source.x,source.y,target.x,target.y,function(newpath) {
 			if(newpath != null) path = newpath;
 		});
 		this.finder.calculate();
@@ -1455,7 +1462,7 @@ objects.GameMap.prototype = {
 		var $it0 = HxOverrides.iter(range);
 		while( $it0.hasNext() ) {
 			var rangePoint = $it0.next();
-			if(this.collisionData[rangePoint[1]] != null) returnArray[rangePoint[1]][rangePoint[0]] = this.collisionData[rangePoint[1]][rangePoint[0]];
+			if(this.collisionData[rangePoint.y] != null) returnArray[rangePoint.y][rangePoint.x] = this.collisionData[rangePoint.y][rangePoint.x];
 		}
 		return returnArray;
 	}
@@ -1548,7 +1555,7 @@ objects.HudElement.prototype = $extend(PIXI.Sprite.prototype,{
 		return utils.Misc.colliSquarePoint(this,point);
 	}
 	,p_onMove: function(e) {
-		this.stopping = this.mouseIsAbove([e.data.global.x,e.data.global.y]);
+		this.stopping = this.mouseIsAbove(e.data.global);
 		if(this.stopping) e.stopPropagation();
 	}
 	,__class__: objects.HudElement
@@ -1639,7 +1646,7 @@ objects.State.prototype = {
 	,__class__: objects.State
 };
 objects.Tile = function(texture) {
-	this.tilePos = [0,0];
+	this.tilePos = new utils.TilePoint();
 	this.z = 0;
 	PIXI.Sprite.call(this,texture);
 	this.anchor.set(0.5,1);
@@ -1647,12 +1654,11 @@ objects.Tile = function(texture) {
 objects.Tile.__name__ = ["objects","Tile"];
 objects.Tile.__super__ = PIXI.Sprite;
 objects.Tile.prototype = $extend(PIXI.Sprite.prototype,{
-	setTilePosition: function(position) {
-		this.tilePos[0] = position[0];
-		this.x = position[0] * Main.tileSize[0] + managers.MapManager.getInstance().activeMap.OffsetX;
-		this.tilePos[1] = position[1];
-		this.y = position[1] * Main.tileSize[1] * 0.5 + managers.MapManager.getInstance().activeMap.OffsetY;
-		if(Math.abs(this.tilePos[1] % 2) == 1) this.x += Main.tileSize[0] * 0.5;
+	setTilePosition: function(nx,ny) {
+		this.tilePos.x = nx;
+		this.tilePos.y = ny;
+		this.x = (nx - ny) * Main.tileSize.x * 0.5;
+		this.y = (nx + ny) * Main.tileSize.y * 0.5;
 		this.setZ(this.z);
 	}
 	,setAbsolutePosition: function(newX,newY) {
@@ -1662,14 +1668,10 @@ objects.Tile.prototype = $extend(PIXI.Sprite.prototype,{
 	}
 	,setZ: function(newZ) {
 		this.z = newZ;
-		this.depth = this.y + this.z;
+		this.depth = this.x * 0.1 + this.y + this.z * 0.01;
 	}
 	,getAbsolutePosition: function() {
-		var arrayToReturn = [];
-		arrayToReturn[0] = this.tilePos[0] * Main.tileSize[0];
-		arrayToReturn[1] = this.tilePos[1] * Main.tileSize[1] * 0.5;
-		if(Math.abs(this.tilePos[1] % 2) == 1) arrayToReturn[0] += Main.tileSize[0] * 0.5;
-		return arrayToReturn;
+		return new PIXI.Point((this.tilePos.x - this.tilePos.y) * Main.tileSize.x * 0.5,(this.tilePos.x + this.tilePos.y) * Main.tileSize.y * 0.5);
 	}
 	,__class__: objects.Tile
 });
@@ -1680,7 +1682,7 @@ objects.attacks.Attack = function(jsonData) {
 	this.maxRange = 0;
 	this.minRange = 0;
 	this.finished = false;
-	this.targetPosition = [];
+	this.targetPosition = new utils.TilePoint();
 	this.frameElaped = 0;
 	this.activeFrameData = 0;
 	this.framesData = [];
@@ -1728,18 +1730,18 @@ objects.attacks.Attack.prototype = {
 			bullet.gotoAndStop(i);
 			if(bullet.width > maxBulletWidth) maxBulletWidth = bullet.width; else maxBulletWidth = maxBulletWidth;
 		}
-		var distance = utils.Misc.getDistanceBetweenTiles(this.targetPosition,launcherRef.tilePos);
+		var distance = utils.Misc.getAbsoluteDistanceBetweenTiles(this.targetPosition,launcherRef.tilePos);
 		var newScale = distance / maxBulletWidth;
 		if(newScale > 1) bullet.scale.x = newScale; else bullet.scale.x = 1;
 		var bulletMask;
 		if(bullet.children.length != 0) bulletMask = bullet.children[0]; else bulletMask = new PIXI.Graphics();
 		bulletMask.clear();
 		bulletMask.beginFill(16777215,0);
-		bulletMask.moveTo(Main.tileSize[0] * 0.25,-bullet.height * 0.5);
+		bulletMask.moveTo(Main.tileSize.x * 0.25,-bullet.height * 0.5);
 		bulletMask.lineTo(maxBulletWidth * newScale,-bullet.height * 0.5);
 		bulletMask.lineTo(maxBulletWidth * newScale,bullet.height * 0.5);
-		bulletMask.lineTo(Main.tileSize[0] * 0.25,bullet.height * 0.5);
-		bulletMask.lineTo(Main.tileSize[0] * 0.25,-bullet.height * 0.5);
+		bulletMask.lineTo(Main.tileSize.x * 0.25,bullet.height * 0.5);
+		bulletMask.lineTo(Main.tileSize.x * 0.25,-bullet.height * 0.5);
 		bulletMask.endFill();
 		if(bulletMask.parent == null) bullet.addChild(bulletMask);
 		bullet.mask = bulletMask;
@@ -1787,6 +1789,7 @@ objects.attacks.TripleAttack.prototype = $extend(objects.attacks.Attack.prototyp
 });
 objects.character = {};
 objects.character.Character = function(newName) {
+	this.tempTimeMovement = 0;
 	this.isDead = false;
 	this.waitForNextTick = false;
 	this.updateBlocked = false;
@@ -1794,15 +1797,15 @@ objects.character.Character = function(newName) {
 	this.depth = 0;
 	this.z = 0;
 	this.animations = new haxe.ds.StringMap();
-	this.activeAttackRange = [];
+	this.losModule = new objects.modules.LOSModule();
 	this.attacks = new haxe.ds.StringMap();
 	this.refreshSpeed = 1;
 	this.isMoving = false;
 	this.pathIndex = 1;
 	this.activePath = [];
-	this.stats = { health : 100, strength : 10, endurance : 10, APregeneration : 10, moveSpeed : 2.5, moveCost : 1, precision : 10, luck : 10, AP : 100, MaxAP : 100};
+	this.stats = { health : 100, strength : 10, endurance : 10, APregeneration : 10, moveSpeed : 1, moveCost : 1, precision : 10, luck : 10, AP : 100, MaxAP : 100};
 	this.directionFacing = 0;
-	this.tilePos = [0,0];
+	this.tilePos = new utils.TilePoint();
 	this.selectedAction = "move";
 	this.charaName = newName;
 	this.config = managers.InitManager.data[newName];
@@ -1906,7 +1909,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 			if(!this.activeAttack.finished) this.activeAttack.updateAttack(this); else {
 				this.activeAttack = null;
 				if(this.activePathPoint == null) this.setAnimation("idle"); else {
-					this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,[this.activePathPoint.x,this.activePathPoint.y]));
+					this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,this.activePathPoint));
 					this.setAnimation("run");
 				}
 			}
@@ -1917,24 +1920,23 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	,managePathFinding: function() {
 		if(this.activePath.length != 0 && this.stats.AP > 0) {
 			if(this.activePathPoint == null) this.getNextPathPoint();
-			if(this.tilePos[0] != this.activePath[this.activePath.length - 1].x || this.tilePos[1] != this.activePath[this.activePath.length - 1].y) {
-				var arrayPos = [this.activePathPoint.x,this.activePathPoint.y];
-				this.setAbsolutePosition(this.x + Math.cos(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed * managers.TimeManager.deltaTime,this.y - Math.sin(utils.Misc.angleBetweenTiles(this.tilePos,arrayPos)) * this.stats.moveSpeed * managers.TimeManager.deltaTime);
-				if(utils.Misc.getDistance(this.x,this.y,utils.Misc.convertToAbsolutePosition(arrayPos)[0],utils.Misc.convertToAbsolutePosition(arrayPos)[1] + Main.tileSize[1] * 0.5) < this.stats.moveSpeed * managers.TimeManager.deltaTime) {
-					this.setTilePosition(arrayPos);
-					this.pathIndex++;
-					this.useAp(this.stats.moveCost);
-					if(this.pathIndex <= this.activePath.length - 1) {
-						if(!managers.MapManager.getInstance().activeMap.getWalkableAt([this.activePath[this.pathIndex].x,this.activePath[this.pathIndex].y])) this.stopPath(); else this.getNextPathPoint();
-					} else this.stopPath();
-				}
+			this.tempTimeMovement += managers.TimeManager.deltaTime * this.stats.moveSpeed;
+			this.setAbsolutePosition(utils.Misc.lerp((this.tilePos.x - this.tilePos.y) * Main.tileSize.x * 0.5,(this.activePathPoint.x - this.activePathPoint.y) * Main.tileSize.x * 0.5,this.tempTimeMovement),utils.Misc.lerp((this.tilePos.x + this.tilePos.y) * Main.tileSize.y * 0.5,(this.activePathPoint.x + this.activePathPoint.y) * Main.tileSize.y * 0.5,this.tempTimeMovement));
+			if(this.tempTimeMovement >= 1) {
+				this.setTilePosition(this.activePathPoint.x,this.activePathPoint.y);
+				this.pathIndex++;
+				this.tempTimeMovement = 0;
+				this.useAp(this.stats.moveCost);
+				if(this.pathIndex <= this.activePath.length - 1) {
+					if(!managers.MapManager.getInstance().activeMap.getWalkableAt(this.activePath[this.pathIndex])) this.stopPath(); else this.getNextPathPoint();
+				} else this.stopPath();
 			}
 		}
 	}
 	,getNextPathPoint: function() {
 		this.activePathPoint = this.activePath[this.pathIndex];
-		managers.CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this,[this.activePathPoint.x,this.activePathPoint.y]);
-		this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,[this.activePathPoint.x,this.activePathPoint.y]));
+		managers.CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this,this.activePathPoint.x,this.activePathPoint.y);
+		this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,this.activePathPoint));
 	}
 	,stopPath: function() {
 		this.setAnimation("idle");
@@ -1947,18 +1949,18 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		managers.DrawManager.addToDisplay(this.positionTile,managers.MapManager.getInstance().activeMap.mapContainer,0.45);
 		this.positionTile.visible = true;
 		this.positionTile.charaName = this.charaName;
-		this.showPosTile(this.tilePos);
+		this.showPosTile(this.tilePos.x,this.tilePos.y);
 	}
-	,showPosTile: function(newPos) {
+	,showPosTile: function(nx,ny) {
 		if(managers.FightManager.status == managers.StatusModes.normal || this.positionTile == null) return;
-		this.positionTile.setTilePosition(newPos);
+		this.positionTile.setTilePosition(nx,ny);
 	}
 	,normalUpdate: function() {
 	}
 	,fightUpdate: function() {
 	}
-	,onCharacterMove: function(characterId,newPosition) {
-		if(this.selectedAction != "move") this.generateAttackRange(this.selectedAction);
+	,onCharacterMove: function(characterId,nx,ny) {
+		if(this.selectedAction != "move") this.losModule.forceRefresh();
 	}
 	,setAnimation: function(animName) {
 		if(this.activeAnimation != null) this.activeAnimation.resetAnim(this.directionFacing);
@@ -1984,22 +1986,14 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.Destroy();
 		managers.FightManager.getInstance().testFightOver();
 	}
-	,setTilePosition: function(position) {
-		managers.CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this,position);
-		this.tilePos[0] = position[0];
-		this.x = position[0] * Main.tileSize[0] + managers.MapManager.getInstance().activeMap.OffsetX;
-		this.tilePos[1] = position[1];
-		this.y = position[1] * Main.tileSize[1] * 0.5 + managers.MapManager.getInstance().activeMap.OffsetY;
-		if(Math.abs(this.tilePos[1] % 2) == 1) this.x += Main.tileSize[0] * 0.5;
+	,setTilePosition: function(nx,ny) {
+		managers.CharacterManager.getInstance().updateCharacterCoordinatesFromTo(this,nx,ny);
+		this.tilePos.x = nx;
+		this.tilePos.y = ny;
+		this.x = (nx - ny) * Main.tileSize.x * 0.5;
+		this.y = (nx + ny) * Main.tileSize.y * 0.5;
 		this.setZ(this.z);
-		this.showPosTile(position);
-	}
-	,getAbsolutePosition: function() {
-		var arrayToReturn = [];
-		arrayToReturn[0] = this.tilePos[0] * Main.tileSize[0];
-		arrayToReturn[1] = this.tilePos[1] * Main.tileSize[1] * 0.5;
-		if(Math.abs(this.tilePos[1] % 2) == 1) arrayToReturn[0] += Main.tileSize[0] * 0.5;
-		return arrayToReturn;
+		this.showPosTile(nx,ny);
 	}
 	,setAbsolutePosition: function(newX,newY) {
 		this.x = newX;
@@ -2008,16 +2002,19 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	}
 	,setZ: function(newZ) {
 		this.z = newZ;
-		this.depth = this.y + this.z;
+		this.depth = this.x * 0.1 + this.y + this.z * 0.01;
+	}
+	,getAbsolutePosition: function() {
+		return new PIXI.Point((this.tilePos.x - this.tilePos.y) * Main.tileSize.x * 0.5,(this.tilePos.x + this.tilePos.y) * Main.tileSize.y * 0.5);
 	}
 	,findPathTo: function(target,follow) {
 		if(follow == null) follow = false;
-		var maxDistance = this.getMaxMovement() * Main.tileSize[0] * 0.5 + this.getMaxMovement() * Main.tileSize[1] * 0.25;
+		var maxDistance = this.getMaxMovement() * Main.tileSize.x * 0.5 + this.getMaxMovement() * Main.tileSize.y * 0.25;
 		var absoluteTarget = utils.Misc.convertToAbsolutePosition(target);
-		if(utils.Misc.getDistance(this.x,this.y,absoluteTarget[0],absoluteTarget[1]) > maxDistance) return [];
-		if(utils.Misc.isSameTile(target,objects.character.Player.getInstance().tilePos)) target = utils.Misc.getClosestPosFromDirection(target,utils.Misc.getDirectionToPoint(target,this.tilePos));
+		if(utils.Misc.getDistance(this.x,this.y,absoluteTarget.x,absoluteTarget.y) > maxDistance) return [];
+		if(target.equals(objects.character.Player.getInstance().tilePos)) target = utils.Misc.getClosestPosFromDirection(target,utils.Misc.getDirectionToPoint(target,this.tilePos));
 		managers.MapManager.getInstance().activeMap.setColliAt(this.tilePos,false);
-		var returnPath = managers.MapManager.getInstance().activeMap.findPath(this.getPathFindingPoint(),target,utils.Misc.getRangeTileAround(this.tilePos,0,this.getMaxMovement()));
+		var returnPath = managers.MapManager.getInstance().activeMap.findPath(this.getPathFindingPoint(),target,utils.Misc.getTilesAround(this.tilePos,0,this.getMaxMovement()));
 		managers.MapManager.getInstance().activeMap.setColliAt(this.tilePos,true);
 		if(follow) this.followPath(returnPath);
 		return returnPath;
@@ -2029,18 +2026,12 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		if(this.activePathPoint != null) this.pathIndex = 0; else this.pathIndex = 1;
 		this.setAnimation("run");
 	}
-	,generateAttackRange: function(attackName) {
-		if(this.attacks.exists(attackName)) {
-			this.activeAttackRange = utils.Misc.getRangeTileAround(this.tilePos,this.attacks.get(attackName).minRange,this.attacks.get(attackName).maxRange);
-			this.activeAttackRange = utils.Misc.processLOSRange(this.tilePos,this.activeAttackRange);
-		} else window.console.warn("Attack not found while generating attackRange of:" + attackName);
-	}
 	,launchAttack: function(attackName,targetPosition) {
 		if(this.attacks.get(attackName) == null) {
 			window.console.warn("attack not found: " + attackName);
 			return;
 		}
-		if(!utils.Misc.targetInRange(targetPosition,this.activeAttackRange)) {
+		if(!utils.Misc.targetInRange(targetPosition,this.losModule.getLOS())) {
 			window.console.warn("target not in range");
 			return;
 		}
@@ -2056,7 +2047,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 		this.setDirection(utils.Misc.getDirectionToPoint(this.tilePos,targetPosition));
 	}
 	,getPathFindingPoint: function() {
-		if(this.activePathPoint != null) return [this.activePathPoint.x,this.activePathPoint.y];
+		if(this.activePathPoint != null) return this.activePathPoint;
 		return this.tilePos;
 	}
 	,newTick: function(tickNumber) {
@@ -2075,7 +2066,7 @@ objects.character.Character.prototype = $extend(PIXI.extras.MovieClip.prototype,
 	}
 	,changeSelectedAction: function(newActionName) {
 		if(this.selectedAction == newActionName) this.selectedAction = "move"; else this.selectedAction = newActionName;
-		if(this.selectedAction != "move") this.generateAttackRange(this.selectedAction);
+		if(this.selectedAction != "move") this.losModule.forceRefresh();
 	}
 	,Destroy: function() {
 		managers.CharacterManager.getInstance().removeCharacter(this);
@@ -2141,7 +2132,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		if(!this.allowInput) return;
 		var newtilePos = utils.Misc.getTileFromEvent(e);
 		if(this.selectedAction == "move" && !this.isMoving) {
-			if(!objects.Camera.getInstance().isDragged && !utils.Misc.isSameTile(newtilePos,this.tilePos)) this.findPathTo(newtilePos,true);
+			if(!objects.Camera.getInstance().isDragged && !newtilePos.equals(this.tilePos)) this.findPathTo(newtilePos,true);
 		} else if(this.attacks.exists(this.selectedAction)) this.launchAttack(this.selectedAction,newtilePos);
 		this.hideHoverTile();
 		this.hidePoolTiles();
@@ -2152,20 +2143,20 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		var tileHovered = utils.Misc.getTileFromEvent(e);
 		this.hidePoolTiles();
 		this.hideHoverTile();
-		if(this.selectedAction == "move" && !this.isMoving && !utils.Misc.isSameTile(tileHovered,this.tilePos)) {
+		if(this.selectedAction == "move" && !this.isMoving && !tileHovered.equals(this.tilePos)) {
 			if(managers.FightManager.status == managers.StatusModes.fight) this.showPathMovement(this.findPathTo(tileHovered));
 		} else if(this.attacks.exists(this.selectedAction) && managers.FightManager.status == managers.StatusModes.fight) {
 			this.showAttackRange(this.selectedAction);
-			if(utils.Misc.targetInRange(tileHovered,this.activeAttackRange)) this.showHoverTile(tileHovered,16711680);
+			if(utils.Misc.targetInRange(tileHovered,this.losModule.getLOS())) this.showHoverTile(tileHovered,16711680);
 		}
-		if(tileHovered[0] == this.tilePos[0] && tileHovered[1] == this.tilePos[1]) {
+		if(tileHovered.equals(this.tilePos)) {
 			this.mouseHovering = true;
 			this.mouseOverSelf(e);
 		} else if(this.mouseHovering) {
 			this.mouseHovering = false;
 			this.mouseOutSelf(e);
 		}
-		utils.Debug.log("" + Std.string(tileHovered));
+		utils.Debug.log("" + Std.string(tileHovered.toArray()));
 	}
 	,showAttackRange: function(attackName) {
 		this.showRange(this.attacks.get(attackName).minRange,this.attacks.get(attackName).maxRange,16729927,0.3);
@@ -2173,7 +2164,6 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 	,newTick: function(tickNumber) {
 		objects.character.Character.prototype.newTick.call(this,tickNumber * 10);
 		managers.HudManager.getInstance().APmeter.text = "" + this.stats.AP;
-		if(!states.DebugState.superEnemy.isDead) states.DebugState.superEnemy.findPathTo(this.tilePos,true);
 		if(this.APFlash.parent == null) {
 			managers.DrawManager.addToDisplay(this.APFlash,managers.HudManager.getInstance().APmeter);
 			this.APFlash.scale.set(2 * (1 / this.APFlash.parent.parent.scale.x),2 * (1 / this.APFlash.parent.parent.scale.y));
@@ -2209,7 +2199,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 			newTile.visible = true;
 			newTile.tint = 65280;
 			newTile.alpha = 0.5;
-			newTile.setTilePosition([i1.x,i1.y]);
+			newTile.setTilePosition(i1.x,i1.y);
 			this.pathPositions.push(newTile);
 			if(newTile.parent == null) {
 				if(this.parent != null) managers.DrawManager.addToDisplay(newTile,this.parent,0.5);
@@ -2221,14 +2211,14 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		this.hidePoolTiles();
 		if(managers.FightManager.status == managers.StatusModes.normal) return;
 		var arrayIter;
-		if(this.selectedAction != "move") arrayIter = this.activeAttackRange; else arrayIter = utils.Misc.getRangeTileAround(this.tilePos,min,max);
+		if(this.selectedAction != "move") arrayIter = this.losModule.getLOS(); else arrayIter = utils.Misc.getTilesAround(this.tilePos,min,max);
 		var $it0 = HxOverrides.iter(arrayIter);
 		while( $it0.hasNext() ) {
 			var i = $it0.next();
 			if(!managers.MapManager.getInstance().activeMap.getWalkableAt(i) && managers.CharacterManager.getInstance().findCharacterAtTilePos(i) == null) continue;
 			var newTile = managers.PoolManager.pullObject("tile");
 			newTile.visible = true;
-			newTile.setTilePosition([i[0],i[1]]);
+			newTile.setTilePosition(i.x,i.y);
 			if(newTile.parent == null) {
 				if(this.parent != null) managers.DrawManager.addToDisplay(newTile,this.parent,0.5);
 			}
@@ -2249,7 +2239,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 	}
 	,showHoverTile: function(tilePos,newTint) {
 		if(this.targetTile.parent == null) managers.DrawManager.addToDisplay(this.targetTile,managers.MapManager.getInstance().activeMap.mapContainer,0.7);
-		this.targetTile.setTilePosition(tilePos);
+		this.targetTile.setTilePosition(tilePos.x,tilePos.y);
 		this.targetTile.visible = true;
 	}
 	,loseCombat: function() {
@@ -2272,7 +2262,7 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		if(this.selectedAction == newActionName) this.selectedAction = "move"; else this.selectedAction = newActionName;
 		this.hideEveryTile();
 		if(this.selectedAction != "move") {
-			this.generateAttackRange(this.selectedAction);
+			this.losModule.setRange(this.attacks.get(this.selectedAction).minRange,this.attacks.get(this.selectedAction).maxRange);
 			this.showAttackRange(this.selectedAction);
 		}
 	}
@@ -2280,12 +2270,10 @@ objects.character.Player.prototype = $extend(objects.character.Character.prototy
 		this.hideHoverTile();
 		this.hidePoolTiles();
 	}
-	,setTilePosition: function(position) {
-		objects.character.Character.prototype.setTilePosition.call(this,position);
-		if(this.selectedAction != "move") {
-			this.generateAttackRange(this.selectedAction);
-			this.showAttackRange(this.selectedAction);
-		}
+	,setTilePosition: function(nx,ny) {
+		objects.character.Character.prototype.setTilePosition.call(this,nx,ny);
+		this.losModule.moveToPoint(this.tilePos);
+		if(this.selectedAction != "move") this.showAttackRange(this.selectedAction);
 	}
 	,Destroy: function() {
 		objects.character.Character.prototype.Destroy.call(this);
@@ -2303,6 +2291,260 @@ objects.character.Victim.__super__ = objects.character.BaseEnemy;
 objects.character.Victim.prototype = $extend(objects.character.BaseEnemy.prototype,{
 	__class__: objects.character.Victim
 });
+objects.modules = {};
+objects.modules.BehaviorModule = function() {
+	this.activeBehavior = "stop";
+	this.behaviors = new haxe.ds.StringMap();
+	this.behaviors.set("stop",function() {
+	});
+};
+objects.modules.BehaviorModule.__name__ = ["objects","modules","BehaviorModule"];
+objects.modules.BehaviorModule.prototype = {
+	update: function() {
+		(this.behaviors.get(this.activeBehavior))();
+	}
+	,switchTo: function(behaviorName) {
+		if(this.behaviors.exists(behaviorName)) this.activeBehavior = behaviorName; else throw new Error("behavior \"" + behaviorName + "\" was not found.");
+	}
+	,addBehavior: function(behaviorName,actionToDo) {
+		if(behaviorName == "stop") throw new Error("can't add default behavior 'stop'");
+		this.behaviors.set(behaviorName,actionToDo);
+	}
+	,removeBehavior: function(behaviorName) {
+		if(behaviorName == "stop") throw new Error("can't remove default behavior 'stop'");
+		this.behaviors.remove(behaviorName);
+		if(behaviorName == this.activeBehavior) {
+			window.console.warn("Attention ! removing activeBehavior " + behaviorName + " auto switching to stop behavior.");
+			this.activeBehavior = "stop";
+		}
+	}
+	,__class__: objects.modules.BehaviorModule
+};
+objects.modules.LOSModule = function() {
+	this.activeLOSRange = [];
+	this.minRange = 0;
+	this.maxRange = 1;
+	this.isFresh = false;
+	this.centerPos = new utils.TilePoint();
+	this.shadowLineTemp = new objects.modules._LOSModule.ShadowLine();
+};
+objects.modules.LOSModule.__name__ = ["objects","modules","LOSModule"];
+objects.modules.LOSModule.prototype = {
+	getLOS: function() {
+		if(!this.isFresh) this.processLOSRange();
+		return this.activeLOSRange;
+	}
+	,getDisplayLOS: function() {
+		var tempArray = this.getLOS();
+		var tileIndex = 0;
+		while(tileIndex < this.activeLOSRange.length) {
+			if(!this.activeLOSRange[tileIndex].isVisible) {
+				this.activeLOSRange.splice(tileIndex,1);
+				tileIndex--;
+			}
+			tileIndex++;
+		}
+		return tempArray;
+	}
+	,HasLOS: function(target) {
+		return objects.modules.ArrayExtender.hasTile(this.getLOS(),target);
+	}
+	,moveToPoint: function(pos) {
+		this.centerPos = pos;
+		this.isFresh = false;
+	}
+	,setRange: function(newRangeMin,newRangeMax) {
+		if(newRangeMin != null) this.minRange = newRangeMin; else this.minRange = this.minRange;
+		if(newRangeMax != null) this.maxRange = newRangeMax; else this.maxRange = this.maxRange;
+		this.isFresh = false;
+	}
+	,forceRefresh: function() {
+		this.isFresh = false;
+	}
+	,processLOSRange: function() {
+		if(!this.isFresh) this.HardRefreshActiveLosRange();
+		this.SoftRefreshActiveLosRange();
+		var _g = 0;
+		while(_g < 8) {
+			var octant = _g++;
+			this.refreshOctant(octant);
+		}
+		var $it0 = HxOverrides.iter(this.activeLOSRange);
+		while( $it0.hasNext() ) {
+			var tile = $it0.next();
+			if(tile.getDistance(this.centerPos) < this.minRange) tile.isVisible = false;
+			if(tile.isWall) tile.isVisible = false;
+		}
+		if(this.minRange == 0) {
+			if(objects.modules.ArrayExtender.find(this.activeLOSRange,this.centerPos) != null) objects.modules.ArrayExtender.find(this.activeLOSRange,this.centerPos).isVisible = true;
+		}
+	}
+	,HardRefreshActiveLosRange: function() {
+		this.activeLOSRange = utils.Misc.getTilesAround(this.centerPos,0,this.maxRange);
+		var mapLOSRef = managers.MapManager.getInstance().activeMap.LOSData;
+		var $it0 = HxOverrides.iter(this.activeLOSRange);
+		while( $it0.hasNext() ) {
+			var tile = $it0.next();
+			tile.isWall = true;
+			if(mapLOSRef[tile.y] != null) tile.isWall = mapLOSRef[tile.y][tile.x] != 0;
+		}
+		this.isFresh = true;
+	}
+	,SoftRefreshActiveLosRange: function() {
+		var $it0 = HxOverrides.iter(this.activeLOSRange);
+		while( $it0.hasNext() ) {
+			var tile = $it0.next();
+			tile.isVisible = false;
+		}
+	}
+	,refreshOctant: function(octant) {
+		this.shadowLineTemp.reset();
+		var fullShadow = false;
+		var tempTile;
+		var _g = 1;
+		while(_g < 3000) {
+			var row = _g++;
+			var pos = this.centerPos.addUnAlter(this.transformOctant(row,0,octant));
+			if(!objects.modules.ArrayExtender.hasTile(this.activeLOSRange,pos)) break;
+			var _g2 = 0;
+			var _g1 = row + 1;
+			while(_g2 < _g1) {
+				var col = _g2++;
+				var pos1 = this.centerPos.addUnAlter(this.transformOctant(row,col,octant));
+				tempTile = objects.modules.ArrayExtender.find(this.activeLOSRange,pos1);
+				if(tempTile == null) break;
+				if(fullShadow) tempTile.isVisible = false; else {
+					var projection = this.projectTile(col,row);
+					var visible = !this.shadowLineTemp.isInShadow(projection);
+					if(!tempTile.isVisible) tempTile.isVisible = visible;
+					if(tempTile.isWall) {
+						this.shadowLineTemp.add(projection,tempTile.isVisible);
+						fullShadow = this.shadowLineTemp.get_isFullShadow();
+					}
+				}
+			}
+		}
+	}
+	,transformOctant: function(row,col,octant) {
+		switch(octant) {
+		case 0:
+			return new utils.TilePoint(col,-row);
+		case 1:
+			return new utils.TilePoint(row,-col);
+		case 2:
+			return new utils.TilePoint(row,col);
+		case 3:
+			return new utils.TilePoint(col,row);
+		case 4:
+			return new utils.TilePoint(-col,row);
+		case 5:
+			return new utils.TilePoint(-row,col);
+		case 6:
+			return new utils.TilePoint(-row,-col);
+		case 7:
+			return new utils.TilePoint(-col,-row);
+		default:
+			return null;
+		}
+	}
+	,projectTile: function(col,row) {
+		var topLeft = col / (row + 2);
+		var bottomRight = (col + 1) / (row + 1);
+		return new objects.modules._LOSModule.Shadow(topLeft,bottomRight);
+	}
+	,__class__: objects.modules.LOSModule
+};
+objects.modules._LOSModule = {};
+objects.modules._LOSModule.ShadowLine = function() {
+	this.precision = 0.24;
+	this._shadows = [];
+};
+objects.modules._LOSModule.ShadowLine.__name__ = ["objects","modules","_LOSModule","ShadowLine"];
+objects.modules._LOSModule.ShadowLine.prototype = {
+	reset: function() {
+		this._shadows = [];
+	}
+	,isInShadow: function(projection) {
+		var _g = 0;
+		var _g1 = this._shadows;
+		while(_g < _g1.length) {
+			var shadow = _g1[_g];
+			++_g;
+			if(shadow.contains(projection,this.precision)) return true;
+		}
+		return false;
+	}
+	,get_isFullShadow: function() {
+		return this._shadows.length == 1 && this._shadows[0].start == 0 && this._shadows[0].end == 1;
+	}
+	,add: function(shadow,visible) {
+		var index = 0;
+		var $it0 = HxOverrides.iter(this._shadows);
+		while( $it0.hasNext() ) {
+			var shad = $it0.next();
+			if(shad.contains(shadow,this.precision,false)) return;
+		}
+		while(index < this._shadows.length) {
+			if(this._shadows[index].start >= shadow.start) break;
+			++index;
+		}
+		var overlappingPrevious = null;
+		if(index > 0 && this._shadows[index - 1].end > shadow.start) overlappingPrevious = this._shadows[index - 1];
+		var overlappingNext = null;
+		if(index < this._shadows.length && this._shadows[index].start < shadow.end) overlappingNext = this._shadows[index];
+		if(overlappingNext != null) {
+			if(overlappingPrevious != null) {
+				overlappingPrevious.end = overlappingNext.end;
+				HxOverrides.remove(this._shadows,overlappingNext);
+			} else overlappingNext.start = shadow.start;
+		} else if(overlappingPrevious != null) overlappingPrevious.end = shadow.end; else this._shadows.splice(index,0,shadow);
+	}
+	,__class__: objects.modules._LOSModule.ShadowLine
+	,__properties__: {get_isFullShadow:"get_isFullShadow"}
+};
+objects.modules._LOSModule.Shadow = function(s,e) {
+	this.start = s;
+	this.end = e;
+};
+objects.modules._LOSModule.Shadow.__name__ = ["objects","modules","_LOSModule","Shadow"];
+objects.modules._LOSModule.Shadow.prototype = {
+	contains: function(other,precision,strict) {
+		if(strict == null) strict = true;
+		if(strict) return this.start < other.end && this.end > other.start && (this.start + this.end - other.start) / (other.start + other.end) >= precision;
+		return this.start <= other.start && this.end >= other.end;
+	}
+	,__class__: objects.modules._LOSModule.Shadow
+};
+objects.modules.LOSPoint = function(nx,ny) {
+	if(ny == null) ny = 0;
+	if(nx == null) nx = 0;
+	this.isWall = false;
+	this.isVisible = true;
+	utils.TilePoint.call(this,nx,ny);
+};
+objects.modules.LOSPoint.__name__ = ["objects","modules","LOSPoint"];
+objects.modules.LOSPoint.__super__ = utils.TilePoint;
+objects.modules.LOSPoint.prototype = $extend(utils.TilePoint.prototype,{
+	__class__: objects.modules.LOSPoint
+});
+objects.modules.ArrayExtender = function() { };
+objects.modules.ArrayExtender.__name__ = ["objects","modules","ArrayExtender"];
+objects.modules.ArrayExtender.hasTile = function(i,tile) {
+	var $it0 = HxOverrides.iter(i);
+	while( $it0.hasNext() ) {
+		var j = $it0.next();
+		if(j.equals(tile)) return true;
+	}
+	return false;
+};
+objects.modules.ArrayExtender.find = function(i,tile) {
+	var $it0 = HxOverrides.iter(i);
+	while( $it0.hasNext() ) {
+		var j = $it0.next();
+		if(j.equals(tile)) return j;
+	}
+	return null;
+};
 objects.particle = {};
 objects.particle.Bullet = function(textures) {
 	var _g = this;
@@ -2364,37 +2606,37 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 	,Start: function() {
 		managers.HudManager.getInstance().generateFightHud();
 		var camShader = new PIXI.Sprite(PIXI.Texture.fromImage("camShader.png"));
-		camShader.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+		camShader.scale.set(Main.screenRatio.x,Main.screenRatio.y);
 		managers.DrawManager.addToDisplay(camShader,Main.getInstance().effectCont);
 		managers.MapManager.getInstance().generateMapDisplay("TestingMap",true);
 		var hero = objects.character.Player.getInstance();
-		hero.setTilePosition([8,50]);
+		hero.setTilePosition(8,50);
 		hero.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(hero,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		objects.Camera.getInstance().setFollowTarget(hero);
 		var targetsID = [];
 		var victim = new objects.character.Victim("victim");
-		victim.setTilePosition([10,64]);
+		victim.setTilePosition(10,64);
 		victim.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		targetsID.push(victim.ID);
 		victim = new objects.character.Victim("victim");
-		victim.setTilePosition([5,25]);
+		victim.setTilePosition(5,25);
 		victim.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		targetsID.push(victim.ID);
 		victim = new objects.character.Victim("victim");
-		victim.setTilePosition([9,29]);
+		victim.setTilePosition(9,29);
 		victim.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		targetsID.push(victim.ID);
 		victim = new objects.character.Victim("victim");
-		victim.setTilePosition([13,34]);
+		victim.setTilePosition(13,34);
 		victim.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		targetsID.push(victim.ID);
 		victim = new objects.character.Victim("victim");
-		victim.setTilePosition([17,40]);
+		victim.setTilePosition(17,40);
 		victim.scale.set(0.4,0.4);
 		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
 		states.DebugState.superEnemy = victim;
@@ -2404,6 +2646,34 @@ states.DebugState.prototype = $extend(objects.State.prototype,{
 	,Update: function() {
 	}
 	,__class__: states.DebugState
+});
+states.DiamondTestState = function() {
+	objects.State.call(this,"Diam");
+};
+states.DiamondTestState.__name__ = ["states","DiamondTestState"];
+states.DiamondTestState.__super__ = objects.State;
+states.DiamondTestState.prototype = $extend(objects.State.prototype,{
+	Start: function() {
+		managers.HudManager.getInstance().generateFightHud();
+		managers.MapManager.getInstance().generateMapDisplay("DiamondMap",true);
+		managers.MapManager.getInstance().activeMap.scrollable = true;
+		Main.camera.setCameraPosition(new PIXI.Point(-managers.MapManager.getInstance().activeMap.mapContainer.width * 0.25,0));
+		var losModule = new objects.modules.LOSModule();
+		losModule.setRange(0,10);
+		var hero = objects.character.Player.getInstance();
+		hero.setTilePosition(8,8);
+		hero.scale.set(0.4,0.4);
+		managers.DrawManager.addToDisplay(hero,managers.MapManager.getInstance().activeMap.mapContainer,1);
+		objects.Camera.getInstance().setFollowTarget(hero);
+		var targetsID = [];
+		var victim = new objects.character.Victim("victim");
+		victim.setTilePosition(13,15);
+		victim.scale.set(0.4,0.4);
+		managers.DrawManager.addToDisplay(victim,managers.MapManager.getInstance().activeMap.mapContainer,1);
+		targetsID.push(victim.ID);
+		managers.FightManager.getInstance().startSetup(targetsID);
+	}
+	,__class__: states.DiamondTestState
 });
 states.MenuState = function() {
 	objects.State.call(this,"Menu");
@@ -2424,7 +2694,7 @@ states.MenuState.prototype = $extend(objects.State.prototype,{
 	}
 	,clickHandler: function(e) {
 		this.playButton.Destroy();
-		managers.StateManager.getInstance().switchToState("Debug");
+		managers.StateManager.getInstance().switchToState("Diam");
 	}
 	,Update: function() {
 	}
@@ -4470,7 +4740,6 @@ tweenx909.advanced.TweenTypeX.ARRAY = function(targets,_from,_to) { var $x = ["A
 tweenx909.advanced.TweenTypeX.FROM_TO = function(target,_from,_to) { var $x = ["FROM_TO",2,target,_from,_to]; $x.__enum__ = tweenx909.advanced.TweenTypeX; return $x; };
 tweenx909.advanced.TweenTypeX.FUNC = function(func,_from,_to) { var $x = ["FUNC",3,func,_from,_to]; $x.__enum__ = tweenx909.advanced.TweenTypeX; return $x; };
 tweenx909.advanced.TweenTypeX.CALL = function(func) { var $x = ["CALL",4,func]; $x.__enum__ = tweenx909.advanced.TweenTypeX; return $x; };
-var utils = {};
 utils.Debug = function() { };
 utils.Debug.__name__ = ["utils","Debug"];
 utils.Debug.log = function(message,color) {
@@ -4490,13 +4759,13 @@ utils.Misc.getDistance = function(x1,y1,x2,y2) {
 	var dy = y1 - y2;
 	return Math.sqrt(dx * dx + dy * dy);
 };
-utils.Misc.getDistanceBetweenTiles = function(tile1,tile2) {
+utils.Misc.getAbsoluteDistanceBetweenTiles = function(tile1,tile2) {
 	var tile1Ab = utils.Misc.convertToAbsolutePosition(tile1);
 	var tile2Ab = utils.Misc.convertToAbsolutePosition(tile2);
-	return utils.Misc.getDistance(tile1Ab[0],tile1Ab[1],tile2Ab[0],tile2Ab[1]);
+	return utils.Misc.getDistance(tile1Ab.x,tile1Ab.y,tile2Ab.x,tile2Ab.y);
 };
 utils.Misc.angleBetween = function(s,t) {
-	return -Math.atan2(t[1] - s[1],t[0] - s[0]);
+	return -Math.atan2(t.y - s.y,t.x - s.x);
 };
 utils.Misc.convertAngleToDirection = function(angle) {
 	if(Math.abs(angle) / Math.PI > 0.5) {
@@ -4510,83 +4779,47 @@ utils.Misc.angleBetweenTiles = function(from,to) {
 	return utils.Misc.angleBetween(utils.Misc.convertToAbsolutePosition(from),utils.Misc.convertToAbsolutePosition(to));
 };
 utils.Misc.convertToAbsolutePosition = function(tilePosition) {
-	var returnPosition = [];
-	returnPosition[0] = tilePosition[0] * Main.tileSize[0];
-	if(Math.abs(tilePosition[1] % 2) == 1) returnPosition[0] += Main.tileSize[0] * 0.5;
-	returnPosition[1] = tilePosition[1] * Main.tileSize[1] * 0.5;
-	return returnPosition;
+	return new PIXI.Point((tilePosition.x - tilePosition.y) * Main.tileSize.x * 0.5,(tilePosition.x + tilePosition.y) * Main.tileSize.y * 0.5);
 };
-utils.Misc.convertToGridPosition = function(absoluteX,absoluteY,withCamera) {
-	if(withCamera) {
-		absoluteX += objects.Camera.getInstance().offset[0];
-		absoluteY += objects.Camera.getInstance().offset[1];
-	}
-	var tileSize = Main.tileSize;
-	var halfMousePosX = Math.floor(absoluteX / (tileSize[0] / 2)) / 2;
-	var halfMousePosY = Math.floor(absoluteY / (tileSize[1] / 2)) / 2;
-	if(halfMousePosX % 1 != 0) halfMousePosX += 0.5;
-	if(halfMousePosY % 1 != 0) halfMousePosY += 0.5;
-	var dx = (absoluteX - halfMousePosX * tileSize[0]) / tileSize[0] * 2;
-	var dy = (absoluteY - halfMousePosY * tileSize[1]) / tileSize[1] * 2;
-	var SelectedPos;
-	if(Math.abs(dx) + Math.abs(dy) <= 1) SelectedPos = [halfMousePosX,halfMousePosY]; else SelectedPos = [halfMousePosX + dx / Math.abs(dx) * 0.5,halfMousePosY + dy / Math.abs(dy) * 0.5];
-	SelectedPos[0] = Math.floor(SelectedPos[0]);
-	SelectedPos[1] *= 2;
-	return SelectedPos;
+utils.Misc.convertToGridPosition = function(absoluteX,absoluteY) {
+	return new utils.TilePoint(Math.floor((absoluteY + absoluteX / 2) / Main.tileSize.y),Math.floor((absoluteY - absoluteX / 2) / Main.tileSize.y));
 };
-utils.Misc.getRangeTileAround = function(tilePos,minRange,maxRange) {
-	if(maxRange == null) maxRange = 10;
+utils.Misc.getTilesAround = function(tilePos,minRange,maxRange,mapConstricted) {
+	if(mapConstricted == null) mapConstricted = true;
+	if(maxRange == null) maxRange = 1;
 	if(minRange == null) minRange = 0;
 	if(minRange == 0 && maxRange == 0) return [tilePos];
-	var ArrayOfPos = [];
+	var returnArray = [];
 	var GridAround = [];
-	var iter = new IntIterator(Math.floor(-maxRange * 0.5),Math.floor(2 + maxRange * 0.5));
-	while( iter.hasNext() ) {
-		var i = iter.next();
-		var iter2 = new IntIterator(-maxRange,1 + maxRange);
-		while( iter2.hasNext() ) {
-			var j = iter2.next();
-			GridAround.push([tilePos[0] + i,tilePos[1] - j]);
+	var refMap = managers.MapManager.getInstance().activeMap.collisionData;
+	var _g1 = -maxRange;
+	var _g = maxRange + 1;
+	while(_g1 < _g) {
+		var i = _g1++;
+		var _g3 = -maxRange;
+		var _g2 = maxRange + 1;
+		while(_g3 < _g2) {
+			var j = _g3++;
+			if(mapConstricted) {
+				if(tilePos.x + i >= 0 && tilePos.x + i < refMap[0].length && tilePos.y + j >= 0 && tilePos.y + j < refMap.length) {
+					if(!(Math.abs(i) + Math.abs(j) > maxRange) && !(Math.abs(i) + Math.abs(j) < minRange)) returnArray.push(new utils.TilePoint(tilePos.x + i,tilePos.y + j));
+				}
+			} else if(!(Math.abs(i) + Math.abs(j) > maxRange) && !(Math.abs(i) + Math.abs(j) < minRange)) returnArray.push(new utils.TilePoint(tilePos.x + i,tilePos.y + j));
 		}
 	}
-	var centerAbsolutePos = utils.Misc.convertToAbsolutePosition(tilePos);
-	if(utils.Misc.squareColliMax == null) {
-		utils.Misc.squareColliMax = new objects.Tile(PIXI.Texture.fromImage(""));
-		utils.Misc.squareColliMax.anchor.set(0.5,0.5);
-	}
-	if(utils.Misc.squareColliMin == null) {
-		utils.Misc.squareColliMin = new objects.Tile(PIXI.Texture.fromImage(""));
-		utils.Misc.squareColliMin.anchor.set(0.5,0.5);
-	}
-	utils.Misc.squareColliMin.width = (minRange - 1) * Main.tileSize[0] + 4;
-	utils.Misc.squareColliMin.height = (minRange - 1) * Main.tileSize[1] + 4;
-	utils.Misc.squareColliMin.x = centerAbsolutePos[0] - 2;
-	utils.Misc.squareColliMin.y = centerAbsolutePos[1] - 2;
-	utils.Misc.squareColliMax.width = maxRange * Main.tileSize[0] + 4;
-	utils.Misc.squareColliMax.height = maxRange * Main.tileSize[1] + 4;
-	utils.Misc.squareColliMax.x = centerAbsolutePos[0] - 2;
-	utils.Misc.squareColliMax.y = centerAbsolutePos[1] - 2;
-	var $it0 = HxOverrides.iter(GridAround);
-	while( $it0.hasNext() ) {
-		var i1 = $it0.next();
-		var absolutePosPoint = utils.Misc.convertToAbsolutePosition(i1);
-		if(utils.Misc.colliSquarePoint(utils.Misc.squareColliMax,absolutePosPoint)) {
-			if(!utils.Misc.colliSquarePoint(utils.Misc.squareColliMin,absolutePosPoint) || minRange == 0) ArrayOfPos.push(i1);
-		}
-	}
-	return ArrayOfPos;
+	return returnArray;
 };
 utils.Misc.colliSquarePoint = function(obj,point,cameraAffected) {
 	var offset;
-	if(cameraAffected) offset = objects.Camera.getInstance().offset; else offset = [0,0];
+	if(cameraAffected) offset = objects.Camera.getInstance().offset; else offset = new PIXI.Point();
 	var target = obj.getGlobalPosition(null);
 	var size = { width : obj.width, height : obj.height};
 	if(obj.parent != null) size = obj.getBounds(null);
 	if(obj.anchor == null) obj.anchor = new PIXI.Point(0,0);
-	if(target.x - size.width * obj.anchor.x > point[0] + offset[0]) return false;
-	if(target.y - size.height * obj.anchor.y > point[1] + offset[1]) return false;
-	if(target.x + size.width - size.width * obj.anchor.x < point[0] + offset[0]) return false;
-	if(target.y + size.height - size.height * obj.anchor.y < point[1] + offset[1]) return false;
+	if(target.x - size.width * obj.anchor.x > point.x + offset.x) return false;
+	if(target.y - size.height * obj.anchor.y > point.y + offset.y) return false;
+	if(target.x + size.width - size.width * obj.anchor.x < point.x + offset.x) return false;
+	if(target.y + size.height - size.height * obj.anchor.y < point.y + offset.y) return false;
 	return true;
 };
 utils.Misc.colliSquareSquare = function(obj1,obj2) {
@@ -4608,138 +4841,87 @@ utils.Misc.targetInRange = function(target,tilesInRange) {
 	var $it0 = HxOverrides.iter(tilesInRange);
 	while( $it0.hasNext() ) {
 		var i = $it0.next();
-		if(i[0] == target[0] && i[1] == target[1]) return true;
+		if(i.equals(target)) return i.isVisible;
 	}
 	return false;
 };
-utils.Misc.hasLineOfSight = function(from,to,tilesInRange,precalculatedObstacleList) {
-	var absoluteFrom = utils.Misc.convertToAbsolutePosition(from);
-	var absoluteTo = utils.Misc.convertToAbsolutePosition(to);
-	var obstacleList;
-	if(precalculatedObstacleList == null) obstacleList = utils.Misc.generateObstacleMap(tilesInRange); else obstacleList = precalculatedObstacleList;
-	var $it0 = HxOverrides.iter(obstacleList);
-	while( $it0.hasNext() ) {
-		var tileCollision = $it0.next();
-		var $it1 = HxOverrides.iter(tileCollision);
-		while( $it1.hasNext() ) {
-			var segment = $it1.next();
-			if(utils.Misc.isSameTile(utils.Misc.convertToGridPosition(segment[0][0],segment[0][1]),to)) {
-				if(managers.CharacterManager.getInstance().findCharacterAtTilePos(to) != null) continue;
-			} else if(utils.Misc.doLinesIntersect(absoluteFrom,absoluteTo,segment[0],segment[1])) return false;
-		}
+utils.Misc.getTileLine = function(p0,p1) {
+	var points = [];
+	var N = utils.Misc.diagonal_distance(p0,p1);
+	var _g1 = 0;
+	var _g = N + 1;
+	while(_g1 < _g) {
+		var i = _g1++;
+		var t;
+		if(N == 0) t = 0.0; else t = i / N;
+		points.push(utils.Misc.round_point(utils.Misc.lerp_point(p0,p1,t)));
+	}
+	return points;
+};
+utils.Misc.hasLineOfSight = function(p0,p1) {
+	return false;
+	var N = utils.Misc.diagonal_distance(p0,p1);
+	var tempPoint;
+	var _g1 = 0;
+	var _g = N + 1;
+	while(_g1 < _g) {
+		var i = _g1++;
+		var t;
+		if(N == 0) t = 0.0; else t = i / N;
+		tempPoint = utils.Misc.round_point(utils.Misc.lerp_point(p0,p1,t));
+		if(p1.equals(tempPoint)) {
+			if(!managers.MapManager.getInstance().activeMap.getLOSAt(tempPoint)) return managers.CharacterManager.getInstance().findCharacterAtTilePos(tempPoint) != null;
+		} else if(!managers.MapManager.getInstance().activeMap.getLOSAt(tempPoint)) return false;
 	}
 	return true;
 };
-utils.Misc.processLOSRange = function(from,range) {
-	var obstacleList = utils.Misc.generateObstacleMap(range);
-	var i = 0;
-	while(i < range.length) {
-		if(!utils.Misc.hasLineOfSight(from,range[i],range,obstacleList)) {
-			range.splice(i,1);
-			--i;
-		}
-		++i;
-	}
-	return range;
+utils.Misc.lerp = function(start,end,t) {
+	if(t > 1) t = 1; else t = t;
+	if(t < 0) t = 0; else t = t;
+	return start + t * (end - start);
 };
-utils.Misc.isSameTile = function(pos1,pos2) {
-	return pos1[0] == pos2[0] && pos1[1] == pos2[1];
+utils.Misc.lerp_point = function(p0,p1,t) {
+	return new PIXI.Point(utils.Misc.lerp(p0.x,p1.x,t),utils.Misc.lerp(p0.y,p1.y,t));
 };
-utils.Misc.generateObstacleMap = function(range) {
-	var obstacleList = [];
-	var $it0 = HxOverrides.iter(range);
-	while( $it0.hasNext() ) {
-		var tilePos = $it0.next();
-		if(managers.MapManager.getInstance().activeMap.getTileAt(tilePos) != null) {
-			if(!managers.MapManager.getInstance().activeMap.getLOSAt(tilePos)) obstacleList.push(utils.Misc.generateTileCollisions(managers.MapManager.getInstance().activeMap.getTileAt(tilePos)));
-		}
-	}
-	return obstacleList;
+utils.Misc.round_point = function(p) {
+	return new utils.TilePoint(Math.round(p.x),Math.round(p.y));
 };
-utils.Misc.generateTileCollisions = function(tile) {
-	var errorMargin = 1;
-	var returnArray = [];
-	returnArray.push([[tile.x,tile.y - errorMargin],[tile.x - Main.tileSize[0] * 0.5 + errorMargin,tile.y - Main.tileSize[1] * 0.5]]);
-	returnArray.push([[tile.x - Main.tileSize[0] * 0.5 + errorMargin,tile.y - Main.tileSize[1] * 0.5],[tile.x,tile.y - Main.tileSize[1] + errorMargin]]);
-	returnArray.push([[tile.x,tile.y - Main.tileSize[1] + errorMargin],[tile.x + Main.tileSize[0] * 0.5 - errorMargin,tile.y - Main.tileSize[1] * 0.5]]);
-	returnArray.push([[tile.x + Main.tileSize[0] * 0.5 - errorMargin,tile.y - Main.tileSize[1] * 0.5],[tile.x,tile.y - errorMargin]]);
-	return returnArray;
-};
-utils.Misc.doLinesIntersect = function(a1,a2,b1,b2) {
-	var ax = a2[0] - a1[0];
-	var ay = a2[1] - a1[1];
-	var bx = b1[0] - b2[0];
-	var by = b1[1] - b2[1];
-	var cx = a1[0] - b1[0];
-	var cy = a1[1] - b1[1];
-	var alphaNumerator = by * cx - bx * cy;
-	var commonDenominator = ay * bx - ax * by;
-	if(commonDenominator > 0) {
-		if(alphaNumerator < 0 || alphaNumerator > commonDenominator) return false;
-	} else if(commonDenominator < 0) {
-		if(alphaNumerator > 0 || alphaNumerator < commonDenominator) return false;
-	}
-	var betaNumerator = ax * cy - ay * cx;
-	if(commonDenominator > 0) {
-		if(betaNumerator < 0 || betaNumerator > commonDenominator) return false;
-	} else if(commonDenominator < 0) {
-		if(betaNumerator > 0 || betaNumerator < commonDenominator) return false;
-	}
-	if(commonDenominator == 0) {
-		var y3LessY1 = b1[1] - a1[1];
-		var collinearityTestForP3 = a1[0] * (a2[1] - b1[1]) + a2[0] * y3LessY1 + b1[0] * (a1[1] - a2[1]);
-		if(collinearityTestForP3 == 0) {
-			if(a1[0] >= b1[0] && a1[0] <= b2[0] || a1[0] <= b1[0] && a1[0] >= b2[0] || a2[0] >= b1[0] && a2[0] <= b2[0] || a2[0] <= b1[0] && a2[0] >= b2[0] || b1[0] >= a1[0] && b1[0] <= a2[0] || b1[0] <= a1[0] && b1[0] >= a2[0]) {
-				if(a1[1] >= b1[1] && a1[1] <= b2[1] || a1[1] <= b1[1] && a1[1] >= b2[1] || a2[1] >= b1[1] && a2[1] <= b2[1] || a2[1] <= b1[1] && a2[1] >= b2[1] || b1[1] >= a1[1] && b1[1] <= a2[1] || b1[1] <= a1[1] && b1[1] >= a2[1]) return true;
-			}
-		}
-		return false;
-	}
-	return true;
+utils.Misc.diagonal_distance = function(p0,p1) {
+	var dx = p1.x - p0.x;
+	var dy = p1.y - p0.y;
+	return Math.max(Math.abs(dx),Math.abs(dy));
 };
 utils.Misc.placeTilePointer = function(positions,color,absolute) {
 	if(absolute == null) absolute = false;
 	var $it0 = HxOverrides.iter(positions);
 	while( $it0.hasNext() ) {
 		var i = $it0.next();
-		if(!absolute) {
-			var displayX = i[0] * Main.tileSize[0];
-			var displayY = i[1] * Main.tileSize[1] / 2;
-			if(Math.abs(i[1] % 2) == 1) displayX += Main.tileSize[0] * 0.5;
-			displayY += Main.tileSize[1] * 0.5;
-		}
 		var newPointer = managers.PoolManager.pullObject("pointer");
 		var specialColor;
 		if(color != null) specialColor = color; else specialColor = 16777215;
-		if(!absolute) newPointer.setTilePosition(i); else newPointer.setAbsolutePosition(i[0],i[1]);
+		if(!absolute) newPointer.setTilePosition(i.x,i.y); else newPointer.setAbsolutePosition(i.x,i.y);
 		newPointer.tint = specialColor;
 		newPointer.visible = true;
 		newPointer.anchor.set(0.5,0.5);
-		managers.DrawManager.addToDisplay(newPointer,Main.getInstance().tileCont,100);
+		managers.DrawManager.addToDisplay(newPointer,managers.MapManager.getInstance().activeMap.mapContainer,0.2);
 	}
 };
 utils.Misc.getClosestPosFromDirection = function(target,direction) {
-	var returnPos = [target[0],target[1]];
-	if(direction == 0) {
-		if(target[1] % 2 == 0) {
-			--returnPos[0];
-			++returnPos[1];
-		} else ++returnPos[1];
-	} else if(direction == 1) {
-		if(target[1] % 2 == 0) {
-			--returnPos[0];
-			--returnPos[1];
-		} else --returnPos[1];
-	} else if(direction == 2) {
-		if(target[1] % 2 == 0) --returnPos[1]; else {
-			++returnPos[0];
-			--returnPos[1];
-		}
-	} else if(target[1] % 2 == 0) ++returnPos[1]; else {
-		++returnPos[0];
-		++returnPos[1];
+	switch(direction) {
+	case 0:
+		target.y++;
+		break;
+	case 1:
+		target.x--;
+		break;
+	case 2:
+		target.y--;
+		break;
+	case 3:
+		target.x++;
+		break;
 	}
-	return returnPos;
+	return target;
 };
 utils.Misc.removeAllPointers = function() {
 	managers.PoolManager.applyFunctionToPool("pointer",function(element) {
@@ -4747,7 +4929,7 @@ utils.Misc.removeAllPointers = function() {
 	});
 };
 utils.Misc.getTileFromEvent = function(e) {
-	return utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y);
+	return utils.Misc.convertToGridPosition(e.data.getLocalPosition(e.target).x,e.data.getLocalPosition(e.target).y + Main.tileSize.y);
 };
 function $iterator(o) { if( o instanceof Array ) return function() { return HxOverrides.iter(o); }; return typeof(o.iterator) == 'function' ? $bind(o,o.iterator) : o.iterator; }
 var $_, $fid = 0;
@@ -5608,8 +5790,8 @@ var Uint8Array = window.Uint8Array;
 }(window));
 ;
 })();
-Main.tileSize = [0,0];
-Main.screenRatio = [1,1];
+Main.tileSize = new utils.TilePoint();
+Main.screenRatio = new PIXI.Point();
 Main.keysDown = [];
 Main.DEBUGMODE = true;
 Main.GAMESTOPPED = false;

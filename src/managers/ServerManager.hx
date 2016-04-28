@@ -13,10 +13,10 @@ class ServerManager {
 	
 	}
 	
-	public function onCharacterMove(characterId:String, ?newPosition:Array<Int>):Void{
+	public function onCharacterMove(characterId:String, ?nx:Int, ?ny:Int):Void{
 		for (i in CharacterManager.getInstance().managedCharacters.iterator())
 		{
-			i.onCharacterMove(characterId, newPosition);
+			i.onCharacterMove(characterId, nx, ny);
 		}
 	}
 	

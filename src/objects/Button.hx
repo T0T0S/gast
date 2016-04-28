@@ -98,7 +98,7 @@ class Button extends MovieClip {
 	}
 	
 	private function mouseIsAbove(e:EventTarget):Bool {
-		return Misc.colliSquarePoint(this, [e.data.global.x, e.data.global.y]);
+		return Misc.colliSquarePoint(this, untyped e.data.global);
 	}
 	
 	public function Destroy():Void{

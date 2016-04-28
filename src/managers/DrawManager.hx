@@ -47,15 +47,9 @@ class DrawManager
 	
 	private function characterSortFunction(a:DisplayObject, b:DisplayObject):Int {
 		untyped if (a.charaName || b.charaName) {
-				return !!a.charaName - !!b.charaName;
-		}
-		else{
-			
-		}
-		untyped if (b.z == a.z)
-		untyped 	return a.depth - b.depth;
-				else
-		untyped 	return a.z - b.z;
+					return !!a.charaName - !!b.charaName;
+				}
+		return normalSortFunction(a,b);
 	}
 	
 	public static function removeFromDisplay (element:DisplayObject):Void {

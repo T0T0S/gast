@@ -11,6 +11,7 @@ import pixi.core.display.Container;
 import pixi.core.particles.ParticleContainer;
 import pixi.core.sprites.Sprite;
 import utils.Misc;
+import utils.TilePoint;
 
 /**
  * ...
@@ -48,7 +49,7 @@ class GameMap{
 		var datas = formatMap(mapName);
 		var mapJson = InitManager.data[untyped name];
 		
-		OffsetY = Main.tileSize[1] * 0.5;
+		//OffsetY = Main.tileSize.y;
 		
 		/*
 		 * CHANGE TO FRAMES !
@@ -59,17 +60,16 @@ class GameMap{
 		
 		graphicalData = datas.graphical;
 		collisionData = datas.collisions;
-				
 		LOSData = datas.LOS;
-
+		
 		generatePathfinding();
 	}
 	
 	public function addTileToMap(tile:Tile, layer:Int):Void {
-		if (tileData[tile.tilePos[0]] == null)
-			tileData[tile.tilePos[0]] = [];
+		if (tileData[tile.tilePos.x] == null)
+			tileData[tile.tilePos.x] = [];
 			
-		tileData[tile.tilePos[0]][tile.tilePos[1]] = tile;
+		tileData[tile.tilePos.x][tile.tilePos.y] = tile;
 		DrawManager.addToDisplay(tile,mapContainer,layer);
 	}
 	
@@ -78,7 +78,7 @@ class GameMap{
 			DrawManager.addToDisplay(mapContainer, Main.getInstance().tileCont);
 		
 		mapContainer.visible = true;
-		MapManager.displayDebugColliMap(finder.getGrid());
+		//MapManager.displayDebugColliMap(finder.getGrid());
 		
 		//var y:Int = 0;
 		//var x:Int = 0;
@@ -99,10 +99,10 @@ class GameMap{
 			DrawManager.removeFromDisplay(mapContainer);
 	}
 
-	public function getTileAt(tilePosition:Array<Int>):Tile {
-		if (tileData[tilePosition[0]] == null)
+	public function getTileAt(tilePosition:TilePoint):Tile {
+		if (tileData[tilePosition.x] == null)
 			return null;
-		return tileData[tilePosition[0]][tilePosition[1]];
+		return tileData[tilePosition.x][tilePosition.y];
 	}
 	
 	
@@ -110,52 +110,52 @@ class GameMap{
 	public function generatePathfinding():Void{
 		finder.setGrid(collisionData);
 		finder.setAcceptableTiles([0]);
-		finder.enableDiagonals();
+		//finder.enableDiagonals();
 		finder.enableSync();
 	}
 	
-	public function setColliAt(pos:Array<Int>, collision:Bool):Void {
+	public function setColliAt(pos:TilePoint, collision:Bool):Void {
 		if (collision)
-			collisionData[pos[1]][pos[0]] = 1;
+			collisionData[pos.y][pos.x] = 1;
 		else
-			collisionData[pos[1]][pos[0]] = 0;
+			collisionData[pos.y][pos.x] = 0;
 	}
 	
-	public function setLOSAt(pos:Array<Int>, blocked:Bool):Void{
+	public function setLOSAt(pos:TilePoint, blocked:Bool):Void{
 		if (blocked)
-			LOSData[pos[1]][pos[0]] = 1;
+			LOSData[pos.y][pos.x] = 1;
 		else
-			LOSData[pos[1]][pos[0]] = 0;
+			LOSData[pos.y][pos.x] = 0;
 	}
 	
-	public function getWalkableAt(target:Array<Int>):Bool {
-		if (collisionData[target[1]] == null)
+	public function getWalkableAt(target:TilePoint):Bool {
+		if (collisionData[target.y] == null)
 			return false;
-		return collisionData[target[1]][target[0]] == 0;
+		return collisionData[target.y][target.x] == 0;
 	}
 	
-	public function getLOSAt(target:Array<Int>):Bool {
-		if (LOSData[target[1]] == null)
+	public function getLOSAt(target:TilePoint):Bool {
+		if (LOSData[target.y] == null)
 			return true;
-		return LOSData[target[1]][target[0]] == 0;
+		return LOSData[target.y][target.x] == 0;
 	}
 	
 	public function getFinderGrid():Array<Array<Int>>{
 		return finder.getGrid();
 	}
 	
-	public function findPath(source:Array<Int>, target:Array<Int>, range:Array<Array<Int>>):Array<Dynamic> {
-		var path:Array<Dynamic> = [];
-		finder.setGrid(getNewGridPathFinding(range));
+	public function findPath(source:TilePoint, target:TilePoint, rangeToSearch:Array<TilePoint>):Array<TilePoint> {
+		var path:Array<TilePoint> = [];
+		finder.setGrid(getNewGridPathFinding(rangeToSearch));
 		
-		if (source[0] > collisionData[0].length-1 || 
-			target[0] > collisionData[0].length-1 || 
-			source[1] > collisionData.length-1 || 
-			target[1] > collisionData.length-1 ||
-			source[0] < 0 || source[1] < 0 || target[0] < 0 || target[1] < 0)
+		if (source.x > collisionData[0].length-1 || 
+			target.x > collisionData[0].length-1 || 
+			source.y > collisionData.length-1 || 
+			target.y > collisionData.length-1 ||
+			source.x < 0 || source.y < 0 || target.x < 0 || target.y < 0)
 			return [];
 		
-		finder.findPath(source[0], source[1], target[0], target[1], function( newpath ) {
+		finder.findPath(source.x, source.y, target.x, target.y, function( newpath ) {
 			if (newpath != null) 
 				untyped path = newpath;
 		});
@@ -165,7 +165,7 @@ class GameMap{
 		untyped return path;
 	}
 	
-	private function getNewGridPathFinding(range:Array<Array<Int>>):Array<Array<Int>>
+	private function getNewGridPathFinding(range:Array<TilePoint>):Array<Array<Int>>
 	{
 		var returnArray:Array<Array<Int>> = [collisionData[0]];
 		
@@ -179,8 +179,8 @@ class GameMap{
 		
 		for (rangePoint in range.iterator())
 		{
-			if(collisionData[rangePoint[1]] != null)
-				returnArray[rangePoint[1]][rangePoint[0]] = collisionData[rangePoint[1]][rangePoint[0]];
+			if(collisionData[rangePoint.y] != null)
+				returnArray[rangePoint.y][rangePoint.x] = collisionData[rangePoint.y][rangePoint.x];
 		}
 		return returnArray;
 	}

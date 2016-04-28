@@ -1,5 +1,6 @@
 package objects;
 import js.Browser;
+import pixi.core.math.Point;
 import managers.InitManager;
 import managers.MapManager;
 import pixi.core.display.DisplayObject;
@@ -18,19 +19,19 @@ import utils.Misc;
 class Camera{
 	private static var instance: Camera;
 	
-	public var offset:Array<Float> = [0, 0];
-	private var size:Array<Float> = [0, 0];
+	public var offset:Point = new Point();
+	private var size:Point = new Point();
 	
 	private var minimumMovement:Float = 10;
 	private var dragSensitivity:Float = 2;
 	
-	private var mouseDownPosition:Array<Float> = [];
-	private var oldCameraPosition:Array<Float> = [];
+	private var mouseDownPosition:Point = new Point();
+	private var oldCameraPosition:Point = new Point();
 	private var clicked:Bool = false;
 	public var isDragged:Bool = false;
 	
 	public static var targetToFollow:DisplayObject;
-	private var clampedCam:Bool = true;
+	private var clampedCam:Bool = false;
 	
 	public var mapSize:Rectangle;
 	
@@ -41,9 +42,9 @@ class Camera{
 	public function new() {
 		minimumMovement = Reflect.field(InitManager.data.config.camera, "minimumMovement");
 		dragSensitivity = Reflect.field(InitManager.data.config.camera, "sensitivity");
-		//Browser.window.addEventListener("gameMouseDown", mouseDownListener);
-		//Browser.window.addEventListener("gameHover", mouseMoveListener);
-		//Browser.window.addEventListener("gameMouseUp", mouseUpListener);
+		Browser.window.addEventListener("gameMouseDown", mouseDownListener);
+		Browser.window.addEventListener("gameHover", mouseMoveListener);
+		Browser.window.addEventListener("gameMouseUp", mouseUpListener);
 		Browser.window.addEventListener("resize", getContainerBounds);		
 		getContainerBounds();
 		
@@ -52,8 +53,9 @@ class Camera{
 
 	private function mouseDownListener(e):Void {
 		clicked = true;
-		mouseDownPosition = [e.layerX, e.layerY];
-		oldCameraPosition = offset;
+		mouseDownPosition.x = e.layerX;
+		mouseDownPosition.y = e.layerY;
+		oldCameraPosition = offset.clone();
 	}
 	
 /*
@@ -68,16 +70,17 @@ class Camera{
 			return;
 		if (!clicked)
 			return;
-		if (isDragged == false && Math.abs(mouseDownPosition[0] - e.layerX) < minimumMovement && Math.abs(mouseDownPosition[1] - e.layerY) < minimumMovement)
+		if (isDragged == false && Math.abs(mouseDownPosition.x - e.layerX) < minimumMovement && Math.abs(mouseDownPosition.y - e.layerY) < minimumMovement)
 			return;
 		else if(!isDragged){
-			mouseDownPosition[0] = e.layerX;
-			mouseDownPosition[1] = e.layerY;
+			mouseDownPosition.x = e.layerX;
+			mouseDownPosition.y = e.layerY;
 		}
 		isDragged = true;
 		
-		offset = [oldCameraPosition[0] - (e.layerX - mouseDownPosition[0]) * dragSensitivity, oldCameraPosition[1] - (e.layerY - mouseDownPosition[1])*dragSensitivity];
-		
+		offset.x = oldCameraPosition.x - (e.layerX - mouseDownPosition.x) * dragSensitivity;
+		offset.y = oldCameraPosition.y - (e.layerY - mouseDownPosition.y) * dragSensitivity;
+
 		if (clampedCam)
 		{
 			constrainCam();
@@ -91,33 +94,35 @@ class Camera{
 		isDragged = false;
 	}
 	
-	public function setCameraPosition (newPosition:Array<Float>):Void {
+	public function setCameraPosition (newPosition:Point):Void {
 		offset = newPosition;
 		translateOffsetToConts();
 	}
 	
 	public function translateOffsetToConts():Void {
-		Main.getInstance().tileCont.x = -offset[0];
-		Main.getInstance().tileCont.y = -offset[1];
-		Main.getInstance().gameCont.x = -offset[0];
-		Main.getInstance().gameCont.y = -offset[1];
+		Main.getInstance().tileCont.x = -offset.x;
+		Main.getInstance().tileCont.y = -offset.y;
+		Main.getInstance().gameCont.x = -offset.x;
+		Main.getInstance().gameCont.y = -offset.y;
 	}
 	
 	public function getContainerBounds (?e):Void {
-		size = [Main.getInstance().renderer.width, Main.getInstance().renderer.height];
+		size.x = Main.getInstance().renderer.width;
+		size.y = Main.getInstance().renderer.height;
 	}
 	
 	public function updateMapSize(newMap:GameMap):Void{
-		mapSize.width = newMap.graphicalData[0].length * Main.tileSize[0];
-		mapSize.height = newMap.graphicalData.length * Main.tileSize[1] * 0.5 + Main.getInstance().hudCont.height;
+		mapSize.width = newMap.graphicalData[0].length * Main.tileSize.x;
+		mapSize.height = newMap.graphicalData.length * Main.tileSize.y * 0.5 + Main.getInstance().hudCont.height;
 	}
 	
 	public function Update():Void
 	{
 		if (targetToFollow != null)
 		{
-			offset[0] = targetToFollow.x - size[0] * 0.5;
-			offset[1] = targetToFollow.y - size[1] * 0.5;
+			offset.x = targetToFollow.x - size.x * 0.5;
+			offset.y = targetToFollow.y - size.y * 0.5;
+
 			if (clampedCam)
 				constrainCam();
 			translateOffsetToConts();
@@ -125,8 +130,8 @@ class Camera{
 	}
 	
 	private function constrainCam():Void{
-		offset[0] = Misc.clamp(offset[0],0,Math.max(mapSize.width - size[0] - Main.tileSize[0],0));
-		offset[1] = Misc.clamp(offset[1],0,Math.max(mapSize.height - size[1] - Main.tileSize[1] * 1.5,0));
+		offset.x = Misc.clamp(offset.x, - mapSize.width * 0.5, mapSize.width * 0.5 - size.x);
+		offset.y = Misc.clamp(offset.y, - mapSize.height * 0.5 + size.y * 0.5,mapSize.height * 0.5 + Main.tileSize.y * 1.5 - size.y * 0.5);
 	}
 	
 	public function clampCam():Void { clampedCam = true; }
@@ -139,7 +144,7 @@ class Camera{
 	}
 	
 	public function switchState ():Void {
-		setCameraPosition([0, 0]);
+		setCameraPosition(new Point(0,0));
 		targetToFollow = null;
 	}
 		

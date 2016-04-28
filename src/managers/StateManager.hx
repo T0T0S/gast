@@ -5,6 +5,7 @@ import objects.State;
 import pixi.core.display.Container;
 import pixi.core.text.Text;
 import states.DebugState;
+import states.DiamondTestState;
 import states.PreloadState;
 import states.MenuState;
 
@@ -41,6 +42,7 @@ class StateManager{
 		addState(new PreloadState());
 		addState(new MenuState());
 		addState(new DebugState());
+		addState(new DiamondTestState());
 		
 		Main.getInstance().debugCont.addChild(debugActiveState);
 		debugActiveState.x = 10;
@@ -67,6 +69,9 @@ class StateManager{
 		CharacterManager.getInstance().switchState();
 		Camera.getInstance().switchState();
 		HudManager.getInstance().switchState();
+		
+		statesArray[activeState] = Type.createInstance(Type.getClass(statesArray[activeState]), []);
+
 		activeState = newState;
 		activatedState = statesArray[activeState];
 		debugActiveState.text = activeState;

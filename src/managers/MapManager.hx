@@ -7,6 +7,7 @@ import pixi.core.math.Point;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
 import utils.Misc;
+import utils.TilePoint;
 
 /**
  * ...
@@ -23,8 +24,9 @@ class MapManager{
 
 	public function new() {
 		activeMap = new GameMap();
-		maps.set("testMapZig", new GameMap("testMapZig"));
-		maps.set("TestingMap", new GameMap("TestingMap"));
+		//maps.set("testMapZig", new GameMap("testMapZig"));
+		//maps.set("TestingMap", new GameMap("TestingMap"));
+		maps.set("DiamondMap", new GameMap("DiamondMap"));
 	}
 	
 	
@@ -68,8 +70,8 @@ class MapManager{
 	}
 	
 	private function generateTile(x:Int, y:Int, newMapRef:GameMap, tileIndex:Int, ?specialHeight:Int = 0){
-		var tileSprite = new Tile(Texture.fromImage(""+newMapRef.tiles[tileIndex]));
-		tileSprite.setTilePosition([x, y]);
+		var tileSprite = new Tile(Texture.fromImage("" + newMapRef.tiles[tileIndex]));
+		tileSprite.setTilePosition(x, y);
 		tileSprite.x += newMapRef.OffsetX;
 		tileSprite.y += newMapRef.OffsetY;
 		tileSprite.setZ(newMapRef.tilesHeight[tileIndex] + specialHeight * 0.001);
@@ -79,12 +81,12 @@ class MapManager{
 	
 	
 	public static function displayDebugColliMap (nodes:Array<Array<Int>>):Void {
-		for(y in Reflect.fields(nodes)){
-			for(x in Reflect.fields(untyped nodes[x])){
-				if (untyped nodes[y][x] < 2)
-					Misc.placeTilePointer([[cast x,cast y]], 0x0000FF);
+		for (row in 0...nodes.length) {
+			for (col in 0...nodes[row].length) {
+				if (nodes[row][col] < 2)
+					Misc.placeTilePointer([new TilePoint(col,row)]);
 				else
-					Misc.placeTilePointer([[cast x,cast y]], 0xFF0000);
+					Misc.placeTilePointer([new TilePoint(col,row)], 0xFF0000);
 			}
 		}
 	}

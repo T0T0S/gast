@@ -17,6 +17,7 @@ import pixi.interaction.EventTarget;
 import states.DebugState;
 import utils.Debug;
 import utils.Misc;
+import utils.TilePoint;
 
 /**
  * ...
@@ -84,7 +85,7 @@ class Player extends Character{
 		var newtilePos = Misc.getTileFromEvent(e);
 
 		if (selectedAction == "move" && !isMoving) {
-			if (!Camera.getInstance().isDragged && !Misc.isSameTile(newtilePos, tilePos)) {
+			if (!Camera.getInstance().isDragged && !newtilePos.equals(tilePos)) {
 				findPathTo(newtilePos,true);
 			}
 		}
@@ -99,21 +100,21 @@ class Player extends Character{
 	private function mapHover(e:EventTarget):Void {
 		if(!allowInput)
 			return;
-		var tileHovered = Misc.getTileFromEvent(e);
+		var tileHovered:TilePoint = Misc.getTileFromEvent(e);
 		hidePoolTiles();
 		hideHoverTile();
 		
-		if (selectedAction == "move" && !isMoving && !Misc.isSameTile(tileHovered, tilePos)) {
+		if (selectedAction == "move" && !isMoving && !tileHovered.equals(tilePos)) {
 			if(FightManager.status == StatusModes.fight)
 				showPathMovement(findPathTo(tileHovered));
 		}
 		else if (attacks.exists(selectedAction) && FightManager.status == StatusModes.fight) {
 			showAttackRange(selectedAction);
-			if(Misc.targetInRange(tileHovered, activeAttackRange))
+			if(Misc.targetInRange(tileHovered, losModule.getLOS()))
 				showHoverTile(tileHovered, 0xFF0000);
 		}
 		
-		if (tileHovered[0] == tilePos[0] && tileHovered[1] == tilePos[1])
+		if (tileHovered.equals(tilePos))
 		{
 			mouseHovering = true;
 			mouseOverSelf(e);
@@ -124,7 +125,7 @@ class Player extends Character{
 			mouseOutSelf(e);
 		}
 		
-		Debug.log(""+tileHovered);
+		Debug.log(""+tileHovered.toArray());
 	}
 	
 	private function showAttackRange(attackName:String):Void{
@@ -135,10 +136,10 @@ class Player extends Character{
 		super.newTick(tickNumber * 10);
 		HudManager.getInstance().APmeter.text = ""+stats.AP;
 		
-		// DEBUG
-		if(!DebugState.superEnemy.isDead){
-			DebugState.superEnemy.findPathTo(tilePos,true);
-		}
+		//// DEBUG
+		//if(!DebugState.superEnemy.isDead){
+			//DebugState.superEnemy.findPathTo(tilePos,true);
+		//}
 		
 		if (APFlash.parent == null) {
 			DrawManager.addToDisplay(APFlash, HudManager.getInstance().APmeter);
@@ -186,7 +187,7 @@ class Player extends Character{
 			newTile.visible = true;
 			newTile.tint = 0x00FF00;
 			newTile.alpha = 0.5;
-			newTile.setTilePosition([i.x, i.y]);
+			newTile.setTilePosition(i.x, i.y);
 			pathPositions.push(newTile);
 			if (newTile.parent == null)
 				if (parent != null)
@@ -194,7 +195,8 @@ class Player extends Character{
 		}
 	}
 	
-	public function showRange(min:Int, max:Int, ?color:Int, ?alpha:Float, ?customRange:Array<Array<Int>>):Void {
+	@:deprecated("redo tile showing !!! important")
+	public function showRange(min:Int, max:Int, ?color:Int, ?alpha:Float, ?customRange:Array<TilePoint>):Void {
 		/*
 		 * attention pour le pathfinding bug <= il calcule pas si on peux arriver aux positions.
 		 * need to use dijkstra algo
@@ -206,14 +208,16 @@ class Player extends Character{
 		if (FightManager.status == StatusModes.normal)
 			return;
 		
-		var arrayIter:Array<Array<Int>> = selectedAction != "move" ? activeAttackRange : Misc.getRangeTileAround(tilePos, min, max);
+		
+		
+		var arrayIter:Array<TilePoint> = selectedAction != "move" ? cast losModule.getLOS() : Misc.getTilesAround(tilePos, min, max);
 		for (i in arrayIter.iterator())
 		{
 			if(!MapManager.getInstance().activeMap.getWalkableAt(i) && CharacterManager.getInstance().findCharacterAtTilePos(i) == null)
 				continue;
 			var newTile:Tile = PoolManager.pullObject("tile"); 
 			newTile.visible = true;
-			newTile.setTilePosition([i[0], i[1]]);
+			newTile.setTilePosition(i.x, i.y);
 			if (newTile.parent == null)
 				if (parent != null)
 					DrawManager.addToDisplay(newTile, parent, untyped 0.5);
@@ -245,11 +249,11 @@ class Player extends Character{
 	
 	
 	
-	public function showHoverTile(tilePos:Array<Int>, newTint:Int = null):Void {
+	public function showHoverTile(tilePos:TilePoint, newTint:Int = null):Void {
 		if (targetTile.parent == null){
 			DrawManager.addToDisplay(targetTile, MapManager.getInstance().activeMap.mapContainer, untyped 0.7);
 		}
-		targetTile.setTilePosition(tilePos);
+		targetTile.setTilePosition(tilePos.x, tilePos.y);
 		targetTile.visible = true;
 		//targetTile.tint = newTint != null ? newTint : 0xFFFFFF;	
 	}
@@ -274,8 +278,8 @@ class Player extends Character{
 		
 		hideEveryTile();
 		
-		if (selectedAction != "move"){
-			generateAttackRange(selectedAction);
+		if (selectedAction != "move") {
+			losModule.setRange(attacks.get(selectedAction).minRange, attacks.get(selectedAction).maxRange);
 			showAttackRange(selectedAction);
 		}
 	}
@@ -285,10 +289,11 @@ class Player extends Character{
 		hidePoolTiles();
 	}
 	
-	override public function setTilePosition(position:Array<Int>):Void {
-		super.setTilePosition(position);
+	override public function setTilePosition(nx:Int, ny:Int):Void {
+		super.setTilePosition(nx, ny);
+		losModule.moveToPoint(tilePos);
+		
 		if (selectedAction != "move"){
-			generateAttackRange(selectedAction);
 			showAttackRange(selectedAction);
 		}
 	}

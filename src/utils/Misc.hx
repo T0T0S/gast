@@ -1,5 +1,11 @@
 package utils;
+
+
+
 import js.Browser;
+import objects.modules.LOSModule.LOSPoint;
+import pixi.core.math.Point;
+import Main;
 import managers.CharacterManager;
 import managers.DrawManager;
 import managers.MapManager;
@@ -9,7 +15,7 @@ import objects.attacks.NormalAttack;
 import objects.attacks.TripleAttack;
 import objects.Camera;
 import objects.Tile;
-import pixi.core.math.Point;
+import pixi.core.math.Point in PixPoint;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
 import pixi.interaction.EventTarget;
@@ -34,18 +40,18 @@ class Misc {
 	}
 	
 	
-	public static function getDistanceBetweenTiles(tile1:Array<Int>, tile2:Array<Int>):Float{
+	public static function getAbsoluteDistanceBetweenTiles(tile1:TilePoint, tile2:TilePoint):Float{
 		var tile1Ab = convertToAbsolutePosition(tile1);
 		var tile2Ab = convertToAbsolutePosition(tile2);
-		return getDistance(tile1Ab[0], tile1Ab[1], tile2Ab[0], tile2Ab[1]);
+		return getDistance(tile1Ab.x, tile1Ab.y, tile2Ab.x, tile2Ab.y);
 	}
 	
 	/**
 	 * Calcule l'angle en radian entre les objets S et T en absolute
 	 * @return angle in radian between S and T 
 	 */
-	public static function angleBetween (s:Array<Float>, t:Array<Float>):Float {
-		return - Math.atan2(t[1] - s[1], t[0] - s[0]);
+	public static function angleBetween (s:Point, t:Point):Float {
+		return - Math.atan2(t.y - s.y, t.x - s.x);
 	}
 	
 	/**
@@ -66,7 +72,7 @@ class Misc {
 				return 3;
 	}
 	
-	public static function getDirectionToPoint(source:Array<Int>, target:Array<Int>):Int{
+	public static function getDirectionToPoint(source:TilePoint, target:TilePoint):Int{
 		return convertAngleToDirection(angleBetweenTiles(source, target));
 	}
 	
@@ -74,7 +80,7 @@ class Misc {
 	 * Calcule l'angle en radian entre les objets from et to en tilePos
 	 * @return angle in radian between from and to 
 	 */
-	public static function angleBetweenTiles(from:Array<Int>,to:Array<Int>):Float{
+	public static function angleBetweenTiles(from:TilePoint,to:TilePoint):Float{
 		return angleBetween(convertToAbsolutePosition(from), convertToAbsolutePosition(to));
 	}
 	
@@ -82,116 +88,65 @@ class Misc {
 	 * convertie une position de tile de grid => en pixel
 	 * @return absolute position in PIXELS of tilePosition
 	 */
-	public static function convertToAbsolutePosition (tilePosition:Array<Int>):Array<Float> {
-		var returnPosition:Array<Float> = [];
-		returnPosition[0] = tilePosition[0] * Main.tileSize[0];
-		if (Math.abs(tilePosition[1] % 2) == 1)
-			returnPosition[0] += Main.tileSize[0] * 0.5;		
-		returnPosition[1] = tilePosition[1] * Main.tileSize[1] * 0.5;
-		return cast returnPosition;
+	public static function convertToAbsolutePosition (tilePosition:TilePoint):Point {
+		return new Point((tilePosition.x -  tilePosition.y) * Main.tileSize.x * 0.5, (tilePosition.x +  tilePosition.y) * Main.tileSize.y * 0.5);
 	}
 	
 	
 	/**
 	 * convertie une position de pixel => en tile
 	 */
-	public static function convertToGridPosition(absoluteX:Float, absoluteY:Float, ?withCamera:Bool):Array<Int> {
-		if (withCamera)
-		{
-			absoluteX += Camera.getInstance().offset[0];
-			absoluteY += Camera.getInstance().offset[1];
-		}
-		
-		var tileSize = Main.tileSize;
-		var halfMousePosX:Float = Math.floor((absoluteX) / (tileSize[0]/2))/2;
-		var halfMousePosY:Float = Math.floor((absoluteY) / (tileSize[1] / 2)) / 2;
-		
-		if (halfMousePosX % 1 != 0)
-			halfMousePosX += 0.5;
-		if (halfMousePosY % 1 != 0)
-			halfMousePosY += 0.5;
-
-		var dx = (absoluteX - halfMousePosX * tileSize[0]) / tileSize[0]*2;
-		var dy = (absoluteY - halfMousePosY * tileSize[1]) / tileSize[1] *2;
-		var SelectedPos:Array<Int> = (Math.abs(dx)+ Math.abs(dy) <= 1) ? cast [halfMousePosX, halfMousePosY] : cast [halfMousePosX + ((dx / Math.abs(dx)) * 0.5), halfMousePosY + ((dy / Math.abs(dy))*0.5)]; 
-		SelectedPos[0] = Math.floor(SelectedPos[0]);
-		SelectedPos[1] *= 2;
-		
-//		trace(SelectedPos);
-		return SelectedPos;
+	public static function convertToGridPosition(absoluteX:Float, absoluteY:Float):TilePoint {
+		return new TilePoint(	Math.floor((absoluteY + absoluteX / 2) / Main.tileSize.y),
+								Math.floor((absoluteY - absoluteX / 2) / Main.tileSize.y));
 	}
 	
 	
-	public static function getRangeTileAround(tilePos:Array<Int>, minRange:Int = 0, maxRange:Int = 10):Array<Array<Int>>
+	public static function getTilesAround(tilePos:TilePoint, minRange:Int = 0, maxRange:Int = 1, mapConstricted:Bool = true ):Array<TilePoint>
 	{	
 		if (minRange == 0 && maxRange == 0)
 			return [tilePos];
-			
-		var ArrayOfPos:Array<Array<Int>> = [];
+		var returnArray:Array<TilePoint> = [];
+		var GridAround:Array<TilePoint> = [];
 		
-		var GridAround:Array<Array<Int>> = [];
-		var iter:IntIterator = new IntIterator(Math.floor(-maxRange * 0.5),Math.floor(2 + maxRange * 0.5));
-		for (i in iter) {
-			var iter2:IntIterator = new IntIterator(- maxRange,1 +maxRange);
-			for (j in iter2) {
-				GridAround.push([tilePos[0] + i, tilePos[1] - j]);
+		var refMap = MapManager.getInstance().activeMap.collisionData;
+		
+		for (i in -maxRange...maxRange+1) {
+			for (j in -maxRange...maxRange+1) {
+				if (mapConstricted)
+				{
+					if(tilePos.x + i >= 0 && tilePos.x + i < refMap[0].length && tilePos.y + j >= 0 && tilePos.y + j < refMap.length)
+						if (!(Math.abs(i) + Math.abs(j) > maxRange) && !(Math.abs(i) + Math.abs(j) < minRange))
+							returnArray.push(new TilePoint(tilePos.x + i, tilePos.y + j));
+				}
+				else
+				{
+					if (!(Math.abs(i) + Math.abs(j) > maxRange) && !(Math.abs(i) + Math.abs(j) < minRange))
+						returnArray.push(new TilePoint(tilePos.x + i, tilePos.y + j));
+				}
 			}
 		}
 		
-		//Misc.placeTilePointer(cast GridAround,0x0000FF);
-		
-		var centerAbsolutePos:Array<Float> = Misc.convertToAbsolutePosition(cast tilePos);
-		
-		if (squareColliMax == null)
-		{
-			squareColliMax = new Tile(Texture.fromImage(""));
-			squareColliMax.anchor.set(0.5, 0.5);
-		}
-		
-		if (squareColliMin == null)
-		{
-			squareColliMin = new Tile(Texture.fromImage(""));
-			squareColliMin.anchor.set(0.5, 0.5);
-		}
-		squareColliMin.width = (minRange -1) * Main.tileSize[0] + 4;
-		squareColliMin.height = (minRange  -1) * Main.tileSize[1] + 4;
-		squareColliMin.x = centerAbsolutePos[0] - 2;
-		squareColliMin.y = centerAbsolutePos[1] - 2;
-			
-		squareColliMax.width = maxRange * Main.tileSize[0] + 4;
-		squareColliMax.height = maxRange * Main.tileSize[1] + 4;
-		squareColliMax.x = centerAbsolutePos[0] - 2;
-		squareColliMax.y = centerAbsolutePos[1] - 2;
-		
-		for (i in GridAround.iterator()) {
-			var absolutePosPoint = Misc.convertToAbsolutePosition(i);
-			if (Misc.colliSquarePoint(squareColliMax, absolutePosPoint))
-				if (!Misc.colliSquarePoint(squareColliMin, absolutePosPoint) || minRange == 0)
-					ArrayOfPos.push(i);
-		}
-		//Misc.placeTilePointer(cast ArrayOfPos,0xFFFF00);
-		//Misc.placeTilePointer(cast [tilePos],0xFF0000);
-		
-		return ArrayOfPos;
+		return returnArray;
 	}
 	
-	public static function colliSquarePoint(obj:Sprite, point:Array<Float>, ?cameraAffected:Bool):Bool {
-		var offset:Array<Float> = cameraAffected ? Camera.getInstance().offset : [0,0];
+	public static function colliSquarePoint(obj:Sprite, point:Point, ?cameraAffected:Bool):Bool {
+		var offset:Point = cameraAffected ? Camera.getInstance().offset : new Point();
 		var target:Point = untyped obj.getGlobalPosition(null);
 		var size:Dynamic = { width:obj.width, height:obj.height };
 		if(obj.parent != null)
 			size = untyped obj.getBounds(null);
 		
 		if (obj.anchor == null)
-			obj.anchor = new Point(0, 0);
+			obj.anchor = new PixPoint(0, 0);
 			
-		if (target.x - (size.width * obj.anchor.x)> point[0] + offset[0])
+		if (target.x - (size.width * obj.anchor.x)> point.x + offset.x)
 			return false;
-		if (target.y - (size.height * obj.anchor.y) > point[1] + offset[1])
+		if (target.y - (size.height * obj.anchor.y) > point.y + offset.y)
 			return false;
-		if (target.x + size.width - (size.width * obj.anchor.x) < point[0] + offset[0])
+		if (target.x + size.width - (size.width * obj.anchor.x) < point.x + offset.x)
 			return false;
-		if (target.y + size.height - (size.height * obj.anchor.y) < point[1] + offset[1])
+		if (target.y + size.height - (size.height * obj.anchor.y) < point.y + offset.y)
 			return false;
 		
 		return true;
@@ -227,210 +182,120 @@ class Misc {
 		return number;
 	}	
 	
-	public static function targetInRange(target:Array<Int>, tilesInRange:Array<Array<Int>>):Bool {
+	public static function targetInRange(target:TilePoint, tilesInRange:Array<LOSPoint>):Bool {
 		for (i in tilesInRange.iterator())
 		{
-			if (i[0] == target[0] && i[1] == target[1]){
-				return true;
-			}
+			if (i.equals(target))
+				return i.isVisible;
 		}
 		return false;
 	}
 	
-	public static function hasLineOfSight(from:Array<Int>, to:Array<Int>, tilesInRange:Array<Array<Int>>, ?precalculatedObstacleList:Array<Array<Array<Array<Float>>>>):Bool
-	{
-		var absoluteFrom:Array<Float> = convertToAbsolutePosition(from);
-		var absoluteTo:Array<Float> = convertToAbsolutePosition(to);
-		
-		// OPTIMISATION !!!
-		
-		var obstacleList:Array<Array<Array<Array<Float>>>>;
-		
-		if (precalculatedObstacleList == null)
-			obstacleList = generateObstacleMap(tilesInRange)
-		else
-			obstacleList = precalculatedObstacleList;
-		
-		for (tileCollision in obstacleList.iterator())
-			for (segment in tileCollision.iterator())
-			{
-				if (isSameTile(convertToGridPosition(segment[0][0],segment[0][1]), to)){
-					if (CharacterManager.getInstance().findCharacterAtTilePos(to) != null)
-						continue;
-				}
-				else if (doLinesIntersect(absoluteFrom, absoluteTo, segment[0], segment[1]))
-					return false;
-			}
-					
-		return true;		
-	}
 	
-	public static function processLOSRange(from:Array<Int>, range:Array<Array<Int>>):Array<Array<Int>>
-	{
-		var obstacleList:Array<Array<Array<Array<Float>>>> = generateObstacleMap(range);
+	
+	//public static function processLOSRange(from:TilePoint, range:Array<TilePoint>):Array<TilePoint>
+	//{
+		//var goodTiles:Array<TilePoint> = [];
+		//for (tile in range)
+		//{
+			//if (hasLineOfSight(from, tile))
+				//goodTiles.push(tile);
+		//}
+		//return goodTiles;
+	//}
+	
+
+	
 		
-		var i:Int = 0;
-		while (i < range.length)
-		{
-			if (!hasLineOfSight(from, range[i], range, obstacleList))
-			{
-				range.splice(i, 1);
-				--i;
-			}
-			++i;
+	public static function getTileLine(p0:TilePoint, p1:TilePoint):Array<TilePoint>
+	{
+		var points:Array<TilePoint> = [];
+		var N:Int = diagonal_distance(p0, p1);
+		for (i in 0...N+1) {
+			var t = N == 0? 0.0 : i / N;
+			points.push(round_point(lerp_point(p0, p1, t)));
 		}
-		
-		return range;
+		return points;
 	}
 	
-	public static function isSameTile(pos1:Array<Int>, pos2:Array<Int>):Bool{
-		return pos1[0] == pos2[0] && pos1[1] == pos2[1];
-	}
+	//total zone = max range² + (max range+1)² - min range² + (min range+1)²
 	
 	
-	private static function generateObstacleMap(range:Array<Array<Int>>):Array<Array<Array<Array<Float>>>>{
-		var obstacleList:Array<Array<Array<Array<Float>>>> = [];
-		for (tilePos in range.iterator())
-			if(MapManager.getInstance().activeMap.getTileAt(tilePos) != null)
-				if (!MapManager.getInstance().activeMap.getLOSAt(tilePos))
-					obstacleList.push(generateTileCollisions(MapManager.getInstance().activeMap.getTileAt(tilePos)));
-				
-		return obstacleList;
-	}
-	
-	private static function generateTileCollisions(tile:Tile):Array<Array<Array<Float>>>
-	{
-		var errorMargin:Int = 1;
-		var returnArray:Array<Array<Array<Float>>> = [];
-		returnArray.push(	[[tile.x, tile.y - errorMargin],
-							[tile.x - Main.tileSize[0] * 0.5 + errorMargin, tile.y - Main.tileSize[1] * 0.5]]); //bottom left
-							
-		returnArray.push(	[[tile.x - Main.tileSize[0] * 0.5 + errorMargin, tile.y - Main.tileSize[1] * 0.5],
-							[tile.x, tile.y - Main.tileSize[1] + errorMargin]]); //top left
-							
-		returnArray.push(	[[tile.x, tile.y - Main.tileSize[1] + errorMargin], 
-							[tile.x + Main.tileSize[0] * 0.5 - errorMargin, tile.y - Main.tileSize[1] * 0.5]]);//top right
-		
-		returnArray.push(	[[tile.x + Main.tileSize[0] * 0.5 - errorMargin, tile.y - Main.tileSize[1] * 0.5],
-							[tile.x, tile.y - errorMargin]]); //bottom right
-							
-		return returnArray;
-	}
-	
-	private static function doLinesIntersect(a1:Array<Float>, a2:Array<Float>, b1:Array<Float>, b2:Array<Float>):Bool {
-		// Fastest method, based on Franklin Antonio's "Faster Line Segment Intersection" topic "in Graphics Gems III" book (http://www.graphicsgems.org/)
-		var ax = a2[0]-a1[0],
-			ay = a2[1]-a1[1],
-			bx = b1[0]-b2[0],
-			by = b1[1]-b2[1],
-			cx = a1[0]-b1[0],
-			cy = a1[1]-b1[1],
-			alphaNumerator = by*cx - bx*cy,
-			commonDenominator = ay * bx - ax * by;
+	//get octant from angle, stop on tile found.
+	@:deprecated("depreciated => use LOSMODULE")
+	public static function hasLineOfSight(p0:TilePoint, p1:TilePoint):Bool {
+		return false;
+		var N:Int = diagonal_distance(p0, p1);
+		var tempPoint:TilePoint;
+		for (i in 0...N+1) {
+			var t = N == 0? 0.0 : i / N;
 			
-		if (commonDenominator > 0){
-			if (alphaNumerator < 0 || alphaNumerator > commonDenominator)
-				return false;
-		} else if (commonDenominator < 0){
-			if (alphaNumerator > 0 || alphaNumerator < commonDenominator)
-				return false;
-		}
-		var betaNumerator = ax*cy - ay*cx;
-		if (commonDenominator > 0){
-			if (betaNumerator < 0 || betaNumerator > commonDenominator)
-				return false;
-		}else if (commonDenominator < 0){
-			if (betaNumerator > 0 || betaNumerator < commonDenominator)
-				return false;
-		}
-		if (commonDenominator == 0){
-			var y3LessY1 = b1[1]-a1[1];
-			var collinearityTestForP3 = a1[0]*(a2[1]-b1[1]) + a2[0]*(y3LessY1) + b1[0]*(a1[1]-a2[1]);   // see http://mathworld.wolfram.com/Collinear.html
-			if (collinearityTestForP3 == 0){
-				if (a1[0] >= b1[0] && a1[0] <= b2[0] || a1[0] <= b1[0] && a1[0] >= b2[0] ||
-					a2[0] >= b1[0] && a2[0] <= b2[0] || a2[0] <= b1[0] && a2[0] >= b2[0] ||
-					b1[0] >= a1[0] && b1[0] <= a2[0] || b1[0] <= a1[0] && b1[0] >= a2[0]){
-					if (a1[1] >= b1[1] && a1[1] <= b2[1] || a1[1] <= b1[1] && a1[1] >= b2[1] ||
-						a2[1] >= b1[1] && a2[1] <= b2[1] || a2[1] <= b1[1] && a2[1] >= b2[1] ||
-						b1[1] >= a1[1] && b1[1] <= a2[1] || b1[1] <= a1[1] && b1[1] >= a2[1]){
-						return true;
-					}
-				}
+			tempPoint = round_point(lerp_point(p0, p1, t));
+			if (p1.equals(tempPoint))
+			{
+				if (!MapManager.getInstance().activeMap.getLOSAt(tempPoint))
+					return CharacterManager.getInstance().findCharacterAtTilePos(tempPoint) != null;
 			}
-			return false;
+			else if (!MapManager.getInstance().activeMap.getLOSAt(tempPoint))
+				return false;
 		}
 		return true;
+    }
+	
+	public static function lerp(start:Float, end:Float, t:Float):Float {
+		t = t > 1 ? 1 : t;
+		t = t < 0 ? 0 : t;
+		return start + t * (end-start);
 	}
 	
-	public static function placeTilePointer (positions:Array<Array<Int>>, ?color:Int, ?absolute:Bool = false):Void {
+	static function lerp_point(p0:TilePoint, p1:TilePoint, t:Float):Point {
+		return new Point(lerp(p0.x, p1.x, t),
+						 lerp(p0.y, p1.y, t));
+	}
+	
+	static function round_point(p:Point):TilePoint {
+		return new TilePoint(Math.round(p.x), Math.round(p.y));
+	}
+	
+	static function diagonal_distance(p0:TilePoint, p1:TilePoint):Int {
+		var dx:Int = p1.x - p0.x, dy:Int = p1.y - p0.y;
+		return cast Math.max(Math.abs(dx), Math.abs(dy));
+	}
+	
+	
+	
+	
+	
+		
+	
+	public static function placeTilePointer (positions:Array<TilePoint>, ?color:Int, ?absolute:Bool = false):Void {
 		for (i in positions.iterator()) {
-			if (!absolute)
-			{
-				var displayX:Float = i[0] * Main.tileSize[0];
-				var displayY:Float = i[1] * Main.tileSize[1] / 2;
-				
-				if (Math.abs(i[1] % 2) == 1)
-					displayX += Main.tileSize[0] * 0.5;
-				
-				displayY += Main.tileSize[1] * 0.5;
-			}
 			var newPointer:Tile = PoolManager.pullObject("pointer");
 			var specialColor = color != null ? color: 0xFFFFFF;
 			if (!absolute)
-				newPointer.setTilePosition(i);
+				newPointer.setTilePosition(i.x, i.y);
 			else
-				newPointer.setAbsolutePosition(i[0], i[1]);
+				newPointer.setAbsolutePosition(i.x, i.y);
 				
+			//newPointer.tint = 0x00FF00;
 			newPointer.tint = specialColor;
 			newPointer.visible = true;
 			newPointer.anchor.set(0.5, 0.5);
-			DrawManager.addToDisplay(newPointer, Main.getInstance().tileCont, 100);
+			DrawManager.addToDisplay(newPointer, MapManager.getInstance().activeMap.mapContainer, 0.2);
 		}
 		
 	}
 	
-	public static function getClosestPosFromDirection(target:Array<Int>, direction:Int):Array<Int>
+	public static function getClosestPosFromDirection(target:TilePoint, direction:Int):TilePoint
 	{
-		var returnPos:Array<Int> = [target[0],target[1]];
-		
-		if (direction == 0)
-		{
-			if (target[1] % 2 == 0){
-				--returnPos[0];
-				++returnPos[1]; 
-			}
-			else
-				++returnPos[1];
-		}
-		else if (direction == 1)
-		{
-			if (target[1] % 2 == 0){
-				--returnPos[0];
-				--returnPos[1]; 
-			}
-			else
-				--returnPos[1];
-		}
-		else if (direction == 2)
-		{
-			if (target[1] % 2 == 0)
-				--returnPos[1];
-			else{
-				++returnPos[0];
-				--returnPos[1];
-			}
-		}
-		else
-		{
-			if (target[1] % 2 == 0)
-				++returnPos[1];
-			else{
-				++returnPos[0];
-				++returnPos[1];
-			}
+		switch direction {
+			case 0: target.y++;
+			case 1: target.x--;
+			case 2: target.y--;
+			case 3: target.x++;
 		}
 		
-		return returnPos;
+		return target;
 	}
 	
 	public static function removeAllPointers ():Void {
@@ -438,8 +303,9 @@ class Misc {
 	}
 	
 	
-	public static function getTileFromEvent(e:EventTarget):Array<Int>
+	public static function getTileFromEvent(e:EventTarget):TilePoint
 	{
-		return  convertToGridPosition(e.data.getLocalPosition(e.target).x, e.data.getLocalPosition(e.target).y);
+		return  convertToGridPosition(e.data.getLocalPosition(e.target).x, e.data.getLocalPosition(e.target).y + Main.tileSize.y);
 	}
 }
+

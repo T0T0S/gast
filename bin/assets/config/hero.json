@@ -56,7 +56,7 @@
 		"strength" 		: 10,
 		"endurance" 	: 10,
 		"APregeneration": 10,
-		"moveSpeed" 	: 180,
+		"moveSpeed" 	: 7,
 		"moveCost"		: 10,
 		"precision" 	: 10,
 		"luck" 			: 10,

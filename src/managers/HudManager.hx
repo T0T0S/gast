@@ -33,14 +33,14 @@ class HudManager {
 	
 	public function generateFightHud():Void {
 		var rightHud:Sprite 	= new HudElement(Texture.fromImage("hud_bottom_right.png"));
-		rightHud.scale.set(Main.screenRatio[0],Main.screenRatio[1]);
+		rightHud.scale.set(Main.screenRatio.x,Main.screenRatio.y);
 		rightHud.anchor.set(1, 1);
 		rightHud.x = Main.getInstance().renderer.width;
 		rightHud.y = Main.getInstance().renderer.height;
 		rightHud.name = "right_bottom";
 		
 		var attackHud:Sprite 	= new HudElement(Texture.fromImage("hud_bottom_center.png"));
-		attackHud.scale.set(Main.screenRatio[0], Main.screenRatio[1]);
+		attackHud.scale.set(Main.screenRatio.x, Main.screenRatio.y);
 		attackHud.anchor.set(1, 1);
 		attackHud.x = rightHud.x - (rightHud.width + 20);
 		attackHud.y = Main.getInstance().renderer.height;
@@ -75,6 +75,7 @@ class HudManager {
 		APText.x = - 342;
 		APText.y = - 175;
 		APmeter = APText;
+		
 		
 		if (fightHud.parent == null)
 			DrawManager.addToDisplay(fightHud, Main.getInstance().hudCont);

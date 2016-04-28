@@ -1,5 +1,5 @@
 {
-	"tileSize": [64,32],
+	"tileSize": {"x":64, "y":32},
 	"camera":{
 		"sensitivity": 1,
 		"minimumMovement": 25

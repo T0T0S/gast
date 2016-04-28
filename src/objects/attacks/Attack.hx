@@ -7,6 +7,7 @@ import pixi.core.graphics.Graphics;
 import pixi.core.text.Text;
 import objects.particle.DmgText;
 import utils.Misc;
+import utils.TilePoint;
 
 /**
  * ...
@@ -21,7 +22,7 @@ class Attack{
 	public var activeFrameData:Int = 0;
 	public var frameElaped:Int = 0;
 	
-	public var targetPosition:Array<Int> = [];
+	public var targetPosition:TilePoint = new TilePoint();
 	public var finished:Bool = false;
 	
 	public var minRange:Int = 0;
@@ -84,7 +85,7 @@ class Attack{
 			maxBulletWidth = bullet.width > maxBulletWidth ? bullet.width : maxBulletWidth;
 		}
 		
-		var distance:Float = Misc.getDistanceBetweenTiles(targetPosition, launcherRef.tilePos);
+		var distance:Float = Misc.getAbsoluteDistanceBetweenTiles(targetPosition, launcherRef.tilePos);
 		var newScale:Float = distance / maxBulletWidth;
 		
 		bullet.scale.x = newScale > 1 ? newScale : 1;
@@ -97,11 +98,11 @@ class Attack{
 			
 		bulletMask.clear();	
 		bulletMask.beginFill(0xFFFFFF, 0);
-		bulletMask.moveTo(Main.tileSize[0] * 0.25, -bullet.height* 0.5);
+		bulletMask.moveTo(Main.tileSize.x * 0.25, -bullet.height* 0.5);
 		bulletMask.lineTo(maxBulletWidth * newScale, -bullet.height* 0.5);
 		bulletMask.lineTo(maxBulletWidth * newScale, bullet.height* 0.5);
-		bulletMask.lineTo(Main.tileSize[0] * 0.25, bullet.height * 0.5);
-		bulletMask.lineTo(Main.tileSize[0] * 0.25, -bullet.height* 0.5);
+		bulletMask.lineTo(Main.tileSize.x * 0.25, bullet.height * 0.5);
+		bulletMask.lineTo(Main.tileSize.x * 0.25, -bullet.height* 0.5);
 		bulletMask.endFill();
 		
 		if(bulletMask.parent == null)
@@ -114,7 +115,7 @@ class Attack{
 		bullet.gotoAndPlay(0);
 	}
 	
-	public function activateAttack(position:Array<Int>):Void{
+	public function activateAttack(position:TilePoint):Void{
 		targetPosition = position;
 		activeFrameData = 0;
 		frameElaped = 0;

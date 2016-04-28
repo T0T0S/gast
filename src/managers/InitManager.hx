@@ -32,6 +32,7 @@ class InitManager
 		/* maps */
 		lConfig.add("testMapZig",ASSETS_PATH + "maps/testMapZig.json");
 		lConfig.add("TestingMap",ASSETS_PATH + "maps/TestingMap.json");
+		lConfig.add("DiamondMap",ASSETS_PATH + "maps/mapDiamondIso.json");
 		
 		
 		lConfig.once("complete", untyped LoadedJson);

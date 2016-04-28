@@ -1,5 +1,6 @@
 package managers;
 import objects.character.Character;
+import utils.TilePoint;
 
 /**
  * ...
@@ -15,29 +16,29 @@ class CharacterManager{
 		
 	}
 	
-	public function findCharacterAtTilePos(position:Array<Int>):Character {
-		if (positions[position[0]] == null)
+	public function findCharacterAtTilePos(position:TilePoint):Character {
+		if (positions[position.x] == null)
 			return null;
-		if (positions[position[0]][position[1]] != null)
-			return managedCharacters.get(positions[position[0]][position[1]]);
+		if (positions[position.x][position.y] != null)
+			return managedCharacters.get(positions[position.x][position.y]);
 		else
 			return null;
 	}
 	
-	public function updateCharacterCoordinatesFromTo(element:Character, newPosition:Array<Int>):Void{
-		if (positions[element.tilePos[0]] == null)
-			positions[element.tilePos[0]] = [];
-		positions[element.tilePos[0]][element.tilePos[1]] = null;
+	public function updateCharacterCoordinatesFromTo(element:Character, nx:Int, ny:Int):Void{
+		if (positions[element.tilePos.x] == null)
+			positions[element.tilePos.x] = [];
+		positions[element.tilePos.x][element.tilePos.y] = null;
 		MapManager.getInstance().activeMap.setColliAt(element.tilePos, false);
 		MapManager.getInstance().activeMap.setLOSAt(element.tilePos, false);
 		
-		if (positions[newPosition[0]] == null)
-			positions[newPosition[0]] = [];
-		positions[newPosition[0]][newPosition[1]] = element.ID;
-		MapManager.getInstance().activeMap.setColliAt(newPosition, true);
-		MapManager.getInstance().activeMap.setLOSAt(newPosition, true);
+		if (positions[nx] == null)
+			positions[nx] = [];
+		positions[nx][ny] = element.ID;
+		MapManager.getInstance().activeMap.setColliAt(new TilePoint(nx, ny), true);
+		MapManager.getInstance().activeMap.setLOSAt(new TilePoint(nx, ny), true);
 		
-		ServerManager.getInstance().onCharacterMove(element.ID, newPosition);
+		ServerManager.getInstance().onCharacterMove(element.ID, nx, ny);
 	}
 	
 	public function addCharacter(element:Character):Void{
@@ -46,7 +47,7 @@ class CharacterManager{
 	
 	public function removeCharacter(element:Character):Void{
 		managedCharacters.remove(element.ID);
-		positions[element.tilePos[0]][element.tilePos[1]] = null;
+		positions[element.tilePos.x][element.tilePos.y] = null;
 		
 		MapManager.getInstance().activeMap.setLOSAt(element.tilePos, false);
 		MapManager.getInstance().activeMap.setColliAt(element.tilePos, false);
