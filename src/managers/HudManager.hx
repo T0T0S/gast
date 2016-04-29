@@ -19,7 +19,7 @@ class HudManager {
 	private static var instance: HudManager;
 	
 	public var attackButtons:Map<String,HudButton> = new Map.Map();
-	public var buttonPosition:Array<HudButton> = [];
+	public var buttonSlot:Array<HudButton> = [];
 	public var HPmeter:Text;
 	public var APmeter:Text;
 	public var APTicker:Sprite;
@@ -92,14 +92,15 @@ class HudManager {
 
 	}
 	
-	public function addActionButton(textureName:String, attackName:String, position:Int):HudButton{
+	public function addActionButton(textureName:String, attackName:String, position:Int = -1):HudButton{
 		position = position == 0 ? 10 : position;
 		var newButton = new HudButton(textureName, attackName);
 		newButton.anchor.set(0.5, 0.5);
 		newButton.x = -695 + 125 * (position -1);
 		newButton.y = -73;
 		attackButtons.set(newButton.actionName, newButton);
-		buttonPosition[position] = newButton;
+		if(position != -1)
+			buttonSlot[position] = newButton;
 		return newButton;
 	}
 	

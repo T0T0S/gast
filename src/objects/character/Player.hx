@@ -8,6 +8,7 @@ import managers.HudManager;
 import managers.MapManager;
 import managers.PoolManager;
 import objects.character.Character;
+import objects.modules.LOSModule.LOSPoint;
 import objects.particle.OSmovieclip;
 import objects.Tile;
 import pixi.core.display.Container;
@@ -35,6 +36,10 @@ class Player extends Character{
 	private var mouseHovering:Bool = false;
 	public var allowInput:Bool = true;
 	
+	
+	private var inputCallBacks:Map<String, EventTarget->TilePoint->Void> = new Map.Map();
+	private var inputHandledNames:Array<String> = ["mousemove", "mouseup"];
+
 	private function new() {
 		super("hero");
 		
@@ -44,8 +49,11 @@ class Player extends Character{
 		targetTile = new Tile(Texture.fromImage("selectedTile.png"));
 		targetTile.visible = false;
 		
-		Main.getInstance().tileCont.on("mousemove", mapHover);
-		Main.getInstance().tileCont.on("mouseup", mapClick);
+		generateInputCallBacks();
+		for (inputName in inputHandledNames.iterator())
+		{
+			Main.getInstance().tileCont.on(inputName, inputHandler);
+		}
 		
 		APFlash = new OSmovieclip([
 			Texture.fromFrame("y_explo_0"),
@@ -60,72 +68,128 @@ class Player extends Character{
 		APFlash.animationSpeed = 0.5;
 	}
 	
-	private function mouseOverSelf(e:EventTarget):Void {
-		if(!allowInput)
-			return;
-		if (selectedAction == "move")
-			if (Options.data.player_showHoverMovement = true) {
-				showRange(1, cast getMaxMovement(), 0x00FF00, 0.5);
-			}
-	}
 	
-	private function mouseOutSelf(e:EventTarget):Void{
-		if(!allowInput)
-			return;
-			
-		if (selectedAction == "move")
-			if (Options.data.player_showHoverMovement = true){
-				hidePoolTiles();
-			}
-	}
 	
-	private function mapClick(e:EventTarget):Void {
-		if(!allowInput)
-			return;
-		var newtilePos = Misc.getTileFromEvent(e);
-
-		if (selectedAction == "move" && !isMoving) {
-			if (!Camera.getInstance().isDragged && !newtilePos.equals(tilePos)) {
-				findPathTo(newtilePos,true);
+	private function generateInputCallBacks ():Void 
+	{
+		var availableStatuses:Array<String> = StatusModes.getConstructors();
+		var tempCallbackName:String = "";
+		for (inputName in inputHandledNames.iterator())
+		{
+			for (status in availableStatuses.iterator())
+			{
+				tempCallbackName = status +"_" + inputName;
+				if (Reflect.getProperty(this, tempCallbackName))
+					inputCallBacks.set(tempCallbackName, Reflect.getProperty(this, tempCallbackName));
+				else
+				{
+					Browser.window.console.warn("InputHandler '"+tempCallbackName+"' was not found.");
+					inputCallBacks.set(tempCallbackName, function (e, t) { } );
+				}
 			}
 		}
-		else if (attacks.exists(selectedAction)) {
-			launchAttack(selectedAction, newtilePos);
-		}
-		hideHoverTile();
-		hidePoolTiles();
-		changeSelectedAction("move");
-	}
-	
-	private function mapHover(e:EventTarget):Void {
-		if(!allowInput)
-			return;
-		var tileHovered:TilePoint = Misc.getTileFromEvent(e);
-		hidePoolTiles();
-		hideHoverTile();
 		
-		if (selectedAction == "move" && !isMoving && !tileHovered.equals(tilePos)) {
-			if(FightManager.status == StatusModes.fight)
-				showPathMovement(findPathTo(tileHovered));
+	}
+	
+	
+	private function normal_mousemove(e:EventTarget, tile:TilePoint):Void
+	{
+	}
+	
+	private function setup_mousemove(e:EventTarget, tile:TilePoint):Void
+	{
+	}
+	
+	private function fight_mousemove(e:EventTarget, tile:TilePoint):Void
+	{
+		if (selectedAction == "move" && !isMoving && !tile.equals(tilePos)) 
+		{
+			showPathMovement(findPathTo(tile));
 		}
-		else if (attacks.exists(selectedAction) && FightManager.status == StatusModes.fight) {
+		else if (attacks.exists(selectedAction)) 
+		{
 			showAttackRange(selectedAction);
-			if(Misc.targetInRange(tileHovered, losModule.getLOS()))
-				showHoverTile(tileHovered, 0xFF0000);
+			if(Misc.targetInRange(tile, losModule.getLOS()))
+				showHoverTile(tile, 0xFF0000);
 		}
 		
-		if (tileHovered.equals(tilePos))
+		if (tile.equals(tilePos))
 		{
 			mouseHovering = true;
-			mouseOverSelf(e);
+			fight_mouseOverSelf(e);
 		}
 		else if (mouseHovering)
 		{
 			mouseHovering = false;
-			mouseOutSelf(e);
+			fight_mouseOutSelf(e);
+		}
+	}
+	
+	private function normal_mouseup(e:EventTarget, tile:TilePoint):Void
+	{
+		changeSelectedAction("move");
+		if (selectedAction == "move") 
+		{
+			if (!Camera.getInstance().isDragged && !tile.equals(tilePos)) 
+				findPathTo(tile,true, true);
+		}
+	}
+	
+	private function setup_mouseup(e:EventTarget, tile:TilePoint):Void
+	{
+	}
+	
+	private function fight_mouseup(e:EventTarget, tile:TilePoint):Void
+	{
+		
+		if (selectedAction == "move" && !isMoving) // force movement to be over before you can move again.
+		{
+			if (!Camera.getInstance().isDragged && !tile.equals(tilePos)) 
+				findPathTo(tile,true);
+		}
+		else if (attacks.exists(selectedAction)) 
+		{
+			launchAttack(selectedAction, tile);
 		}
 		
-		Debug.log(""+tileHovered.toArray());
+		changeSelectedAction("move");
+	}
+	
+	
+	private function inputHandler(e:EventTarget)
+	{
+		if (!allowInput)
+			return;
+
+		hidePoolTiles();
+		hideHoverTile();
+		
+		var newtilePos = Misc.getTileFromEvent(e);
+		Debug.log(""+newtilePos.toArray());
+
+		for (inputType in inputHandledNames.iterator())
+		{
+			if (e.type == inputType)
+			{
+				Reflect.callMethod(this,inputCallBacks.get(FightManager.status +"_"+ inputType), [e, newtilePos]);
+			}
+		}
+	}
+	
+	//custom input handlers (are not called normally)
+	private function fight_mouseOverSelf(e:EventTarget):Void {
+		if (selectedAction == "move")
+			if (Options.data.player_showHoverMovement == true) {
+				showRange(1, cast getMaxMovement(), 0x00FF00, 0.5);
+			}
+	}
+
+	//custom input handlers (are not called normally)
+	private function fight_mouseOutSelf(e:EventTarget):Void{
+		if (selectedAction == "move")
+			if (Options.data.player_showHoverMovement = true){
+				hidePoolTiles();
+			}
 	}
 	
 	private function showAttackRange(attackName:String):Void{
@@ -148,7 +212,7 @@ class Player extends Character{
 		APFlash.gotoAndPlay(0);
 		
 		if (mouseHovering)
-			mouseOverSelf(null);
+			fight_mouseOverSelf(null);
 		
 			
 		lockHudButtons();
@@ -195,7 +259,6 @@ class Player extends Character{
 		}
 	}
 	
-	@:deprecated("redo tile showing !!! important")
 	public function showRange(min:Int, max:Int, ?color:Int, ?alpha:Float, ?customRange:Array<TilePoint>):Void {
 		/*
 		 * attention pour le pathfinding bug <= il calcule pas si on peux arriver aux positions.
@@ -208,13 +271,9 @@ class Player extends Character{
 		if (FightManager.status == StatusModes.normal)
 			return;
 		
-		
-		
-		var arrayIter:Array<TilePoint> = selectedAction != "move" ? cast losModule.getLOS() : Misc.getTilesAround(tilePos, min, max);
+		var arrayIter:Array<TilePoint> = selectedAction != "move" ? losModule.getDisplayLOS() : Misc.getTilesAround(tilePos, min, max);
 		for (i in arrayIter.iterator())
 		{
-			if(!MapManager.getInstance().activeMap.getWalkableAt(i) && CharacterManager.getInstance().findCharacterAtTilePos(i) == null)
-				continue;
 			var newTile:Tile = PoolManager.pullObject("tile"); 
 			newTile.visible = true;
 			newTile.setTilePosition(i.x, i.y);
@@ -274,6 +333,11 @@ class Player extends Character{
 	}
 	
 	override public function changeSelectedAction(newActionName:String):Void {
+		if (FightManager.status != StatusModes.fight)
+		{
+			selectedAction = "move";
+			return;
+		}
 		selectedAction = selectedAction == newActionName ? "move" : newActionName; 
 		
 		hideEveryTile();
@@ -300,8 +364,11 @@ class Player extends Character{
 	
 	override public function Destroy():Void {
 		super.Destroy();
-		Main.getInstance().tileCont.off("mousemove", mapHover);
-		Main.getInstance().tileCont.off("mouseup", mapClick);
+		
+		for (inputName in inputCallBacks.keys())
+		{
+			Main.getInstance().tileCont.off(inputName, untyped  inputCallBacks.get(inputName));
+		}
 	}
 	
 	public static function getInstance():Player{

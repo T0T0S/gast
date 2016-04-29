@@ -161,7 +161,6 @@ class GameMap{
 		});
 		finder.calculate();
 		
-		
 		untyped return path;
 	}
 	

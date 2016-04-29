@@ -1,6 +1,7 @@
 package objects.character;
 import js.Browser;
 import js.Lib;
+import managers.UpdateManager;
 import objects.modules.BehaviorModule;
 import objects.modules.LOSModule;
 import pixi.core.math.Point;
@@ -104,6 +105,7 @@ class Character extends MovieClip{
 	*		NEW	 
 	* ################# */
 	public function new(newName:String) {
+	
 		charaName = newName;
 		config = InitManager.data[untyped newName];
 		super(generateTextures(charaName));
@@ -115,6 +117,7 @@ class Character extends MovieClip{
 		
 		ID = Id.newId();
 		anchor.set(0.5, 1);
+		UpdateManager.getInstance().manage(this);
 		CharacterManager.getInstance().addCharacter(this);
 	}
 	
@@ -201,22 +204,26 @@ class Character extends MovieClip{
 	/*#################
 			UPDATE
 	  #################*/
-	public function _selfUpdate():Void {
+	public function _start()
+	{
+	
+	}
+	  
+	public function _update():Void {
 		manageAnim();
 		
-		if (isDead)
+		if (isDead || updateBlocked)
 			return;
 			
-		if (!updateBlocked) {
-		
-			if (FightManager.status != StatusModes.setup){
-				managePathFinding();
-			}
-			if (FightManager.status == StatusModes.fight)
-				fightUpdate();
-			else
-				normalUpdate();
+		if (FightManager.status != StatusModes.setup){
+			managePathFinding();
 		}
+		if (FightManager.status == StatusModes.fight)
+			fight_update();
+		else if(FightManager.status == StatusModes.setup)
+			setup_update();
+		else
+			normal_update();
 	}
 	
 	private function manageAnim():Void {
@@ -269,7 +276,8 @@ class Character extends MovieClip{
 				pathIndex++;
 				
 				tempTimeMovement = 0;
-				useAp(cast stats.moveCost);
+				if(FightManager.status == StatusModes.fight)
+					useAp(cast stats.moveCost);
 				
 				if(pathIndex <= activePath.length -1){					
 					if (!MapManager.getInstance().activeMap.getWalkableAt(activePath[pathIndex]))
@@ -311,12 +319,22 @@ class Character extends MovieClip{
 		positionTile.setTilePosition(nx, ny);
 	}
 	
-	public function normalUpdate():Void{
+	public function normal_update():Void
+	{
+		stats.AP = stats.MaxAP;
+	}
+	
+	public function setup_update():Void{
 	
 	}
 	
-	public function fightUpdate():Void{
+	public function fight_update():Void{
 	
+	}
+	
+	public function setupUpdate():Void
+	{
+		stats.AP = stats.MaxAP;
 	}
 	
 	public function onCharacterMove(characterId:String, ?nx:Int, ?ny:Int ):Void
@@ -325,9 +343,14 @@ class Character extends MovieClip{
 			losModule.forceRefresh();
 	}
 	
-	public function setAnimation(animName:String):Void {
+	public function setAnimation(animName:String, resetFrames:Bool = true):Void {
+		var lastAnimPreciseFrame:Float = 0;
+		if (!resetFrames)
+			lastAnimPreciseFrame = activeAnimation.preciseAnimFrame;
+			
 		if(activeAnimation != null)
 			activeAnimation.resetAnim(directionFacing);
+			
 		if (!animations.exists(animName)){
 			Browser.window.console.warn("anim not found: "+animName);
 			return;
@@ -335,13 +358,16 @@ class Character extends MovieClip{
 		activeAnimation = animations.get(animName);
 		activeAnimation.resetAnim(directionFacing);
 		animationSpeed = activeAnimation.fps / 60;
+		if (!resetFrames)
+			activeAnimation.setPreciseAnimFrame(lastAnimPreciseFrame);
 		
-		gotoAndStop(activeAnimation.getFrames(directionFacing)[0]);
+		gotoAndStop(activeAnimation.getNextFrameIndex());
 	}
 	
-	public function setDirection(newDir:Int):Void{
+	
+	public function setDirection(newDir:Int):Void {
 		directionFacing = newDir % 4;
-		setAnimation(activeAnimation.name);
+		setAnimation(activeAnimation.name, false);
 	}
 	
 	
@@ -394,12 +420,11 @@ class Character extends MovieClip{
 		return new Point((tilePos.x -  tilePos.y) * Main.tileSize.x * 0.5, (tilePos.x +  tilePos.y) * Main.tileSize.y * 0.5);
 	}
 	
-	public function findPathTo(target:TilePoint, follow:Bool = false):Array<TilePoint>
+	public function findPathTo(target:TilePoint, follow:Bool = false, unlimited:Bool = false):Array<TilePoint>
 	{
-		var maxDistance:Float = getMaxMovement() * Main.tileSize.x * 0.5 + getMaxMovement() * Main.tileSize.y * 0.25;
-		var absoluteTarget:Point = Misc.convertToAbsolutePosition(target);
-		
-		if (Misc.getDistance(x, y, absoluteTarget.x, absoluteTarget.y) > maxDistance)//target is too far anyway.
+		if (target.equals(tilePos))
+			return [];
+		if (target.getDistance(tilePos) > getMaxMovement() && !unlimited)//target is too far anyway.
 			return [];
 		
 		if (target.equals(Player.getInstance().tilePos))
@@ -408,17 +433,23 @@ class Character extends MovieClip{
 		}
 		
 		MapManager.getInstance().activeMap.setColliAt(tilePos, false);
-		var returnPath = MapManager.getInstance().activeMap.findPath(getPathFindingPoint(), target, Misc.getTilesAround(tilePos,0, cast getMaxMovement()));
+		var returnPath;
+		if(unlimited)
+			returnPath = MapManager.getInstance().activeMap.findPath(getPathFindingPoint(), target, Misc.getTilesAround(tilePos, 0, 
+			cast Math.max(	MapManager.getInstance().activeMap.collisionData.length, 
+							MapManager.getInstance().activeMap.collisionData[0].length)));
+		else
+			returnPath = MapManager.getInstance().activeMap.findPath(getPathFindingPoint(), target, Misc.getTilesAround(tilePos,0, cast getMaxMovement()));
 		MapManager.getInstance().activeMap.setColliAt(tilePos, true);
 		
 		if (follow)
-			followPath(returnPath);
+			followPath(returnPath, unlimited);
 			
 		return returnPath;
 	}
 	
-	public function followPath(path:Array<TilePoint>):Void{
-		if (path.length == 0 || path.length-1 > getMaxMovement())
+	public function followPath(path:Array<TilePoint>, unlimited:Bool = false):Void{
+		if (path.length == 0 || (path.length-1 > getMaxMovement() && !unlimited))
 			return;
 		activePath = path;
 		isMoving = true;
@@ -476,7 +507,12 @@ class Character extends MovieClip{
 		return Math.floor(stats.AP / stats.moveCost);
 	}
 	
-	public function changeSelectedAction(newActionName:String):Void{
+	public function changeSelectedAction(newActionName:String):Void {
+		if (FightManager.status != StatusModes.fight)
+		{
+			selectedAction = "move";
+			return;
+		}
 		selectedAction = selectedAction == newActionName ? "move" : newActionName; 
 		
 		if (selectedAction != "move") {
@@ -490,6 +526,7 @@ class Character extends MovieClip{
 	public function Destroy():Void {
 		CharacterManager.getInstance().removeCharacter(this);
 		DrawManager.removeFromDisplay(this);
+		UpdateManager.getInstance().remove(this);
 		if (Camera.targetToFollow == this)
 			Camera.targetToFollow = null;
 			

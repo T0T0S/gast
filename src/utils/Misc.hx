@@ -107,7 +107,6 @@ class Misc {
 		if (minRange == 0 && maxRange == 0)
 			return [tilePos];
 		var returnArray:Array<TilePoint> = [];
-		var GridAround:Array<TilePoint> = [];
 		
 		var refMap = MapManager.getInstance().activeMap.collisionData;
 		
@@ -220,28 +219,6 @@ class Misc {
 	
 	//total zone = max range² + (max range+1)² - min range² + (min range+1)²
 	
-	
-	//get octant from angle, stop on tile found.
-	@:deprecated("depreciated => use LOSMODULE")
-	public static function hasLineOfSight(p0:TilePoint, p1:TilePoint):Bool {
-		return false;
-		var N:Int = diagonal_distance(p0, p1);
-		var tempPoint:TilePoint;
-		for (i in 0...N+1) {
-			var t = N == 0? 0.0 : i / N;
-			
-			tempPoint = round_point(lerp_point(p0, p1, t));
-			if (p1.equals(tempPoint))
-			{
-				if (!MapManager.getInstance().activeMap.getLOSAt(tempPoint))
-					return CharacterManager.getInstance().findCharacterAtTilePos(tempPoint) != null;
-			}
-			else if (!MapManager.getInstance().activeMap.getLOSAt(tempPoint))
-				return false;
-		}
-		return true;
-    }
-	
 	public static function lerp(start:Float, end:Float, t:Float):Float {
 		t = t > 1 ? 1 : t;
 		t = t < 0 ? 0 : t;
@@ -261,12 +238,6 @@ class Misc {
 		var dx:Int = p1.x - p0.x, dy:Int = p1.y - p0.y;
 		return cast Math.max(Math.abs(dx), Math.abs(dy));
 	}
-	
-	
-	
-	
-	
-		
 	
 	public static function placeTilePointer (positions:Array<TilePoint>, ?color:Int, ?absolute:Bool = false):Void {
 		for (i in positions.iterator()) {

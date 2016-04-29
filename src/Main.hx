@@ -2,6 +2,8 @@ package ;
 
 import js.Browser;
 import js.html.Event;
+import js.html.EventListener;
+import js.html.EventTarget;
 import js.html.Font;
 import js.html.KeyboardEvent;
 import managers.CharacterManager;
@@ -15,6 +17,7 @@ import managers.PoolManager;
 import managers.ServerManager;
 import managers.StateManager;
 import managers.TimeManager;
+import managers.UpdateManager;
 import objects.Camera;
 import objects.Options;
 import pixi.core.display.Container;
@@ -45,6 +48,7 @@ class Main
 	private var poolManager:PoolManager;
 	private var fightManager:FightManager;
 	private var serverManager:ServerManager;
+	private var updateManager:UpdateManager;
 	
 	
 	public static var camera:Camera;
@@ -129,6 +133,8 @@ class Main
 		Browser.window.addEventListener("keydown", keyDownListener);
 		Browser.window.addEventListener("keyup", keyUpListener);
 		
+		Browser.window.addEventListener('contextmenu', rightClickListener, false);
+		
 		
 		var font = new Font();
 		font.onload = function() { Browser.window.requestAnimationFrame(cast InitManager.getInstance); };
@@ -158,7 +164,9 @@ class Main
 		fightManager = FightManager.getInstance();
 		stateManager = StateManager.getInstance();
 		serverManager = ServerManager.getInstance();
-		
+		updateManager = UpdateManager.getInstance();
+
+
 		Browser.window.addEventListener("resize", resize);
 		Browser.window.requestAnimationFrame(cast Update);
 	}
@@ -182,6 +190,7 @@ class Main
 		characterManager.Update();
 		camera.Update();
 		stateManager.Update();
+		updateManager._update();
 	}
 	
 	public function Render():Void {
@@ -191,16 +200,16 @@ class Main
 	
 	
 	
-	public function keyDownListener (e:KeyboardEvent):Void
+	private function keyDownListener (e:KeyboardEvent):Void
 	{
-		if (String.fromCharCode(e.keyCode) == "A" && e.altKey) {
+		if (e.keyCode == Keycodes.A && e.altKey) {
 			GAMESTOPPED = !GAMESTOPPED;
 		}
 		if (keysDown.indexOf(e.keyCode) != -1)
 			return;
 		keysDown.push(e.keyCode);
 		
-		if (e.keyCode == 49 && e.shiftKey){
+		if (e.keyCode == Keycodes.One && e.shiftKey){
 			Options.getInstance().setOption("alphaCharacter", !Options.getInstance().getOption("alphaCharacter"));
 			for (character in CharacterManager.getInstance().managedCharacters.iterator())
 			{
@@ -212,65 +221,103 @@ class Main
 
 		if (FightManager.status == StatusModes.fight)
 		{
-			if (e.keyCode >= 48 && e.keyCode < 58)
+			if (e.keyCode >= Keycodes.Zero && e.keyCode <= Keycodes.Nine)
 			{
 				var attackIndex = e.keyCode - 48;
 				attackIndex = attackIndex == 0 ? 10 : attackIndex;
 				
-				if (HudManager.getInstance().buttonPosition[attackIndex] != null){
-					HudManager.getInstance().buttonPosition[attackIndex].emit("mousedown");
-					HudManager.getInstance().buttonPosition[attackIndex].emit("mouseup");
-					HudManager.getInstance().buttonPosition[attackIndex].emit("mouseout");
-				}
+				if (HudManager.getInstance().buttonSlot[attackIndex] != null)
+					HudManager.getInstance().buttonSlot[attackIndex].Action();
 			}
 		}
 	}
 	
-	public function keyUpListener (e:KeyboardEvent):Void
+	private function keyUpListener (e:KeyboardEvent):Void
 	{
 		keysDown.splice(keysDown.indexOf(e.keyCode) , 1);
 	}
 	
-	
+	private function rightClickListener(e:KeyboardEvent)
+	{
+		if (e.which != Keycodes.Right_clic)
+			return true;
+			
+		e.preventDefault();
+		
+		/*
+		 * MENU CONTEXTUEL !
+		 * */
 
+		return false;
+	}
 	
 	public function destroy (): Void {
 		instance = null;
 	}
+
+	public static var Keycodes:Keycode = {
+		Right_clic: 3, Backspace : 8, Tab : 9, Enter : 13, Shift : 16, Ctrl : 17, Alt : 18, Caps_lock : 20, Esc : 27, Space : 32, Page_up : 33, Page_down : 34, End : 35, Home : 36, Left : 37, 
+		Up : 38, Right : 39, Down : 40, Insert : 45, Delete : 46, Command : 91, Numpad_star : 106, Numpad_plus : 107, Numpad_minus : 109, Numpad_dot : 110, Numpad_slash : 111,
+		A : 65, B : 66, C : 67, D : 68, E : 69, F : 70, G : 71, H : 72, I : 73, J : 74, K : 75, L : 76, M : 77, N : 78, O : 79, P : 80, Q : 81, R : 82, S : 83, T : 84, U : 85,
+		V : 86, W : 87, X : 88, Y : 89, Z : 90, Zero : 48, One : 49, Two : 50, Three : 51, Four : 52, Five : 53, Six : 54, Seven : 55, Eight : 56, Nine : 57
+	}
+
+
 	
 }
+
+typedef Keycode = { 
+	Right_clic: Int, Backspace : Int, Tab : Int, Enter : Int, Shift : Int, Ctrl : Int, Alt : Int, Caps_lock : Int, Esc : Int, Space : Int, Page_up : Int, Page_down : Int, End : Int,
+	Home : Int, Left : Int, Up : Int, Right : Int, Down : Int, Insert : Int, Delete : Int, Command : Int, Numpad_star : Int, Numpad_plus : Int, Numpad_minus : Int,
+	Numpad_dot : Int, Numpad_slash : Int, A : Int, B : Int, C : Int, D : Int, E : Int, F : Int, G : Int, H : Int, I : Int, J : Int, K : Int, L : Int, M : Int, N : Int,
+	O : Int, P : Int, Q : Int, R : Int, S : Int, T : Int, U : Int, V : Int, W : Int, X : Int, Y : Int, Z : Int, Zero : Int, One : Int, Two : Int, Three : Int, 
+	Four : Int, Five : Int, Six : Int, Seven : Int, Eight : Int, Nine : Int
+}
+
+
+
 
 /*
  *	 TODO: 
  * 	event player move
  * 
- * 	Input manager
- * 	Button.hx => peux être bind a une touche (window.onkeydown listener)
- * 	tenter de faire comme Unity 
- * 	if(Button.isClicked())
-	{
-		do you shit !
-	}
-	
+ * 
  * 	server nodejs  !!!
  * 
- * 	passer en iso diamond !
- * 	integrer le joueur <=== 
  * 
  *   IA ENEMY ZOMBIE
  * 		1 - rush player
  * 	 	2 - attack cac
  * 		3 - attack ranged
  * 	
- * 	new map survival
- * 	mode survival
- * 
  * 	mode normal vs mode fight
- * 	
- * add 2D vector support
  * 
- * sortir des fonctions de miscs
+ * normal mode => menu contextuel (right clic)
  * 
+ * intégrer custom loader cool (folio)
+ * 
+ * run anim.
+ * 
+ * ###############
+ * 		PRIO
+ * ###############
+ * flow de jeu: 
+ *	3 groupes de monstres sur la map
+ *	clic sur un groupe => launch fight
+ * 		=> remove group from map enemy groups
+ * 		=> Map generator -> géré les cases de spawn dans tiled.
+ *  	=> phase de setup (mob en random sur les cases accessibles)
+ * 		=> after 1 min or after all ready
+ * 
+ * start fight
+ * 
+ * upon finish 
+ * popup victory / loss
+ * 		return mode normal 
+ * 			=> spawn still alive groups
+ * 
+ * map global timer 
+ * 		=> respawn different group after X seconds 
  * 
  **/
 

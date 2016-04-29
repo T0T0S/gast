@@ -1,6 +1,7 @@
 package objects.modules;
 import js.Browser;
 import js.html.KeyboardEvent;
+import managers.CharacterManager;
 import managers.MapManager;
 import states.DiamondTestState;
 import utils.Misc;
@@ -35,22 +36,22 @@ class LOSModule{
 		return activeLOSRange;
 	}
 	
-	public function getDisplayLOS()
+	public function getDisplayLOS():Array<TilePoint>
 	{
 		var tempArray:Array<LOSPoint> = getLOS();
 		var tileIndex:Int = 0;
 		
-		while(tileIndex < activeLOSRange.length)
+		while(tileIndex < tempArray.length)
 		{
-			if(!activeLOSRange[tileIndex].isVisible)
+			if(!tempArray[tileIndex].isVisible)
 			{
-				activeLOSRange.splice(tileIndex, 1);
+				tempArray.splice(tileIndex, 1);
 				tileIndex--;
 			}
 			tileIndex++;
 		}
 		
-		return tempArray;
+		return cast tempArray;
 	}
 	
 	public function HasLOS(target:TilePoint):Bool
@@ -91,6 +92,7 @@ class LOSModule{
 		{
 			if(tile.getDistance(centerPos) < minRange) tile.isVisible =  false;
 			if(tile.isWall) tile.isVisible =  false;
+			if(tile.isTarget) tile.isVisible =  true;
 		}
 		
 		if (minRange == 0)
@@ -106,9 +108,11 @@ class LOSModule{
 		for (tile in activeLOSRange.iterator())
 		{
 			tile.isWall = true;
-			if(mapLOSRef[tile.y] != null)
+			if (mapLOSRef[tile.y] != null)
+			{
 				tile.isWall = mapLOSRef[tile.y][tile.x] != 0;
-			
+				tile.isTarget = tile.isWall && CharacterManager.getInstance().findCharacterAtTilePos(tile) != null;
+			}
 		}
 		isFresh = true;
 	}
@@ -301,8 +305,9 @@ private class Shadow
 
 class LOSPoint extends TilePoint
 {
-	public var isVisible:Bool = true;
+	public var isVisible:Bool = false;
 	public var isWall:Bool = false;
+	public var isTarget:Bool = false;
 		
 	public function new(?nx:Int = 0, ?ny:Int = 0)
 	{

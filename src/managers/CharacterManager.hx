@@ -58,11 +58,11 @@ class CharacterManager{
 	}
 	
 	public function Update():Void{
-		for (i in managedCharacters.iterator()) {
-			if (i == null)
-				continue;
-			i._selfUpdate();
-		}
+		//for (i in managedCharacters.iterator()) {
+			//if (i == null)
+				//continue;
+			//i._selfUpdate();
+		//}
 	}
 	
 	public function switchState():Void{

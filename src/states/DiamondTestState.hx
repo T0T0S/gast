@@ -60,7 +60,7 @@ class DiamondTestState extends State{
 		DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer, 1);
 		targetsID.push(victim.ID);
 		
-		FightManager.getInstance().startSetup(targetsID);
+		//FightManager.getInstance().startSetup(targetsID);
 	}
 }
 

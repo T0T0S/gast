@@ -16,7 +16,7 @@ class Animation{
 	
 	private var activeFrame:Float = 0;
 	public var finished:Bool = false;
-	
+	public var preciseAnimFrame:Float = 0;
 	
 	public function new(newName:String, newData:Dynamic, ?endCallback) {
 		name = newName;
@@ -40,11 +40,18 @@ class Animation{
 		}
 		else
 			activeFrame += 1 * (fps / 60);
-	
+		
+		preciseAnimFrame = activeFrame - data[direction][0];
 		return Math.floor(activeFrame);
 	}
 	
-	public function resetAnim(newDir:Int):Void { activeFrame = data[newDir][0]; finished = false; }
+	public function resetAnim(newDir:Int):Void { activeFrame = getFrames(newDir)[0]; finished = false; }
+	
+	public function setPreciseAnimFrame(newPreciseFrame:Float)
+	{
+		preciseAnimFrame = newPreciseFrame;
+		activeFrame = data[direction][0] + preciseAnimFrame;
+	}
 	
 	public function getLastIndex():Int {
 		if(data[direction][1] != null)

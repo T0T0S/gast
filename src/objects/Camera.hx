@@ -1,5 +1,6 @@
 package objects;
 import js.Browser;
+import managers.HudManager;
 import pixi.core.math.Point;
 import managers.InitManager;
 import managers.MapManager;
@@ -131,7 +132,7 @@ class Camera{
 	
 	private function constrainCam():Void{
 		offset.x = Misc.clamp(offset.x, - mapSize.width * 0.5, mapSize.width * 0.5 - size.x);
-		offset.y = Misc.clamp(offset.y, - mapSize.height * 0.5 + size.y * 0.5,mapSize.height * 0.5 + Main.tileSize.y * 1.5 - size.y * 0.5);
+		offset.y = Misc.clamp(offset.y, - mapSize.height * 0.5 + size.y * 0.5,mapSize.height * 0.5 - Main.tileSize.y * 1.5 + Main.getInstance().hudCont.height);
 	}
 	
 	public function clampCam():Void { clampedCam = true; }
