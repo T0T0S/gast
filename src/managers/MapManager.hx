@@ -1,7 +1,9 @@
 package managers;
 import js.Browser;
 import js.Error;
+import objects.character.BaseEnemy;
 import objects.GameMap;
+import objects.modules.LOSModule.LOSPoint;
 import objects.Tile;
 import pixi.core.math.Point;
 import pixi.core.sprites.Sprite;
@@ -94,8 +96,59 @@ class MapManager{
 	public function setActiveMap(newMap:GameMap):Void{
 		activeMap = newMap;
 		Main.camera.updateMapSize(activeMap);
-	};
+	}
 	
+	public function getRandomPointOnMap(?condition:LOSPoint->Bool):TilePoint
+	{
+		var tempPoint:LOSPoint = new LOSPoint( Math.floor(Math.random() * (activeMap.size.x -1)), Math.floor(Math.random() * (activeMap.size.y -1)));
+		tempPoint.isWall = activeMap.getLOSAt(tempPoint);
+		if(condition != null)
+			if (!condition(tempPoint))
+				return getRandomPointOnMap(condition);
+			
+		return tempPoint;
+
+	}
+	
+
+	public function placeEnemyGroupRamdom(enemiesID:Array<String>, range:Int):Void
+	{
+		var tempEnemies = enemiesID.copy();
+		placeEnemyGroupRamdomInternal(enemiesID, range);
+		
+		activeMap.addEnemyGroup(tempEnemies);
+	}
+	
+	private function placeEnemyGroupRamdomInternal(enemiesID:Array<String>, range:Int, ?__INTERNAL_LOOPS__:Int = 0):Void
+	{
+		__INTERNAL_LOOPS__++;
+		if (__INTERNAL_LOOPS__ > 5)
+		{
+			Browser.window.console.warn("ENEMY SPAWN FAILED ! Too many tries!");
+			return null;
+		}
+	
+		var rangeSpawn:Array<TilePoint> = Misc.getTilesAround(getRandomPointOnMap(), 0, range, true, true);
+
+		if (rangeSpawn.length < enemiesID.length) // reset if not enough space
+			return placeEnemyGroupRamdomInternal(enemiesID, range, __INTERNAL_LOOPS__);
+
+		var tempPos:TilePoint;
+		
+		while (enemiesID.length > 0)
+		{
+			tempPos = rangeSpawn.splice(Math.floor(Math.random() * rangeSpawn.length), 1)[0];
+			CharacterManager.getInstance().findCharacterById(enemiesID[0]).setTilePosition(tempPos.x, tempPos.y);
+			
+			enemiesID.shift();
+			//rangeSpawn.splice(rangeSpawn.indexOf(tempPos), 1);
+		}
+	}
+	
+	@:deprecated("NOT YET IMPLEMENTED !")
+	public function spawnEnemyGroupPrecise(position:TilePoint, range:Array<TilePoint>)
+	{
+	}
 	
 	public function switchState():Void {
 		activeMap.hideMap(true);

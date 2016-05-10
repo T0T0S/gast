@@ -107,9 +107,15 @@ class Main
 		fullStage.addChildAt(hudCont,2);
 		fullStage.addChildAt(effectCont, 3);
 		
+		
+		
 		if (DEBUGMODE) {
 			fullStage.addChildAt(debugCont, 4);
+			StateManager.indexContainerToPreserve.push(fullStage.getChildIndex(debugCont));
 		}
+		
+		
+		StateManager.indexContainerToPreserve.push(fullStage.getChildIndex(effectCont));
 		
 		debugCont.name = "debugCont";
 		
@@ -165,6 +171,7 @@ class Main
 		stateManager = StateManager.getInstance();
 		serverManager = ServerManager.getInstance();
 		updateManager = UpdateManager.getInstance();
+
 
 
 		Browser.window.addEventListener("resize", resize);
@@ -278,10 +285,6 @@ typedef Keycode = {
 
 
 /*
- *	 TODO: 
- * 	event player move
- * 
- * 
  * 	server nodejs  !!!
  * 
  * 
@@ -290,35 +293,57 @@ typedef Keycode = {
  * 	 	2 - attack cac
  * 		3 - attack ranged
  * 	
- * 	mode normal vs mode fight
- * 
  * normal mode => menu contextuel (right clic)
  * 
+ * ######
  * intégrer custom loader cool (folio)
+ * ######
  * 
  * run anim.
+ * 
+ * 
+ * NEED MAP DRAG AND DROP FOR MORE PRECISION IN MOVEMENT!
+ * 
  * 
  * ###############
  * 		PRIO
  * ###############
  * flow de jeu: 
- *	3 groupes de monstres sur la map
  *	clic sur un groupe => launch fight
  * 		=> remove group from map enemy groups
  * 		=> Map generator -> géré les cases de spawn dans tiled.
  *  	=> phase de setup (mob en random sur les cases accessibles)
  * 		=> after 1 min or after all ready
  * 
- * start fight
  * 
- * upon finish 
- * popup victory / loss
- * 		return mode normal 
- * 			=> spawn still alive groups
  * 
- * map global timer 
- * 		=> respawn different group after X seconds 
+ * ##################
+ * 	 tache en cours
+ * ##################
+ *  spawn random de plusieurs mobs sur la carte en 1 groupe. OKAY !
+ * 	
+ * clic sur un groupe => launch fight --
+ *  	=> keep groups in map data --
+ * 		=> allow same tile movement if same tile => launch fight --
+ * 		=> start fight with FightManager --
+ * 		=> destroy toute les characters sur la map sauf ceux qui sont dans le combat. --
+ * 		=> (FAIRE UN NOUVEAU LAYER SETUP SPAWN) --
+ * 		=> Faire pop les alliés sur les cases bleu --
+ * 		=> Les enemys sur les rouges. -- 
+ * 		=> montrer les cases au setup --
+ * 		=> Lancer le combat après 30 secs --
+ * 		=> bouton pour préparer le combat, --
+ * 		=> si tout le monde est près avant les 30 secondes --
+ * 		=> lancer le combat -- 
+ * 		=> tout les mobs sont automatiquement ready --
+ * 		=> onFight won or loss --
+ * 		=> Popup de victoire ou défaite <<<<===== to do secondary ################
+ * 		=> fonction getCharactersOnMap <<<<==== to do
+ * 			=> respawn tout ce beau monde. <= penser aux mecs morts <<<<===== to do
+ * 			=> fonction de respawn avec des charactéristiques précises (équipement, nom, stats)... <<<<==== to do
  * 
+ * 
+ * 	MAKE BUTTON BIND TO KEYBOARD POSSIBLE !
  **/
 
 

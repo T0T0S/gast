@@ -7,7 +7,12 @@ import js.Error;
  * @author ToTos
  */
 class BehaviorModule{
-	
+	/*
+	 * ######################
+	 * WORK IN PROGRESS 
+	 * NO YET USED !
+	 * ######################
+	 * */
 	private var behaviors:Map<String, Void->Void> = new Map.Map();
 	
 	private var activeBehavior:String = "stop";

@@ -26,8 +26,11 @@ class UpdateManager{
 			{
 				return remove(element);
 			}
-			if(element._update != null)
-				element._update();
+			if (element._update != null)
+			{
+				if (element.isActive)
+					element._update();
+			}
 			else
 			{
 				trace("element doesn't have an update method, removing");

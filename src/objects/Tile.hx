@@ -39,7 +39,7 @@ class Tile extends Sprite{
 	
 	public function setZ(newZ:Float):Void{
 		z = newZ;
-		depth = x * 0.1 + y + z * 0.01;
+		depth = z != 0 ? y + z : y - 100;
 	}
 
 	public function getAbsolutePosition ():Point {

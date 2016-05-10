@@ -1,4 +1,5 @@
 package objects;
+import objects.character.Character;
 
 /**
  * ...
@@ -9,7 +10,7 @@ class Animation{
 	private var data:Array<Array<Int>>;
 	public var name:String;
 	private var loop:Bool;
-	private var callback:Dynamic = function(){};
+	private var callback:Void->Void = function(){};
 	public var fps:Int;
 	
 	private var direction:Int = 0;
@@ -18,11 +19,12 @@ class Animation{
 	public var finished:Bool = false;
 	public var preciseAnimFrame:Float = 0;
 	
-	public function new(newName:String, newData:Dynamic, ?endCallback) {
+	public function new(newName:String, newData:Dynamic, ?endCallback:Void->Void) {
 		name = newName;
 		loop = newData.loop;
 		data = newData.frameData;
 		fps = newData.fps;
+		callback = endCallback == null ? callback : endCallback;
 	}
 	
 	public function getFrames(newDirection:Int):Array<Int> {
@@ -52,6 +54,8 @@ class Animation{
 		preciseAnimFrame = newPreciseFrame;
 		activeFrame = data[direction][0] + preciseAnimFrame;
 	}
+	
+	
 	
 	public function getLastIndex():Int {
 		if(data[direction][1] != null)

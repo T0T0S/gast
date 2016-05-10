@@ -31,7 +31,7 @@
 		"victim_damage0028.png"
 	],
 	"stats":{
-		"health" 		: 200,
+		"maxHealth" 	: 1000,
 		"strength" 		: 2,
 		"endurance" 	: 3,
 		"APregeneration": 10,

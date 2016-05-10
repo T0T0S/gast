@@ -52,7 +52,7 @@
 		"hero_attack_3.png"
 	],
 	"stats":{
-		"health" 		: 100,
+		"maxHealth" 	: 100,
 		"strength" 		: 10,
 		"endurance" 	: 10,
 		"APregeneration": 10,

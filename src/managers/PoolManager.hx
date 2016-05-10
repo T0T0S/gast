@@ -7,6 +7,15 @@ import pixi.core.display.DisplayObject;
 import pixi.core.textures.Texture;
 
 	
+enum PoolType
+{
+	tile;
+	tileWhite;
+	dmgText;
+	pointer;
+	bulletNormal;
+}
+	
 /**
  * ...
  * @author ToTos
@@ -15,29 +24,29 @@ class PoolManager {
 	
 	private static var instance: PoolManager;
 	
-	private static var Pools:Map<String,Array<DisplayObject>> = new Map.Map();
+	private static var Pools:Map<PoolType,Array<DisplayObject>> = new Map.Map();
 	
 	private function new() {
-		Pools.set("tile", []);
-		Pools.set("dmgText", []);
-		Pools.set("pointer", []);
-		Pools.set("bulletNormal", []);
+		for (type in PoolType.createAll())
+		{
+			Pools.set(type, []);
+		}
 	}
 	
 	public static function generatePool():Void {
 		for (pool in Pools.keys())
 		{
-			for (i in 0...10)
+			for (i in 0...100)
 			{
 				Pools.get(pool).push(findClass(pool));
 			}
 		}
 	}
 	
-	public static function pullObject(poolName:String):Dynamic{
+	public static function pullObject(poolName:PoolType):Dynamic{
 		if (!Pools.exists(poolName))
 		{
-			Browser.window.console.warn("Unknown pool: "+poolName);
+			Browser.window.console.warn("Unknown pool: "+poolName.getName());
 			return [];
 		}
 		
@@ -46,7 +55,7 @@ class PoolManager {
 		return Pools.get(poolName)[getUnusedPoolIndex(poolName)];
 	}
 	
-	private static function getUnusedPoolIndex(poolName:String):Int{
+	private static function getUnusedPoolIndex(poolName:PoolType):Int{
 		for (i in Pools.get(poolName).iterator() ){
 			if (!i.visible && i.visible != null)
 				return Pools.get(poolName).indexOf(i);
@@ -55,7 +64,7 @@ class PoolManager {
 		return Pools.get(poolName).length -1;
 	}
 	
-	private static function increasePoolSize(poolName:String, number:Int):Void {
+	private static function increasePoolSize(poolName:PoolType, number:Int):Void {
 		for (i in 0...number) {
 			Pools.get(poolName).push(findClass(poolName));
 			if (Pools.get(poolName)[Pools.get(poolName).length -1] == null)
@@ -63,19 +72,21 @@ class PoolManager {
 		}
 	}
 	
-	private static function findClass(name:String):Dynamic{
+	private static function findClass(name:PoolType):Dynamic{
 		switch name {
-			case "tile": return new Tile(Texture.fromImage("tile.png"));
-			case "dmgText": return new DmgText();
-			case "pointer": return new Tile(Texture.fromImage("debugPointer.png"));
-			case "bulletNormal": return new Bullet([Texture.fromImage("bullet1.png"),Texture.fromImage("bullet2.png"),Texture.fromImage("bullet3.png"),Texture.fromImage("bullet4.png"),Texture.fromImage("bullet5.png")]);
+			case PoolType.tile: return new Tile(Texture.fromImage("tile.png"));
+			case PoolType.tileWhite: return new Tile(Texture.fromImage("tileWhite.png"));
+			case PoolType.dmgText: return new DmgText();
+			case PoolType.pointer: return new Tile(Texture.fromImage("debugPointer.png"));
+			case PoolType.bulletNormal: return new Bullet([Texture.fromImage("bullet1.png"),Texture.fromImage("bullet2.png"),Texture.fromImage("bullet3.png"),Texture.fromImage("bullet4.png"),Texture.fromImage("bullet5.png")]);
 		}
-		trace("class not found in PoolManager: " +name);
+		trace("class not found in PoolManager: " +name.getName());
 
 		return {};
 	}
 	
-	public static function applyFunctionToPool(poolName:String, callback:Dynamic, filter:Dynamic = null ):Void {
+	@:deprecated("usage of applyFunctionToPool must be extremly contained.")
+	public static function applyFunctionToPool(poolName:PoolType, callback:Dynamic, filter:Dynamic = null ):Void {
 		if (filter == null)
 			for (i in Pools.get(poolName).iterator())
 				callback(i);
@@ -85,7 +96,7 @@ class PoolManager {
 					callback(i);
 	}
 	
-	public static function applyFunctionToElement(poolName:String, callback:Dynamic, element:Dynamic ):Void{
+	public static function applyFunctionToElement(poolName:PoolType, callback:Dynamic, element:Dynamic ):Void{
 		if(Pools.get(poolName).indexOf(element) != -1)
 			callback(Pools.get(poolName)[Pools.get(poolName).indexOf(element)]);
 		else 

@@ -27,7 +27,9 @@ class StateManager{
 	public static var debugText:Text = new Text("", { "fill" :"white", "font":"18px Arial" } );
 	
 	public static var loadingState:Bool = false;
-
+	public static var indexContainerToPreserve:Array<Int> = [];
+	
+	
 	/**
 	 * Classe de gestion des états,
 	 * 
@@ -75,9 +77,8 @@ class StateManager{
 		activeState = newState;
 		activatedState = statesArray[activeState];
 		debugActiveState.text = activeState;
-		
 		for (i in Main.getInstance().fullStage.children.iterator()) {
-			if(i.name != "debugCont")
+			if(indexContainerToPreserve.indexOf(Main.getInstance().fullStage.getChildIndex(i)) == -1)
 				cast(i,Container).removeChildren();
 		}
 		

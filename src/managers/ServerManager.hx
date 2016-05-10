@@ -13,10 +13,13 @@ class ServerManager {
 	
 	}
 	
+	//server will send new position to be converted in tilepoint
 	public function onCharacterMove(characterId:String, ?nx:Int, ?ny:Int):Void{
 		for (i in CharacterManager.getInstance().managedCharacters.iterator())
 		{
-			i.onCharacterMove(characterId, nx, ny);
+			if(i == null)
+				continue;
+			i.onCharacterMove(characterId);
 		}
 	}
 	

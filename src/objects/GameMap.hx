@@ -4,6 +4,7 @@ import js.Browser;
 import js.Error;
 import js.JQuery;
 import managers.DrawManager;
+import managers.FightManager;
 import managers.InitManager;
 import managers.MapManager;
 import managers.MouseManager;
@@ -19,14 +20,19 @@ import utils.TilePoint;
  */
 class GameMap{
 	
-	private static var suitableLayerTypes:Array<String> = ["collisions", "graphical", "LOS"];
+	private static var suitableLayerTypes:Array<String> = ["setupAllied", "setupEnemy", "collisions", "graphical", "LOS"];
+	
+	public var size:TilePoint = new TilePoint();
 	
 	public var graphicalData:Array<Array<Int>>;
 	public var collisionData:Array<Array<Int>>;
 	public var LOSData:Array<Array<Int>>;
-
-	private var tileData:Array<Array<Tile>> = [];
+	public var alliedSetupData:Array<TilePoint>;
+	public var enemySetupData:Array<TilePoint>;
 	
+	private var tileData:Array<Array<Tile>> = [];
+	private var finder:Dynamic = untyped  __new__("EasyStar.js");
+
 	public var name:String = "";
 	
 	public var OffsetX:Float = 0;
@@ -38,8 +44,16 @@ class GameMap{
 	
 	public var tiles:Array<String> = [""];
 	public var tilesHeight:Array<Int> = [0];
-	private var finder:Dynamic = untyped  __new__("EasyStar.js");
-
+	
+	
+	public var charactersOnMap:Array<String> = [];
+	
+	/*
+	 * finish this.
+	 * */
+	
+	public var enemyGroups:Array<EnemyGroup> = [];
+	
 	
 	public function new(mapName:String = null) {
 		if (mapName == null)
@@ -48,7 +62,8 @@ class GameMap{
 		
 		var datas = formatMap(mapName);
 		var mapJson = InitManager.data[untyped name];
-		
+		size.x = mapJson.width;
+		size.y = mapJson.height;
 		//OffsetY = Main.tileSize.y;
 		
 		/*
@@ -61,7 +76,9 @@ class GameMap{
 		graphicalData = datas.graphical;
 		collisionData = datas.collisions;
 		LOSData = datas.LOS;
-		
+		alliedSetupData = convertMapDataToPoints(datas.setupAllied);
+		enemySetupData = convertMapDataToPoints(datas.setupEnemy);
+
 		generatePathfinding();
 	}
 	
@@ -146,12 +163,20 @@ class GameMap{
 	
 	public function findPath(source:TilePoint, target:TilePoint, rangeToSearch:Array<TilePoint>):Array<TilePoint> {
 		var path:Array<TilePoint> = [];
+		
+		
+		//FOR LATER
+		//if (FightManager.status == StatusModes.normal)
+			//finder.enableDiagonals();
+		//else
+			//finder.disableDiagonals();
+	
 		finder.setGrid(getNewGridPathFinding(rangeToSearch));
 		
-		if (source.x > collisionData[0].length-1 || 
-			target.x > collisionData[0].length-1 || 
-			source.y > collisionData.length-1 || 
-			target.y > collisionData.length-1 ||
+		if (source.x > size.x-1 || 
+			target.x > size.x-1 || 
+			source.y > size.y-1 || 
+			target.y > size.y-1 ||
 			source.x < 0 || source.y < 0 || target.x < 0 || target.y < 0)
 			return [];
 		
@@ -169,7 +194,7 @@ class GameMap{
 		var returnArray:Array<Array<Int>> = [collisionData[0]];
 		
 		var i:Int = 0;
-		while ( i < collisionData.length)
+		while ( i < size.y)
 		{
 			if(i != 0)
 				returnArray[i] = [];
@@ -271,5 +296,51 @@ class GameMap{
 			}
 		}
 		
+	}
+	
+	private function convertMapDataToPoints(mapData:Array<Array<Int>>):Array<TilePoint>
+	{
+		var tempArray:Array<TilePoint> = [];
+		for (y in 0...mapData.length)
+		{
+			for (x in 0...mapData[y].length)
+			{
+				if (mapData[y][x] != 0)
+					tempArray.push(new TilePoint(x,y));
+			}
+		}
+		
+		return tempArray;
+	}
+	
+	public function addEnemyGroup(enemiesID:Array<String>)
+	{
+		if (enemyGroups.length > enemySetupData.length)
+			Browser.window.console.warn("enemy group is too large for fight setup, it will not be active !");
+		else
+			enemyGroups.push(new EnemyGroup(enemiesID));
+	}
+	
+	public function getEnemyGroupOf(enemyID:String):EnemyGroup
+	{
+		for (group in enemyGroups)
+		{
+			if (group.enemiesID.indexOf(enemyID) != -1)
+				return group;
+		}
+		trace("group not found.");
+		return null;
+	}
+	
+	public function removeEnemyGroup(enemyID:String)
+	{
+		for (group in enemyGroups)
+		{
+			if (group.enemiesID.indexOf(enemyID) != -1)
+			{
+				enemyGroups.remove(group);
+				break;
+			}
+		}
 	}
 }

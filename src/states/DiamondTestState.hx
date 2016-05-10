@@ -1,6 +1,7 @@
 package states;
 
 import js.Browser;
+import managers.CharacterManager;
 import managers.DrawManager;
 import managers.FightManager;
 import managers.HudManager;
@@ -46,29 +47,31 @@ class DiamondTestState extends State{
 		 * integrer le joueur
 		 * */
 		var hero:Player = Player.getInstance();
+		hero.inGameName = "ChaudRiz";
 		hero.setTilePosition(8, 8);
 		hero.scale.set(0.4, 0.4);
-		DrawManager.addToDisplay(hero, MapManager.getInstance().activeMap.mapContainer,1);
+		DrawManager.addToDisplay(hero, MapManager.getInstance().activeMap.mapContainer);
 		
 		Camera.getInstance().setFollowTarget(hero);	
 		
-		var targetsID:Array<String> = [];
+		for (i in 0...3)
+		{
+			var targetsID:Array<String> = [];
+			for (j in 0...Math.floor(Math.random() * 5) +1)
+			{
+				var victim:Victim = new Victim("victim", "victime numero "+ (i+j));
+				//victim.setTilePosition(i, j);
+				victim.scale.set(0.4, 0.4);
+				DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer);
+				
+				targetsID.push(victim.ID);
+			}
+				
+			MapManager.getInstance().placeEnemyGroupRamdom(targetsID, 2);
+		}
 		
-		var victim:Victim = new Victim("victim");
-		victim.setTilePosition(13, 15);
-		victim.scale.set(0.4, 0.4);
-		DrawManager.addToDisplay(victim, MapManager.getInstance().activeMap.mapContainer, 1);
-		targetsID.push(victim.ID);
-		
-		//FightManager.getInstance().startSetup(targetsID);
+		Main.getInstance().tileCont.on("mousedown",function (e):Void {
+			//trace(CharacterManager.getInstance().findCharactersAtTilePos(Misc.getTileFromEvent(e)));
+		});
 	}
 }
-
-/*
- * TODO:
- * character
- * pathfinding
- * los
- * 
- * 
- * */

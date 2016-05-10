@@ -11,12 +11,19 @@ class Npc extends Character{
 	private var targetCharacter:Character;
 	/* End AI */
 
-	public function new(newName:String) {
-		super(newName);
+	public function new(newName:String, ?newInGameName:String) {
+		super(newName,newInGameName);
+		entityType = EntityType.npc;
 	}
 	
-	private function processAI():Void{
+	private function processAI():Void
+	{
 		
+	}
+	
+	override public function onCombatLost():Void {
+		super.onCombatLost();
+		Destroy(); // test enemy destroy only at the end on fight if npc.
 	}
 	
 }

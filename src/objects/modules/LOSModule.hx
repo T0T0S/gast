@@ -3,6 +3,7 @@ import js.Browser;
 import js.html.KeyboardEvent;
 import managers.CharacterManager;
 import managers.MapManager;
+import objects.GameMap;
 import states.DiamondTestState;
 import utils.Misc;
 import utils.TilePoint;
@@ -58,7 +59,7 @@ class LOSModule{
 	{
 		return getLOS().hasTile(target);
 	}
-
+	//@:deprecated("If the player moves and keeps showing the range, it might not be able to see in front of him.")
 	public function moveToPoint(pos:TilePoint)
 	{
 		centerPos = pos;
@@ -88,11 +89,11 @@ class LOSModule{
 			refreshOctant(octant);
 		}
 		
+		//Post process
 		for (tile in activeLOSRange.iterator())
 		{
 			if(tile.getDistance(centerPos) < minRange) tile.isVisible =  false;
-			if(tile.isWall) tile.isVisible =  false;
-			if(tile.isTarget) tile.isVisible =  true;
+			if(tile.isWall && !tile.isTarget) tile.isVisible =  false;
 		}
 		
 		if (minRange == 0)
@@ -103,17 +104,21 @@ class LOSModule{
 	function HardRefreshActiveLosRange()
 	{
 		activeLOSRange = cast Misc.getTilesAround(centerPos, 0, maxRange);
-		var mapLOSRef:Array<Array<Int>> = MapManager.getInstance().activeMap.LOSData;
+		var mapLOSRef:GameMap = MapManager.getInstance().activeMap;
 		
 		for (tile in activeLOSRange.iterator())
 		{
-			tile.isWall = true;
-			if (mapLOSRef[tile.y] != null)
+			tile.isWall = !mapLOSRef.getLOSAt(tile);
+			tile.isTarget = tile.isWall && CharacterManager.getInstance().findCharactersAtTilePos(tile).length != 0;
+			
+			if (tile.equals(centerPos))
 			{
-				tile.isWall = mapLOSRef[tile.y][tile.x] != 0;
-				tile.isTarget = tile.isWall && CharacterManager.getInstance().findCharacterAtTilePos(tile) != null;
+				tile.isWall = false;
+				tile.isTarget = false;
+				tile.isVisible = true;
 			}
 		}
+		
 		isFresh = true;
 	}
 	
@@ -157,9 +162,6 @@ class LOSModule{
 						tempTile.isVisible = visible;
 					
 					if (tempTile.isWall) {
-					
-						//if (centerPos.equals(new TilePoint(28, 16)))
-							//trace("add shadow" + projection);
 						shadowLineTemp.add(projection, tempTile.isVisible );
 						fullShadow = shadowLineTemp.isFullShadow;
 					}

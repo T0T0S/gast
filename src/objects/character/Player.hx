@@ -7,6 +7,9 @@ import managers.FightManager;
 import managers.HudManager;
 import managers.MapManager;
 import managers.PoolManager;
+import objects.attacks.Attack;
+import objects.attacks.NormalAttack;
+import objects.attacks.TripleAttack;
 import objects.character.Character;
 import objects.modules.LOSModule.LOSPoint;
 import objects.particle.OSmovieclip;
@@ -29,20 +32,20 @@ class Player extends Character{
 
 	private var targetTile:Tile;
 	
-
+	private var tilePoolUsed:Array<Tile> = [];
 	private var APFlash:OSmovieclip;
 	private var pathPositions:Array<Dynamic> = [];
 	
 	private var mouseHovering:Bool = false;
 	public var allowInput:Bool = true;
 	
-	
 	private var inputCallBacks:Map<String, EventTarget->TilePoint->Void> = new Map.Map();
 	private var inputHandledNames:Array<String> = ["mousemove", "mouseup"];
 
 	private function new() {
 		super("hero");
-		
+		setZ(2);
+		entityType = EntityType.player;
 		HudManager.getInstance().HPmeter.text = ""+stats.health;
 		HudManager.getInstance().APmeter.text = ""+stats.AP;
 		
@@ -68,7 +71,15 @@ class Player extends Character{
 		APFlash.animationSpeed = 0.5;
 	}
 	
+	override public function onCombatLost():Void {
+		super.onCombatLost();
+		respawn();
+	}
 	
+	override public function onCombatWon():Void {
+		super.onCombatWon();
+		
+	}
 	
 	private function generateInputCallBacks ():Void 
 	{
@@ -158,7 +169,7 @@ class Player extends Character{
 	
 	private function inputHandler(e:EventTarget)
 	{
-		if (!allowInput)
+		if (!allowInput || !isActive)
 			return;
 
 		hidePoolTiles();
@@ -223,6 +234,13 @@ class Player extends Character{
 		HudManager.getInstance().HPmeter.text = ""+stats.health;
 	}
 	
+	public function respawn():Void
+	{
+		trace("more code needed in respawn function for player !");
+		stats.health = 1;
+		stats.AP = stats.MaxAP;
+		isDead = false;
+	}
 	
 	private function lockHudButtons():Void{
 		for (attackName in HudManager.getInstance().attackButtons.keys())
@@ -247,7 +265,8 @@ class Player extends Character{
 		
 		for (i in path.iterator())
 		{
-			var newTile:Tile = PoolManager.pullObject("tile"); 
+			var newTile:Tile = PoolManager.pullObject(PoolType.tileWhite); 
+			tilePoolUsed.push(newTile);
 			newTile.visible = true;
 			newTile.tint = 0x00FF00;
 			newTile.alpha = 0.5;
@@ -274,7 +293,8 @@ class Player extends Character{
 		var arrayIter:Array<TilePoint> = selectedAction != "move" ? losModule.getDisplayLOS() : Misc.getTilesAround(tilePos, min, max);
 		for (i in arrayIter.iterator())
 		{
-			var newTile:Tile = PoolManager.pullObject("tile"); 
+			var newTile:Tile = PoolManager.pullObject(PoolType.tileWhite);
+			tilePoolUsed.push(newTile);
 			newTile.visible = true;
 			newTile.setTilePosition(i.x, i.y);
 			if (newTile.parent == null)
@@ -288,13 +308,21 @@ class Player extends Character{
 		}
 	}
 	
-	public function hidePoolTiles():Void {
-		PoolManager.applyFunctionToPool("tile", poolHide);
+	override public function onCharacterMove(characterId:String):Void {
+		super.onCharacterMove(characterId);
+
+		if(selectedAction != "move")
+			losModule.forceRefresh();
 	}
 	
-	/**
-	 *  DON'T USE
-	 */
+	public function hidePoolTiles():Void {
+		for (tile in tilePoolUsed)
+		{
+			poolHide(tile);
+		}
+	}
+	
+	
 	private function poolHide(i:Dynamic):Void{
 		i.visible = false;
 		i.tint = 0xFFFFFF;
@@ -303,7 +331,7 @@ class Player extends Character{
 	
 	
 	public function hideOnePoolTile(element:Dynamic):Void {
-		PoolManager.applyFunctionToElement("tile", poolHide, element);
+		PoolManager.applyFunctionToElement(PoolType.tileWhite, poolHide, element);
 	}
 	
 	
@@ -316,9 +344,6 @@ class Player extends Character{
 		targetTile.visible = true;
 		//targetTile.tint = newTint != null ? newTint : 0xFFFFFF;	
 	}
-	
-	public function loseCombat():Void { trace("fight lost!"); }
-	public function winCombat():Void { trace("fight won!"); }
 	
 	public function hideHoverTile(remove:Bool = false):Void {
 		targetTile.visible = false;
@@ -353,9 +378,23 @@ class Player extends Character{
 		hidePoolTiles();
 	}
 	
+	private override function generateAttacks():Void{
+		for (i in Reflect.fields(config.attacks)) {
+			attacks.set(i, getAttackFromName(i, Reflect.field(config.attacks, i)));
+		}	
+	}
+	
+	private override function getAttackFromName(name:String, data:Dynamic):Attack{
+		switch name{
+			case "normal": return new NormalAttack(data);
+			case "triple": return new TripleAttack(data);
+		}
+		Browser.window.console.warn("ATTACK NOT FOUND !");
+		return new Attack(data);
+	}
+	
 	override public function setTilePosition(nx:Int, ny:Int):Void {
 		super.setTilePosition(nx, ny);
-		losModule.moveToPoint(tilePos);
 		
 		if (selectedAction != "move"){
 			showAttackRange(selectedAction);
@@ -364,6 +403,8 @@ class Player extends Character{
 	
 	override public function Destroy():Void {
 		super.Destroy();
+		
+		
 		
 		for (inputName in inputCallBacks.keys())
 		{

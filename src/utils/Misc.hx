@@ -102,19 +102,19 @@ class Misc {
 	}
 	
 	
-	public static function getTilesAround(tilePos:TilePoint, minRange:Int = 0, maxRange:Int = 1, mapConstricted:Bool = true ):Array<TilePoint>
+	public static function getTilesAround(tilePos:TilePoint, minRange:Int = 0, maxRange:Int = 1, mapConstricted:Bool = true, removeWalls:Bool = false):Array<TilePoint>
 	{	
 		if (minRange == 0 && maxRange == 0)
 			return [tilePos];
 		var returnArray:Array<TilePoint> = [];
 		
-		var refMap = MapManager.getInstance().activeMap.collisionData;
+		var refMap = MapManager.getInstance().activeMap;
 		
 		for (i in -maxRange...maxRange+1) {
 			for (j in -maxRange...maxRange+1) {
 				if (mapConstricted)
 				{
-					if(tilePos.x + i >= 0 && tilePos.x + i < refMap[0].length && tilePos.y + j >= 0 && tilePos.y + j < refMap.length)
+					if(tilePos.x + i >= 0 && tilePos.x + i < refMap.size.x && tilePos.y + j >= 0 && tilePos.y + j < refMap.size.y)
 						if (!(Math.abs(i) + Math.abs(j) > maxRange) && !(Math.abs(i) + Math.abs(j) < minRange))
 							returnArray.push(new TilePoint(tilePos.x + i, tilePos.y + j));
 				}
@@ -123,6 +123,20 @@ class Misc {
 					if (!(Math.abs(i) + Math.abs(j) > maxRange) && !(Math.abs(i) + Math.abs(j) < minRange))
 						returnArray.push(new TilePoint(tilePos.x + i, tilePos.y + j));
 				}
+			}
+		}
+		
+		if (removeWalls)
+		{
+			var i:Int = 0;
+			while (i < returnArray.length)
+			{
+				if (!refMap.getWalkableAt(returnArray[i]))
+				{
+					returnArray.splice(i,1);
+					i--;
+				}
+				i++;
 			}
 		}
 		
@@ -217,7 +231,10 @@ class Misc {
 		return points;
 	}
 	
-	//total zone = max range² + (max range+1)² - min range² + (min range+1)²
+	public static function getNumberOfTileInZone(minRange:Int, maxRange:Int)
+	{
+		return maxRange * maxRange + (maxRange+1) * (maxRange+1) - (minRange * minRange + (minRange+1) * (minRange+1));
+	}
 	
 	public static function lerp(start:Float, end:Float, t:Float):Float {
 		t = t > 1 ? 1 : t;
@@ -241,7 +258,7 @@ class Misc {
 	
 	public static function placeTilePointer (positions:Array<TilePoint>, ?color:Int, ?absolute:Bool = false):Void {
 		for (i in positions.iterator()) {
-			var newPointer:Tile = PoolManager.pullObject("pointer");
+			var newPointer:Tile = PoolManager.pullObject(PoolType.pointer);
 			var specialColor = color != null ? color: 0xFFFFFF;
 			if (!absolute)
 				newPointer.setTilePosition(i.x, i.y);
@@ -254,7 +271,6 @@ class Misc {
 			newPointer.anchor.set(0.5, 0.5);
 			DrawManager.addToDisplay(newPointer, MapManager.getInstance().activeMap.mapContainer, 0.2);
 		}
-		
 	}
 	
 	public static function getClosestPosFromDirection(target:TilePoint, direction:Int):TilePoint
@@ -270,7 +286,7 @@ class Misc {
 	}
 	
 	public static function removeAllPointers ():Void {
-		PoolManager.applyFunctionToPool("pointer", function(element) { element.visible = false; } );
+		PoolManager.applyFunctionToPool(PoolType.pointer, function(element) { element.visible = false; } );
 	}
 	
 	

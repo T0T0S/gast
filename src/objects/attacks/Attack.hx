@@ -70,7 +70,7 @@ class Attack{
 	}
 	
 	private function shootBullet(launcherRef:Character):Void{
-		var bullet:Bullet = PoolManager.pullObject("bulletNormal");
+		var bullet:Bullet = PoolManager.pullObject(PoolType.bulletNormal);
 		bullet.x = launcherRef.x;
 		bullet.y = launcherRef.y - launcherRef.height * 0.75;
 		bullet.anchor.set(0, 0.5);

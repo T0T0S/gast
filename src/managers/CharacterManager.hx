@@ -1,4 +1,6 @@
 package managers;
+
+import managers.FightManager.StatusModes;
 import objects.character.Character;
 import utils.TilePoint;
 
@@ -10,35 +12,72 @@ class CharacterManager{
 	private static var instance: CharacterManager;
 
 	public var managedCharacters:Map<String,Character> = new Map.Map();
-	public var positions:Array<Array<String>> = [];
+	public var positions:Map<String, Array<String>> = new Map.Map();
 
 	public function new() {
 		
 	}
 	
-	public function findCharacterAtTilePos(position:TilePoint):Character {
-		if (positions[position.x] == null)
-			return null;
-		if (positions[position.x][position.y] != null)
-			return managedCharacters.get(positions[position.x][position.y]);
-		else
-			return null;
+	private function retreiveAllCharactersAtPos(position:TilePoint):Array<Character>
+	{
+		var tempArray:Array<Character> = [];
+		var tempIdArray:Array<String>  = positions.get(position.toString());
+		for (id in tempIdArray.iterator())
+		{
+			tempArray.push(managedCharacters.get(id));
+		}
+		return tempArray;
 	}
 	
-	public function updateCharacterCoordinatesFromTo(element:Character, nx:Int, ny:Int):Void{
-		if (positions[element.tilePos.x] == null)
-			positions[element.tilePos.x] = [];
-		positions[element.tilePos.x][element.tilePos.y] = null;
-		MapManager.getInstance().activeMap.setColliAt(element.tilePos, false);
-		MapManager.getInstance().activeMap.setLOSAt(element.tilePos, false);
+	public function findCharactersAtTilePos(position:TilePoint):Array<Character> {
+		if (positions.get(position.toString()) == null)
+			return [];
+		else
+			return retreiveAllCharactersAtPos(position);
+	}
+	
+	public function updateCharacterCoordinatesFromTo(element:Character, oldPosition:TilePoint):Void{
+		var oldPosIDs:Array<String> = positions.get(oldPosition.toString());
+		if (oldPosIDs != null)
+		{
+			oldPosIDs.splice(oldPosIDs.indexOf(element.ID), 1);
 		
-		if (positions[nx] == null)
-			positions[nx] = [];
-		positions[nx][ny] = element.ID;
-		MapManager.getInstance().activeMap.setColliAt(new TilePoint(nx, ny), true);
-		MapManager.getInstance().activeMap.setLOSAt(new TilePoint(nx, ny), true);
+			if (oldPosIDs.length == 0)
+			{
+				MapManager.getInstance().activeMap.setColliAt(oldPosition, false);
+				MapManager.getInstance().activeMap.setLOSAt(oldPosition, false);
+			}
+			
+			positions.set(oldPosition.toString(), oldPosIDs);
+		}
 		
-		ServerManager.getInstance().onCharacterMove(element.ID, nx, ny);
+		var newPos:Array<String> = positions.get(element.tilePos.toString());
+		
+		if (newPos != null)
+		{
+			if(newPos.indexOf(element.ID) != -1)
+				return;
+		}
+		else
+			newPos = [];
+		newPos.push(element.ID);
+			
+			
+		if (newPos.length == 1)
+		{
+			MapManager.getInstance().activeMap.setColliAt(element.tilePos, FightManager.status != StatusModes.normal);
+			MapManager.getInstance().activeMap.setLOSAt(element.tilePos, FightManager.status != StatusModes.normal);
+		}
+		
+		positions.set(element.tilePos.toString(),newPos);
+		
+		ServerManager.getInstance().onCharacterMove(element.ID);
+	}
+	
+	public function setTileData(tilePos:TilePoint, hasSight:Bool, canWalk:Bool)
+	{
+		MapManager.getInstance().activeMap.setColliAt(tilePos, !canWalk);
+		MapManager.getInstance().activeMap.setLOSAt(tilePos, !hasSight);
 	}
 	
 	public function addCharacter(element:Character):Void{
@@ -47,10 +86,15 @@ class CharacterManager{
 	
 	public function removeCharacter(element:Character):Void{
 		managedCharacters.remove(element.ID);
-		positions[element.tilePos.x][element.tilePos.y] = null;
 		
-		MapManager.getInstance().activeMap.setLOSAt(element.tilePos, false);
-		MapManager.getInstance().activeMap.setColliAt(element.tilePos, false);
+		var playerArrayPos = element.tilePos.toString();
+		positions.get(playerArrayPos).splice(positions.get(playerArrayPos).indexOf(element.ID), 1);
+		
+		if (positions.get(playerArrayPos).length == 0)
+		{
+			MapManager.getInstance().activeMap.setColliAt(element.tilePos, false);
+			MapManager.getInstance().activeMap.setLOSAt(element.tilePos, false);
+		}
 	}
 	
 	public function findCharacterById(charaId:String):Character{
@@ -66,9 +110,8 @@ class CharacterManager{
 	}
 	
 	public function switchState():Void{
-		for (i in managedCharacters.iterator())
-			managedCharacters.remove(i.ID);
-		positions = [[]];
+		managedCharacters = new Map.Map();
+		positions = new Map.Map();
 	}
 	
 	public static function getInstance (): CharacterManager {

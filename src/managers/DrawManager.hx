@@ -3,6 +3,7 @@ import objects.character.Character;
 import objects.Options;
 import pixi.core.display.Container;
 import pixi.core.display.DisplayObject;
+import utils.Misc;
 
 /**
  * ...
@@ -39,15 +40,12 @@ class DrawManager
 	}
 	
 	private function normalSortFunction(a:DisplayObject,b:DisplayObject):Int{
-		untyped if (b.z == a.z)
-		untyped 	return a.depth - b.depth;
-				else
-		untyped 	return a.z - b.z;
+		untyped 	return Misc.clamp(a.depth - b.depth, -1 , 1);
 	}
 	
 	private function characterSortFunction(a:DisplayObject, b:DisplayObject):Int {
-		untyped if (a.charaName || b.charaName) {
-					return !!a.charaName - !!b.charaName;
+		untyped if (a.type || b.type) {
+					return !!a.type - !!b.type;
 				}
 		return normalSortFunction(a,b);
 	}

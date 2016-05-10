@@ -82,7 +82,7 @@ class DebugState extends State {
 		superEnemy = victim;
 		targetsID.push(victim.ID);
 		
-		FightManager.getInstance().startSetup(targetsID);
+		//FightManager.getInstance().startFight(targetsID);
 	
 	}
 	

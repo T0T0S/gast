@@ -22,18 +22,23 @@ class TilePoint
 		return new TilePoint(x + point.x,y + point.y);
 	}
 	
-	public function equals(pos2:TilePoint):Bool{
-		return x == pos2.x && y == pos2.y;
+	public inline function equals(pos2:TilePoint):Bool{
+		return (x == pos2.x && y == pos2.y);
 	}
 	
-	public function getDistance(tile2:TilePoint)
+	public inline function getDistance(tile2:TilePoint)
 	{
-		return Math.abs(x - tile2.x) + Math.abs(y - tile2.y);
+		return (Math.abs(x - tile2.x) + Math.abs(y - tile2.y));
 	}
 	
-	public function toArray():Array<Int>
+	public inline function toArray():Array<Int>
 	{
 		return [x,y];
+	}
+	
+	public inline function toString():String
+	{
+		return (x+"-"+y);
 	}
 }
 
