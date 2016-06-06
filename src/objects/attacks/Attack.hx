@@ -34,6 +34,8 @@ class Attack{
 	private var attackFXName:String;
 	private var attackFXType:String;
 	
+	private var bulletsShot:Map<PoolType, Array<Dynamic>> = new Map.Map();
+	
 	public function new(jsonData:Dynamic) {
 		framesData = jsonData.framesData;
 		animationName = jsonData.animationName;
@@ -71,6 +73,7 @@ class Attack{
 	
 	private function shootBullet(launcherRef:Character):Void{
 		var bullet:Bullet = PoolManager.pullObject(PoolType.bulletNormal);
+		bulletsShot.get(PoolType.bulletNormal).push(bullet);
 		bullet.x = launcherRef.x;
 		bullet.y = launcherRef.y - launcherRef.height * 0.75;
 		bullet.anchor.set(0, 0.5);
@@ -130,6 +133,14 @@ class Attack{
 	public function endAction(launcher:Character):Void{
 		launcher.waitForNextTick = waitForFinish;
 		finished = true;
+		
+		for (pools in bulletsShot.keys())
+		{
+			for (item in bulletsShot.get(pools))
+			{
+				PoolManager.returnObject(item, pools);
+			}
+		}
 	}
 	
 }

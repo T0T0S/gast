@@ -2,6 +2,7 @@ package managers;
 import haxe.Timer;
 import js.html.CustomEvent;
 import managers.PoolManager.PoolType;
+import objects.Camera;
 import objects.character.Character;
 import objects.character.Player;
 import objects.Tile;
@@ -42,16 +43,14 @@ class FightManager {
 	{
 		alliedReady = 0;
 		enemyReady = 0;
-		startSetupPhase(alliesIDS, enemiesID);
 		
+		if (alliesIDS.length != 0 && enemiesID.length != 0)
+		{
+			startSetupPhase(alliesIDS, enemiesID);
+		}
 		
 		// wait for ready;
 	}
-	
-	/*
-	 * afficher la grid => prendre des tiles de la pool et les sauvegarder
-	 * les rendres clicable.
-	 * */
 	
 	private function placeCharactersOnSetupGrid()
 	{
@@ -86,8 +85,8 @@ class FightManager {
 			tempTile.tint = 0xFF3333;
 			tempTile.alpha = 0.7;
 			tempTile.visible = true;
-			DrawManager.addToDisplay(tempTile, MapManager.getInstance().activeMap.mapContainer);
-			tempTile.setZ(0.5);
+			tempTile.setZ(0.7);
+			DrawManager.addToDisplay(setupEnemyTiles[setupEnemyTiles.length - 1], MapManager.getInstance().activeMap.mapContainer);
 		}
 		
 		
@@ -98,34 +97,42 @@ class FightManager {
 			tempTile.setTilePosition(point.x, point.y);
 			tempTile.tint = 0x3333FF;
 			tempTile.alpha = 1;
-			tempTile.setZ(0.5);
+			tempTile.setZ(0.7);
 			tempTile.visible = true;
-			DrawManager.addToDisplay(tempTile, MapManager.getInstance().activeMap.mapContainer);
+			DrawManager.addToDisplay(setupAlliedTiles[setupAlliedTiles.length - 1], MapManager.getInstance().activeMap.mapContainer);
 		}
 		
+		/*
+		 * refaire le pullManager
+		 * */
 	}
 	
 	private function hideSetupTiles()
 	{
 		for (tile in setupAlliedTiles)
 		{
-			tile.visible = false;
+			PoolManager.returnObject(tile, PoolType.tileWhite);
 			DrawManager.removeFromDisplay(tile);
 		}
 		
 		for (tile in setupEnemyTiles)
 		{
-			tile.visible = false;
+			PoolManager.returnObject(tile, PoolType.tileWhite);
 			DrawManager.removeFromDisplay(tile);
 		}
+		
+		setupEnemyTiles = [];
+		setupAlliedTiles = [];
 	}
+	
 	
 	private function removeNeutralCharactersFromMap()
 	{
 		for (character in CharacterManager.getInstance().managedCharacters.iterator())
 		{
-			if (alliedCharactersID.indexOf(character.ID) == -1 && enemyCharactersID.indexOf(character.ID) == -1)
-				character.Destroy();
+			if(character != null)
+				if (alliedCharactersID.indexOf(character.ID) == -1 && enemyCharactersID.indexOf(character.ID) == -1)
+					character.Destroy();
 		}
 	}
 	
@@ -143,6 +150,8 @@ class FightManager {
 		
 		removeNeutralCharactersFromMap();
 		placeCharactersOnSetupGrid();
+		
+		Camera.focusOnPosition(Player.getInstance().tilePos);
 		
 		Main.getInstance().tileCont.on("mouseup", movePlayerToSetupTile);
 		
@@ -247,7 +256,6 @@ class FightManager {
 		status = StatusModes.normal;
 		if (alliedWon)
 		{
-			MapManager.getInstance().activeMap.removeEnemyGroup(enemyCharactersID[0]);
 			trace("Allied won, applying callback.");
 			for (id in alliedCharactersID)
 			{
@@ -257,6 +265,8 @@ class FightManager {
 			{
 				CharacterManager.getInstance().findCharacterById(id).onCombatLost();
 			}
+			
+			MapManager.getInstance().activeMap.removeEnemyGroup(enemyCharactersID[0]);
 		}
 		else
 		{
@@ -272,16 +282,17 @@ class FightManager {
 			{
 				CharacterManager.getInstance().findCharacterById(id).onCombatWon();
 			}
-			
 		}
+		
+		alliedCharactersID = [];
+		enemyCharactersID = [];
 		
 		// if player lost change map to respawn point.
 		
-		/*
-		 * repop enemies still alive.
-		 * */
-		
+		MapManager.getInstance().rePopCharactersOnMap();
 	}
+	
+	
 	
 	public function isEnemy(elementId:String):Bool{ return alliedCharactersID.indexOf(elementId) == -1; }
 	public function isAllied(elementId:String):Bool{ return alliedCharactersID.indexOf(elementId) != -1; }

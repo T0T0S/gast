@@ -6,6 +6,12 @@ package utils;
  */
 class TilePoint
 {
+	public static function fromString(position:String)
+	{
+		var array:Array <String> = position.split("-");
+		return new TilePoint(Std.parseInt(array[0]), Std.parseInt(cast array[1]));
+	}
+
 	public var x:Int = 0;
 	public var y:Int = 0;
 	public function new(?nx:Int = 0, ?ny:Int = 0) { x = nx; y = ny; };

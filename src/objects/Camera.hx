@@ -7,6 +7,7 @@ import managers.MapManager;
 import pixi.core.display.DisplayObject;
 import pixi.core.math.shapes.Rectangle;
 import utils.Misc;
+import utils.TilePoint;
 
 /**
  * ...
@@ -29,9 +30,10 @@ class Camera{
 	private var mouseDownPosition:Point = new Point();
 	private var oldCameraPosition:Point = new Point();
 	private var clicked:Bool = false;
+	private var mouseUpDelay:Int = 0;
 	public var isDragged:Bool = false;
 	
-	public static var targetToFollow:DisplayObject;
+	public var targetToFollow:DisplayObject;
 	private var clampedCam:Bool = false;
 	
 	public var mapSize:Rectangle;
@@ -92,12 +94,7 @@ class Camera{
 
 	private function mouseUpListener (e):Void {
 		clicked = false;
-		isDragged = false;
-	}
-	
-	public function setCameraPosition (newPosition:Point):Void {
-		offset = newPosition;
-		translateOffsetToConts();
+		mouseUpDelay = 1;
 	}
 	
 	public function translateOffsetToConts():Void {
@@ -113,21 +110,28 @@ class Camera{
 	}
 	
 	public function updateMapSize(newMap:GameMap):Void{
-		mapSize.width = newMap.graphicalData[0].length * Main.tileSize.x;
-		mapSize.height = newMap.graphicalData.length * Main.tileSize.y * 0.5 + Main.getInstance().hudCont.height;
+		mapSize.width = newMap.size.x * Main.tileSize.x;
+		mapSize.height = newMap.size.y * Main.tileSize.y * 0.5 + Main.getInstance().hudCont.height;
 	}
 	
 	public function Update():Void
 	{
+		if (!clicked)
+		{
+			--mouseUpDelay;
+			isDragged = mouseUpDelay <= 0 ? false : isDragged;
+		}
+		
 		if (targetToFollow != null)
 		{
 			offset.x = targetToFollow.x - size.x * 0.5;
 			offset.y = targetToFollow.y - size.y * 0.5;
-
-			if (clampedCam)
-				constrainCam();
-			translateOffsetToConts();
 		}
+		
+		if (clampedCam)
+				constrainCam();
+				
+		translateOffsetToConts();
 	}
 	
 	private function constrainCam():Void{
@@ -144,8 +148,18 @@ class Camera{
 		clampedCam = !absolutePos;
 	}
 	
-	public function switchState ():Void {
-		setCameraPosition(new Point(0,0));
+	public static function focusOnPosition(position:TilePoint)
+	{
+		instance.targetToFollow = null;
+		var tempPoint = Misc.convertToAbsolutePosition(position);
+		instance.offset.x = tempPoint.x - instance.size.x * 0.5;
+		instance.offset.y = tempPoint.y - instance.size.y * 0.5;
+		instance.translateOffsetToConts();
+	}
+	
+	public function switchState ():Void 
+	{
+		focusOnPosition(new TilePoint(0,0));
 		targetToFollow = null;
 	}
 		

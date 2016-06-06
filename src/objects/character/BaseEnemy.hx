@@ -3,6 +3,7 @@ import managers.CharacterManager;
 import managers.FightManager;
 import managers.MapManager;
 import objects.character.Character;
+import objects.EnemyGroup;
 import utils.TilePoint;
 
 /**
@@ -12,9 +13,10 @@ import utils.TilePoint;
 class BaseEnemy extends Npc{
 	
 	public var agressionRange:Int = 0;
+	public var parentGroup:EnemyGroup;
 	
-	public function new(newName:String, ?pseudo:String) {
-		super(newName, pseudo);
+	public function new(newName:String, ?newInGameName:String) {
+		super(newName, newInGameName);
 		setZ(1);
 		entityType = EntityType.enemy;
 		agressionRange = config.agressionRange == null ? 0: config.agressionRange;
@@ -22,7 +24,7 @@ class BaseEnemy extends Npc{
 	
 	public function findParentEnemyGroup()
 	{
-		for (group in MapManager.getInstance().activeMap.enemyGroups.iterator())
+		for (group in MapManager.getInstance().activeMap.mapCharacterData.enemyGroups.iterator())
 		{
 			if (group.enemiesID.indexOf(ID) != -1)
 				return group;
@@ -47,9 +49,11 @@ class BaseEnemy extends Npc{
 		if (FightManager.status != StatusModes.normal)
 			return;
 		
-		var character:Character = CharacterManager.getInstance().findCharacterById(characterId);
+		if (parentGroup == null)
+			parentGroup = findParentEnemyGroup();
 		
-		if (character.entityType != EntityType.player || findParentEnemyGroup() == null)
+		var character:Character = CharacterManager.getInstance().findCharacterById(characterId);
+		if (character.entityType != EntityType.player || parentGroup == null)
 			return;
 		
 		
@@ -66,9 +70,7 @@ class BaseEnemy extends Npc{
 	
 	private function agroPlayer(playerId:String)
 	{
-		trace("ennemy team => " + findParentEnemyGroup());
-		
-		var parentGroup = findParentEnemyGroup();
+		trace("ennemy team => " + parentGroup.enemiesData);
 		
 		parentGroup.isInFight = true;
 		FightManager.getInstance().startFight([playerId], parentGroup.enemiesID);
@@ -88,5 +90,11 @@ class BaseEnemy extends Npc{
 	{
 		stats.health = stats.maxHealth;
 		isDead = false;
+	}
+	
+	override public function setTilePosition(nx:Int, ny:Int):Void {
+		super.setTilePosition(nx, ny);
+		if (FightManager.status == StatusModes.normal)
+			parentGroup.enemiesData.get(ID).position = tilePos.toString();
 	}
 }

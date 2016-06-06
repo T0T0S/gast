@@ -12,6 +12,10 @@ import pixi.loaders.Resource;
 /**
  * Classe de définition de variables relative au jeu
  * @author ToTos
+ * 
+ * 
+@:deprecated("Needs to be a preloadManager")
+
  */
 class InitManager
 {
@@ -21,6 +25,7 @@ class InitManager
 
 	public static var data:Dynamic;
 	
+	@:deprecated("ServSide")
 	public function new() 
 	{
 		var lConfig:Loader = new Loader();
@@ -30,13 +35,15 @@ class InitManager
 		
 		
 		/* maps */
-		lConfig.add("testMapZig",ASSETS_PATH + "maps/testMapZig.json");
-		lConfig.add("TestingMap",ASSETS_PATH + "maps/TestingMap.json");
-		lConfig.add("DiamondMap",ASSETS_PATH + "maps/mapDiamondIso.json");
-		
+		loadMap("map_diamondIso");
 		
 		lConfig.once("complete", untyped LoadedJson);
 		lConfig.load();
+	}
+	
+	private function loadMap(mapName:String)
+	{
+		StateManager.jsonToPreload.set(mapName, ASSETS_PATH + "maps/"+mapName +".json" );
 	}
 	
 	function LoadedJson (loader:Loader, resource:Dynamic):Void {

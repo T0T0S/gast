@@ -12,8 +12,14 @@ class Npc extends Character{
 	/* End AI */
 
 	public function new(newName:String, ?newInGameName:String) {
-		super(newName,newInGameName);
+		super(newName, newInGameName);
 		entityType = EntityType.npc;
+	}
+	
+	override public function fight_update():Void {
+		super.fight_update();
+		
+		processAI();
 	}
 	
 	private function processAI():Void

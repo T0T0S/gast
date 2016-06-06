@@ -8,11 +8,28 @@ import managers.FightManager;
 import managers.InitManager;
 import managers.MapManager;
 import managers.MouseManager;
+import objects.GameMap.MapCharacterData;
 import pixi.core.display.Container;
 import pixi.core.particles.ParticleContainer;
 import pixi.core.sprites.Sprite;
 import utils.Misc;
 import utils.TilePoint;
+
+
+class MapCharacterData
+{
+	public var enemyGroups:Array<EnemyGroup> = [];
+	public var maxEnemiesInGroup:Int;
+	public var maxEnemyGroups:Int = 4;
+	public var enemyTypesAllowed:Array<String>;
+	public var playersID:Array<String> = [];
+	
+	public function new (data:Dynamic):Void
+	{
+		enemyTypesAllowed = data.enemytypes;
+		maxEnemiesInGroup = data.maxEnemies;
+	}
+}
 
 /**
  * ...
@@ -43,42 +60,38 @@ class GameMap{
 	public var scrollable:Bool = false;
 	
 	public var tiles:Array<String> = [""];
-	public var tilesHeight:Array<Int> = [0];
+	public var tileHeights:Array<Int> = [0];
 	
-	
-	public var charactersOnMap:Array<String> = [];
-	
-	/*
-	 * finish this.
-	 * */
-	
-	public var enemyGroups:Array<EnemyGroup> = [];
-	
+	public var mapCharacterData:MapCharacterData;
+	public var worldPosition:TilePoint = new TilePoint();
 	
 	public function new(mapName:String = null) {
 		if (mapName == null)
 			return;
 		name = mapName;
 		
-		var datas = formatMap(mapName);
+		//var datas = formatMap(mapName);
 		var mapJson = InitManager.data[untyped name];
 		size.x = mapJson.width;
 		size.y = mapJson.height;
 		//OffsetY = Main.tileSize.y;
 		
-		/*
-		 * CHANGE TO FRAMES !
-		 * */
 		
+		tiles = mapJson.tilesets;
+		//generateTileData(mapJson);
 		
-		generateTileData(mapJson);
+		graphicalData = mapJson.graphical;
+		collisionData = mapJson.collisions;
+		LOSData = mapJson.LOS;
+		alliedSetupData = convertMapDataToPoints(mapJson.setupAllied);
+		enemySetupData = convertMapDataToPoints(mapJson.setupEnemy);
+		mapCharacterData = new MapCharacterData(mapJson);
+		scrollable = mapJson.scrollable;
+		worldPosition.x = mapJson.worldPosition.x;
+		worldPosition.y = mapJson.worldPosition.y;
+		tileHeights = mapJson.tileHeights;
+		tiles = mapJson.tilesets;
 		
-		graphicalData = datas.graphical;
-		collisionData = datas.collisions;
-		LOSData = datas.LOS;
-		alliedSetupData = convertMapDataToPoints(datas.setupAllied);
-		enemySetupData = convertMapDataToPoints(datas.setupEnemy);
-
 		generatePathfinding();
 	}
 	
@@ -208,16 +221,14 @@ class GameMap{
 		}
 		return returnArray;
 	}
-	
+	/*
 	private function formatMap(mapName:String):Dynamic {
 		if (InitManager.data[untyped mapName] == null) {
 			Browser.window.console.warn("%c[WARNING] unknown map '" + mapName+"'", "color:red;");
 			return [[]];
 		}
-		
 		return convertMapDataToYX(InitManager.data[untyped mapName]);
 	}
-	
 	private function convertMapDataToYX(newMap:Dynamic):Dynamic {
 		var mapLayer:Array<Array<Int>>;
 		var returnObject:Dynamic = { };
@@ -289,7 +300,7 @@ class GameMap{
 		{
 			var imageName:Array<String> = cast(tileSet.image, String).split("/");
 			tiles[tileSet.firstgid] = imageName[cast imageName.length - 1];
-			tilesHeight[tileSet.firstgid] = cast tileSet.imageheight / 32 - 1 > 0 ? 1 : 0;
+			tileHeights[tileSet.firstgid] = cast tileSet.imageheight / 32 - 1 > 0 ? 1 : 0;
 			if (tileSet.firstgid - 1 > tilesets.length)
 			{
 				Browser.window.console.warn("%c[WARNING] Detected multiple images in tileset of '" + name +"' map!", "color:red;");
@@ -297,7 +308,7 @@ class GameMap{
 		}
 		
 	}
-	
+	*/
 	private function convertMapDataToPoints(mapData:Array<Array<Int>>):Array<TilePoint>
 	{
 		var tempArray:Array<TilePoint> = [];
@@ -313,32 +324,46 @@ class GameMap{
 		return tempArray;
 	}
 	
-	public function addEnemyGroup(enemiesID:Array<String>)
+	public function addEnemyGroup():EnemyGroup
 	{
-		if (enemyGroups.length > enemySetupData.length)
-			Browser.window.console.warn("enemy group is too large for fight setup, it will not be active !");
-		else
-			enemyGroups.push(new EnemyGroup(enemiesID));
+		mapCharacterData.enemyGroups.push(new EnemyGroup(this));
+		return mapCharacterData.enemyGroups[mapCharacterData.enemyGroups.length -1];
 	}
 	
 	public function getEnemyGroupOf(enemyID:String):EnemyGroup
 	{
-		for (group in enemyGroups)
+		for (group in mapCharacterData.enemyGroups)
 		{
 			if (group.enemiesID.indexOf(enemyID) != -1)
 				return group;
 		}
-		trace("group not found.");
+		trace("group not found for Enemy Id: "+enemyID);
 		return null;
+	}
+	
+	public function addPlayerToMap(playerId:String)
+	{
+		if(mapCharacterData.playersID.indexOf(playerId) == -1)
+			mapCharacterData.playersID.push(playerId);
+		else
+			Browser.window.console.warn("Player with Id "+playerId+" is already present on Map.");
+	}
+	
+	public function removePlayerFromMap(playerId:String)
+	{
+		if(mapCharacterData.playersID.indexOf(playerId) != -1)
+			mapCharacterData.playersID.splice(mapCharacterData.playersID.indexOf(playerId), 1);
+		else
+			Browser.window.console.warn("Player with Id " + playerId + " not found on Map.");
 	}
 	
 	public function removeEnemyGroup(enemyID:String)
 	{
-		for (group in enemyGroups)
+		for (group in mapCharacterData.enemyGroups)
 		{
 			if (group.enemiesID.indexOf(enemyID) != -1)
 			{
-				enemyGroups.remove(group);
+				group.kill();
 				break;
 			}
 		}

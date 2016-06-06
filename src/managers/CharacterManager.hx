@@ -1,5 +1,7 @@
 package managers;
 
+import js.Browser;
+import js.Error;
 import managers.FightManager.StatusModes;
 import objects.character.Character;
 import utils.TilePoint;
@@ -14,8 +16,9 @@ class CharacterManager{
 	public var managedCharacters:Map<String,Character> = new Map.Map();
 	public var positions:Map<String, Array<String>> = new Map.Map();
 
-	public function new() {
-		
+	public function new() 
+	{
+		untyped Browser.window.characterManager = this;
 	}
 	
 	private function retreiveAllCharactersAtPos(position:TilePoint):Array<Character>
@@ -44,6 +47,7 @@ class CharacterManager{
 		
 			if (oldPosIDs.length == 0)
 			{
+				positions.remove(oldPosition.toString());
 				MapManager.getInstance().activeMap.setColliAt(oldPosition, false);
 				MapManager.getInstance().activeMap.setLOSAt(oldPosition, false);
 			}
@@ -80,18 +84,26 @@ class CharacterManager{
 		MapManager.getInstance().activeMap.setLOSAt(tilePos, !hasSight);
 	}
 	
-	public function addCharacter(element:Character):Void{
+	public function addCharacter(element:Character):Void {
+		if (managedCharacters.get(element.ID) != null)
+			throw new Error("Character Id is already in use: "+ element.ID);
 		managedCharacters.set(element.ID, element);
 	}
 	
-	public function removeCharacter(element:Character):Void{
+	public function removeCharacter(element:Character):Void {
+		var playerArrayPos = element.tilePos.toString();
+		if (!managedCharacters.exists(element.ID))	
+			return;
+			
 		managedCharacters.remove(element.ID);
 		
-		var playerArrayPos = element.tilePos.toString();
+		if(positions.get(playerArrayPos) == null)
+			return;
 		positions.get(playerArrayPos).splice(positions.get(playerArrayPos).indexOf(element.ID), 1);
 		
 		if (positions.get(playerArrayPos).length == 0)
 		{
+			positions.remove(playerArrayPos);
 			MapManager.getInstance().activeMap.setColliAt(element.tilePos, false);
 			MapManager.getInstance().activeMap.setLOSAt(element.tilePos, false);
 		}

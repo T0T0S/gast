@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Import Gast Map</title>
+
+	<style type="text/css">
+		body
+		{
+			text-align: center;
+			padding: 0;
+			margin: 0;
+		}
+
+		.box
+		{
+			position: relative;
+			float:  left;
+			border: 3px solid black;
+			margin: 0 5%;
+			padding: 10px 10px 10px;
+		}
+
+		.leftPart > div
+		{
+			width: 400px;
+		}
+
+		.rightPart > div
+		{
+			width: 600px;
+		}
+
+		.enemyTypeContainer
+		{
+			position: relative;
+			margin: 5px;
+		}
+
+		.enemyTypeContainer div
+		{
+			margin: 3px 0;
+		}
+
+		hr
+		{
+			clear: both;
+		}
+
+		input
+		{
+			float: right;
+		}
+
+		label
+		{
+			float: left;
+		}
+
+		div[class*="part"]
+		{
+			padding: 10px 5px;
+		}
+
+		div.data
+		{
+			clear: both;
+		}
+
+	</style>
+</head>
+<body>
+	
+	<div class="leftPart">
+		<div class="box">
+			<h1>Map Data:</h1>
+
+			<div class="part1">
+				<label for="map">Tiled json export:</label>
+				<input type="file" name="map" accept=".json" onchange="tileDataAdded(this)">
+				<label for="spriteSheet">SpriteSheet(s):</label>
+				<input type="file" name="spriteSheet" accept=".json" onchange="SpriteSheetAdded(this)">
+			</div>
+			
+			<div class="part2" style="display:none;">
+				<hr>
+				<h2>Enemy Types allowed on map:</h2>
+
+				<div>
+					<button class="AddEnemyType" style="margin-top:10px; float:left" onclick="addEnemyType()">Add Enemy Type</button>
+					<br clear="both">
+				</div>
+				<div class="enemyTypeContainer">
+					<div class="enemyTypeDiv">
+						<input style="float:left" type="text" placeholder="Enemy Class Name" class="enemyType">
+						<button style="float:right" class="RemoveEnemyType" onclick="removeEnemyType(this)"> X </button>
+						<br clear="both">
+					</div>
+				</div>
+				<div>
+					<label for="maxEnemies">Max Enemies In Group</label>
+					<input style="float:left" type="Number" placeholder="3" name="maxEnemies" class="maxEnemies">
+					<br clear="both">
+				</div>
+				
+			</div>
+			<div class="part2" style="display:none;">
+				<hr>
+				<h2>Various Data</h2>
+				<div class="variousDataContainer" style="text-align:left">
+					<div class="data">
+						<label for="mapName">Map Name</label>
+						<input type="text" name="mapName" placeholder="mapName">
+					</div>
+					<div class="data">
+						<label for="scrollable">Is Scrollable ?</label>
+						<input type="checkbox" name="scrollable" checked="checked">
+					</div>
+					<div class="data">
+						<label for="worldPositionX">worldPosition X-Y:</label>
+						<div style="width: 100px; float: right">
+							<input type="number" name="worldPositionX" style="float:left; width: 30px;" value="0">
+							<input type="number" name="worldPositionY" style="float:right;width: 30px;" value="0">
+						</div>
+						<br clear="both">
+
+					</div>
+				</div>
+				<button onclick="GenerateJson()">Get Json</button>
+				<a class="dlLink" style="display:none;" href="" download="">> DownloadMap <</a>
+			</div>
+		</div>
+	</div>
+
+	<div class="rightPart">
+		
+	</div>
+	<script type="text/javascript" src="libs/jquery-1.12.1.min.js"></script>
+	<script type="text/javascript">
+		var divEnemyType;
+		var fullObject;
+		var fullTileset = [""];
+		var tiledData;
+		var tilesSpriteSheet = {};
+		$(document).ready(function ()
+		{
+			if (!window.FileReader)
+			{
+				alert("This script needs to be used in chrome !");
+				window.document.body.innerHTML = "";
+				return;
+			}
+			divEnemyType = $(".enemyTypeDiv").first().clone();
+
+			$(".part2Ok").click(function(){
+				$(".part3").show();
+			});
+		});
+
+		function GenerateJson() 
+		{
+			if ($("input[name='mapName']").val().length == 0) 
+				return alert("Map needs a name !");
+
+			fullObject.mapName = $("input[name='mapName']").val();
+			fullObject.scrollable = $("input[name='scrollable']")[0].checked;
+			fullObject.worldPosition = {};
+			fullObject.worldPosition.x = parseInt($("input[name='worldPositionX']").val());
+			fullObject.worldPosition.y = parseInt($("input[name='worldPositionY']").val());
+
+			fullObject.enemytypes = [];
+			$("input.enemyType").each(function(index, element){
+				if ($(element).val()) 
+					fullObject.enemytypes.push($(element).val());
+			});
+
+			fullObject.tilesets = fullTileset;
+			fullObject.maxEnemies = $(".maxEnemies").val();
+
+
+			fullObject.width = tiledData.width;
+			fullObject.height = tiledData.height;
+
+			$("a.dlLink").attr("href","data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullObject)));
+			$("a.dlLink").attr("download",fullObject.mapName+".json");
+			$("a.dlLink").get(0).click();
+		}
+	
+		function tileDataAdded (element)
+		{
+			var fileReader = new FileReader();
+			
+			fileReader.onload = function(aze) {
+				$(".part2").show();
+
+				tiledData = JSON.parse(this.result);
+				fullObject = convertMapToXY(tiledData);
+				fullObject.tileHeights = [0];
+				for (var i = tiledData.tilesets.length - 1; i >= 0; i--) 
+				{
+					if (tiledData.tilesets[i].tilecount == 1) 
+					{
+						var pathImage = tiledData.tilesets[i].image.split("/");
+						fullTileset[tiledData.tilesets[i].firstgid] = pathImage[pathImage.length -1];
+						fullObject.tileHeights[tiledData.tilesets[i].firstgid] = (tiledData.tilesets[i].imageheight / 32) - 1 > 0 ? 1 : 0;
+					}
+				}
+			};
+
+			fileReader.readAsBinaryString(element.files.item(0));
+		}
+
+
+		function convertMapToXY (mapJson)
+		{
+			var suitableLayerTypes = ["setupAllied", "setupEnemy", "collisions", "graphical", "LOS"];
+
+			var mapLayer;
+			var returnObject = { };
+			var i = 0;
+			var j = 0;	
+			while(i < mapJson.layers.length){
+				mapLayer = [];
+				j = 0;
+				var layerName = mapJson.layers[i].name;
+				
+				if (mapJson.layers[i].properties != null){
+					if (mapJson.layers[i].properties.type != null) {
+						if(suitableLayerTypes.indexOf(mapJson.layers[i].properties.type) == -1)
+							alert("Warning property 'type' for layer '"+layerName+"' of map '"+ name +"' is unknown,\nSuitable types are: "+suitableLayerTypes);
+						layerName = mapJson.layers[i].properties.type;
+					}
+					else
+						alert("Warning no property 'type' found for layer '"+layerName+"' of map '"+ name +"'.\nSuitable types are: "+suitableLayerTypes);
+				}
+				else
+					alert("Warning no property 'type' found for layer '"+layerName+"' of map '"+ name +"'.\nSuitable types are: "+suitableLayerTypes);
+				
+				if (mapJson.layers == null)
+					break;
+				var map = mapJson.layers[i].data;
+				while (j < mapJson.layers[i].data.length) {
+					if (mapLayer[Math.floor(j / mapJson.width)] == null)
+						mapLayer[Math.floor(j / mapJson.width)] = [];
+					mapLayer[Math.floor(j / mapJson.width)][j % mapJson.width] = mapJson.layers[i].data[j];
+					j++;
+				}
+				
+				if (returnObject[layerName] != null) 
+				{
+					var x1 = 0;
+					var y1 = 0;
+					while (y1 < mapLayer.length) {
+						x1 = 0;
+						while (x1 < mapLayer[y1].length)
+						{
+							if (mapLayer[y1][x1] != 0) {
+								if(layerName == "graphical"){
+									if(returnObject[layerName][y1][x1].length == null)
+										returnObject[layerName][y1][x1] = [returnObject[layerName][y1][x1], mapLayer[y1][x1]];
+									else
+										returnObject[layerName][y1][x1] = returnObject[layerName][y1][x1].push(mapLayer[y1][x1]);
+								}
+								else
+									returnObject[layerName][y1][x1] = mapLayer[y1][x1];
+							}
+							++x1;
+						}
+						++y1;
+					}
+				}
+				else
+					returnObject[layerName] = mapLayer.slice();
+					
+				i++;
+			}
+			return returnObject;
+		}
+/*
+###############################################
+			PREND JQUERY !!!
+###############################################
+*/
+		function SpriteSheetAdded(element) 
+		{
+
+			var fileReader = new FileReader();
+			fullObject = fullObject || {};
+			fullObject.tileHeights = fullObject.tileHeights || [0];
+
+			
+			fileReader.onload = function(aze) {
+				var jsonObject = JSON.parse(this.result);
+				for(tileName in jsonObject.frames)
+				{
+					tilesSpriteSheet[tileName] = jsonObject.frames[tileName];
+				}
+
+				for (var i = tiledData.tilesets.length - 1; i >= 0; i--) 
+				{
+					if (tiledData.tilesets[i].tilecount != 1) 
+					{
+						for (var j = tiledData.tilesets[i].tilecount - 1; j >= 0; j--) 
+						{
+							var x = (j * tiledData.tilesets[i].tilewidth)  % tiledData.tilesets[i].imagewidth;
+							var y = tiledData.tilesets[i].tileheight * Math.floor(j * tiledData.tilesets[i].tilewidth / tiledData.tilesets[i].imagewidth);
+							var width = tiledData.tilesets[i].tilewidth;
+							var height = tiledData.tilesets[i].tileheight;
+
+							for(tileName in tilesSpriteSheet)
+							{
+								if(	tilesSpriteSheet[tileName].frame.x == x &&
+									tilesSpriteSheet[tileName].frame.y == y &&
+									tilesSpriteSheet[tileName].frame.w == width &&
+									tilesSpriteSheet[tileName].frame.h == height)
+								{
+									fullTileset[tiledData.tilesets[i].firstgid + j] = fullTileset[tiledData.tilesets[i].firstgid + j] || tileName;
+									fullObejct.tileHeights[tiledData.tilesets[i].firstgid + j] = fullObejct.tileHeights[tiledData.tilesets[i].firstgid + j] || 
+									(tiledData.tilesets[i].imageheight / 32) - 1 > 0 ? 1 : 0;
+								}
+							}
+						}
+					}
+				}
+
+			};
+
+			for (var i = element.files.length - 1; i >= 0; i--) {
+				fileReader.readAsBinaryString(element.files.item(i));
+			}
+		}
+
+		function addEnemyType() 
+		{
+			$(".enemyTypeContainer").append(divEnemyType.clone());
+		}
+
+		function  removeEnemyType(element) {
+			$(element).parent().remove();
+		}
+
+
+	</script>
+</body>
+</html>

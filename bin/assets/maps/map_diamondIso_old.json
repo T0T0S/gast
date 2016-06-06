@@ -154,5 +154,11 @@
         }],
  "tilewidth":64,
  "version":1,
- "width":50
+ "width":50,
+
+    "characterData":
+    {
+        "enemyTypes" : ["Victim"]
+    },
+    "scrollable": true  
 }

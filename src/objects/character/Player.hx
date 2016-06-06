@@ -1,5 +1,6 @@
 package objects.character;
 import js.Browser;
+import js.Error;
 import js.html.RGBColor;
 import managers.CharacterManager;
 import managers.DrawManager;
@@ -29,11 +30,15 @@ import utils.TilePoint;
  */
 class Player extends Character{
 	private static var instance:Player;
-
+	public static var initialized:Bool = false;
+	
 	private var targetTile:Tile;
 	
 	private var tilePoolUsed:Array<Tile> = [];
+	
+	//Move to HudManager
 	private var APFlash:OSmovieclip;
+	
 	private var pathPositions:Array<Dynamic> = [];
 	
 	private var mouseHovering:Bool = false;
@@ -41,11 +46,17 @@ class Player extends Character{
 	
 	private var inputCallBacks:Map<String, EventTarget->TilePoint->Void> = new Map.Map();
 	private var inputHandledNames:Array<String> = ["mousemove", "mouseup"];
+	
+	private var beforeFightPos:TilePoint = new TilePoint();
 
 	private function new() {
 		super("hero");
 		setZ(2);
+		
+		scale.set(0.4, 0.4);
+
 		entityType = EntityType.player;
+		
 		HudManager.getInstance().HPmeter.text = ""+stats.health;
 		HudManager.getInstance().APmeter.text = ""+stats.AP;
 		
@@ -74,11 +85,19 @@ class Player extends Character{
 	override public function onCombatLost():Void {
 		super.onCombatLost();
 		respawn();
+		Camera.focusOnPosition(Player.getInstance().tilePos);
 	}
 	
 	override public function onCombatWon():Void {
 		super.onCombatWon();
-		
+		setTilePosition(beforeFightPos.x, beforeFightPos.y);
+		Camera.focusOnPosition(Player.getInstance().tilePos);
+	}
+	
+	override public function normal_update():Void {
+		super.normal_update();
+		beforeFightPos.x = tilePos.x;
+		beforeFightPos.y = tilePos.y;
 	}
 	
 	private function generateInputCallBacks ():Void 
@@ -378,21 +397,6 @@ class Player extends Character{
 		hidePoolTiles();
 	}
 	
-	private override function generateAttacks():Void{
-		for (i in Reflect.fields(config.attacks)) {
-			attacks.set(i, getAttackFromName(i, Reflect.field(config.attacks, i)));
-		}	
-	}
-	
-	private override function getAttackFromName(name:String, data:Dynamic):Attack{
-		switch name{
-			case "normal": return new NormalAttack(data);
-			case "triple": return new TripleAttack(data);
-		}
-		Browser.window.console.warn("ATTACK NOT FOUND !");
-		return new Attack(data);
-	}
-	
 	override public function setTilePosition(nx:Int, ny:Int):Void {
 		super.setTilePosition(nx, ny);
 		
@@ -402,9 +406,8 @@ class Player extends Character{
 	}
 	
 	override public function Destroy():Void {
+		Browser.window.console.error("Destroying the player is not supposed to happen, try to keep it stored in CharacterManager");
 		super.Destroy();
-		
-		
 		
 		for (inputName in inputCallBacks.keys())
 		{
@@ -412,7 +415,8 @@ class Player extends Character{
 		}
 	}
 	
-	public static function getInstance():Player{
+	public static function getInstance():Player {
+		initialized = true;
 		if (instance == null) instance = new Player();
 		return instance;
 	}

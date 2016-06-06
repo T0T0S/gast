@@ -2,6 +2,7 @@ package objects;
 import js.Browser;
 import js.html.Event;
 import managers.DrawManager;
+import managers.InitManager;
 import managers.StateManager;
 import pixi.interaction.EventTarget;
 import pixi.loaders.Loader;
@@ -38,6 +39,15 @@ class State{
 	
 	public function _StartLoading():Void {
 		Preload();
+		
+		if (Lambda.count(StateManager.jsonToPreload) != 0)
+		{
+			for (key in StateManager.jsonToPreload.keys())
+			{
+				loadJson.set(key, StateManager.jsonToPreload.get(key));
+			}
+		}
+		
 		if (Lambda.count(loadJson) == 0) {
 			StateLoaded = true;
 			Start();
@@ -53,12 +63,25 @@ class State{
 		}
 		
 		jsonLoader.once("complete", _assetLoaded);
-		jsonLoader.on("progress", AssetLoad);
+		jsonLoader.on("progress",untyped _onAssetLoadProgress);
 		jsonLoader.load();
 	};
 	
 	private function _onAssetLoadProgress (loader:Loader, resource:Resource):Void {		
 		AssetLoad(loader);
+		
+		if (Lambda.count(StateManager.jsonToPreload) != 0 && resource.isJson)
+		{
+			for (resourceName in StateManager.jsonToPreload.keys())
+			{
+				if (resource.url == StateManager.jsonToPreload.get(resourceName))
+				{
+					InitManager.data[untyped resourceName] = resource.data;
+					StateManager.jsonToPreload.remove(resourceName);
+					break;
+				}
+			}
+		}
 	}
 	
 	private function _assetLoaded (loader:Loader):Void {

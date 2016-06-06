@@ -2,6 +2,7 @@ package objects.character;
 import js.Browser;
 import js.Lib;
 import managers.UpdateManager;
+import objects.EnemyGroup;
 import objects.modules.BehaviorModule;
 import objects.modules.LOSModule;
 import pixi.core.math.Point;
@@ -108,7 +109,7 @@ class Character extends MovieClip{
 	
 	public var isDead:Bool = false;
 	
-	public var positionTile:Tile;
+	public var floorTile:Tile;
 	
 	public var WorldMapPosition:TilePoint = new TilePoint();
 	
@@ -130,6 +131,13 @@ class Character extends MovieClip{
 		ID = Id.newId();
 		anchor.set(0.5, 1);
 		UpdateManager.getInstance().manage(this);
+		CharacterManager.getInstance().addCharacter(this);
+	}
+	
+	public function changeId(newId:String)
+	{
+		CharacterManager.getInstance().removeCharacter(this);
+		ID = newId;
 		CharacterManager.getInstance().addCharacter(this);
 	}
 	
@@ -164,22 +172,20 @@ class Character extends MovieClip{
 		return returnArray;
 	}
 
-	@:deprecated("attacks needs to be overwritten by child class")
-	private function generateAttacks():Void{
-		//for (i in Reflect.fields(config.attacks)) {
-			//attacks.set(i, getAttackFromName(i, Reflect.field(config.attacks, i)));
-		//}	
+	private function generateAttacks():Void
+	{
+		for (i in Reflect.fields(config.attacks)) {
+			attacks.set(i, getAttackFromName(i, Reflect.field(config.attacks, i)));
+		}	
 	}
 	
-	@:deprecated("attacks needs to be overwritten by child class")
 	private function getAttackFromName(name:String, data:Dynamic):Attack{
-		//switch name{
-			//case "normal": return new NormalAttack(data);
-			//case "triple": return new TripleAttack(data);
-		//}
-		//Browser.window.console.warn("ATTACK NOT FOUND !");
-		//return new Attack(data);
-		return null;
+		if (Type.resolveClass("objects.attacks."+name) == null)
+		{
+			Browser.window.console.warn("ATTACK NOT FOUND ! "+name);
+			return new Attack(data);
+		}
+		return Type.createInstance(Type.resolveClass("objects.attacks."+name) ,[data]);
 	}
 	
 	private function generateAnimations():Void {
@@ -207,7 +213,7 @@ class Character extends MovieClip{
 		DrawManager.addToDisplay(dmgText,Main.getInstance().gameCont);
 		dmgText.animate(0.5);
 		
-		setAnimation("damage");
+		setAnimation("damage", returnDmgText);
 		
 		
 		stats.health -= amount;
@@ -216,6 +222,11 @@ class Character extends MovieClip{
 			kill();
 		}
 	};
+	
+		private function returnDmgText(dmg:DmgText)
+		{
+			PoolManager.returnObject(dmg, PoolType.dmgText);
+		}
 	
 	/*#################
 			UPDATE
@@ -323,24 +334,24 @@ class Character extends MovieClip{
 	}
 	
 	public function generatePosTile(allied:Bool):Void {
-		positionTile = allied ? new Tile(Texture.fromImage("alliedTile.png")) :new Tile(Texture.fromImage("enemyTile.png"));
-		DrawManager.addToDisplay(positionTile, MapManager.getInstance().activeMap.mapContainer, 0.45);
-		positionTile.visible = true;
-		untyped positionTile.type = type;
+		floorTile = allied ? new Tile(Texture.fromImage("alliedTile.png")) :new Tile(Texture.fromImage("enemyTile.png"));
+		DrawManager.addToDisplay(floorTile, MapManager.getInstance().activeMap.mapContainer, 0.45);
+		floorTile.visible = true;
+		untyped floorTile.type = type;
 		showPosTile(tilePos.x, tilePos.y);
 	}
 	
 	private function showPosTile(nx:Int, ny:Int):Void {
-		if (FightManager.status == StatusModes.normal || positionTile == null)
+		if (FightManager.status == StatusModes.normal || floorTile == null)
 			return;
 			
-		positionTile.setTilePosition(nx, ny);
+		floorTile.setTilePosition(nx, ny);
 	}
 	
-	private function removePositionTile():Void
+	private function removefloorTile():Void
 	{
-		DrawManager.removeFromDisplay(positionTile);
-		positionTile.destroy();
+		DrawManager.removeFromDisplay(floorTile);
+		floorTile.destroy();
 	}
 	
 	public function normal_update():Void
@@ -413,7 +424,7 @@ class Character extends MovieClip{
 		
 		
 		/* end */
-		DrawManager.removeFromDisplay(positionTile);
+		DrawManager.removeFromDisplay(floorTile);
 		
 		
 		//Destroy();
@@ -573,16 +584,16 @@ class Character extends MovieClip{
 	
 	public function onCombatLost():Void 
 	{
-		stats.AP = stats.MaxAP;
-		removePositionTile();
+		useAp(cast stats.AP - stats.MaxAP);
+		removefloorTile();
 		updateBlocked = false; 
 		trace("character \"" + inGameName+"\" has lost his fight."); 	
 	}
 	
 	public function onCombatWon():Void 
 	{
-		stats.AP = stats.MaxAP;
-		removePositionTile();
+		useAp(cast stats.AP - stats.MaxAP);
+		removefloorTile();
 		updateBlocked = false; 
 		trace("character \""+inGameName+"\" has WON his fight.");
 	}
@@ -597,8 +608,8 @@ class Character extends MovieClip{
 		
 		
 		//ServerManager. do some
-		if (Camera.targetToFollow == this)
-			Camera.targetToFollow = null;
+		if (Camera.getInstance().targetToFollow == this)
+			Camera.getInstance().targetToFollow = null;
 			
 		destroy();
 	}

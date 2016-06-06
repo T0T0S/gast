@@ -21,7 +21,7 @@ class HudButton extends Button {
 		onUp(Action);
 	}
 	
-	public function Action()
+	public function Action(e)
 	{
 		Player.getInstance().changeSelectedAction(actionName); 
 	}

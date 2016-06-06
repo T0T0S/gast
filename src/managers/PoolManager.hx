@@ -25,11 +25,13 @@ class PoolManager {
 	private static var instance: PoolManager;
 	
 	private static var Pools:Map<PoolType,Array<DisplayObject>> = new Map.Map();
+	private static var itemUsed:Map<PoolType,Array<Bool>> = new Map.Map();
 	
 	private function new() {
 		for (type in PoolType.createAll())
 		{
 			Pools.set(type, []);
+			itemUsed.set(type, []);
 		}
 	}
 	
@@ -39,6 +41,7 @@ class PoolManager {
 			for (i in 0...100)
 			{
 				Pools.get(pool).push(findClass(pool));
+				itemUsed.get(pool).push(false);
 			}
 		}
 	}
@@ -49,22 +52,48 @@ class PoolManager {
 			Browser.window.console.warn("Unknown pool: "+poolName.getName());
 			return [];
 		}
+		var item:Int = getUnusedPoolIndex(poolName);
+		Pools.get(poolName)[item].alpha = 1;
+		if(Pools.get(poolName)[item].scale != null)
+			Pools.get(poolName)[item].scale.set(1, 1);
+		itemUsed.get(poolName)[item] = true;
 		
-		Pools.get(poolName)[getUnusedPoolIndex(poolName)].alpha = 1;
-		Pools.get(poolName)[getUnusedPoolIndex(poolName)].scale.set(1,1);
-		return Pools.get(poolName)[getUnusedPoolIndex(poolName)];
+		return Pools.get(poolName)[item];
+	}
+	/*
+	 * FINISH RETURN BULLETS 
+	 * 
+	 * */
+	public static function returnObject(item:Dynamic, poolType:PoolType):Void{
+		if (!Pools.exists(poolName))
+		{
+			Browser.window.console.warn("Unknown pool: " + poolName.getName());
+			return;
+		}
+		
+		var item:Int = Pools.get(poolType).indexOf(item);
+		
+		if (item == -1)
+		{
+			Browser.window.console.warn("Item not found in pool: " + poolName.getName());
+			return;
+		}
+		
+		itemUsed.get(poolName)[item] = false;
 	}
 	
 	private static function getUnusedPoolIndex(poolName:PoolType):Int{
 		for (i in Pools.get(poolName).iterator() ){
-			if (!i.visible && i.visible != null)
-				return Pools.get(poolName).indexOf(i);
+			if (!i.visible)
+				if(!itemUsed.get(poolName)[Pools.get(poolName).indexOf(i)])
+					return Pools.get(poolName).indexOf(i);
 		}
 		increasePoolSize(poolName, 1);
 		return Pools.get(poolName).length -1;
 	}
 	
 	private static function increasePoolSize(poolName:PoolType, number:Int):Void {
+		trace("Increased pool '"+poolName.getName()+"' size.");
 		for (i in 0...number) {
 			Pools.get(poolName).push(findClass(poolName));
 			if (Pools.get(poolName)[Pools.get(poolName).length -1] == null)

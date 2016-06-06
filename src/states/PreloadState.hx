@@ -1,5 +1,6 @@
 package states;
 
+import managers.MapManager;
 import managers.PoolManager;
 import managers.StateManager;
 import objects.State;
@@ -28,8 +29,7 @@ class PreloadState extends State{
 	}
 	
 	public override function Preload():Void {
-		loadJson.set("TripleAttack", 	"assets/spriteSheets/buttonTripleAttack.json");
-		loadJson.set("Attack", 			"assets/spriteSheets/buttonAttack.json");
+		loadJson.set("Attack", 			"assets/spriteSheets/AttacksButtons.json");
 		loadJson.set("hud_bottom", 		"assets/spriteSheets/hud_bottom.json");
 		loadJson.set("tileSh2", 		"assets/spriteSheets/loadSpriteSheet.json");
 		loadJson.set("buttons", 		"assets/spriteSheets/buttonSpriteSheet.json");
@@ -50,6 +50,7 @@ class PreloadState extends State{
 	
 	public override function Start():Void  {
 		PoolManager.generatePool();
+		MapManager.getInstance().Init();
 		StateManager.getInstance().switchToState("Menu");
 	}
 

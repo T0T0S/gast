@@ -2,12 +2,14 @@ package managers;
 import js.Browser;
 import js.Error;
 import objects.character.BaseEnemy;
+import objects.character.Character;
 import objects.GameMap;
 import objects.modules.LOSModule.LOSPoint;
 import objects.Tile;
 import pixi.core.math.Point;
 import pixi.core.sprites.Sprite;
 import pixi.core.textures.Texture;
+import tweenx909.advanced.GroupX;
 import utils.Misc;
 import utils.TilePoint;
 
@@ -24,13 +26,19 @@ class MapManager{
 	
 	public var maps:Map<String,GameMap> = new Map.Map();
 
-	public function new() {
-		activeMap = new GameMap();
-		//maps.set("testMapZig", new GameMap("testMapZig"));
-		//maps.set("TestingMap", new GameMap("TestingMap"));
-		maps.set("DiamondMap", new GameMap("DiamondMap"));
+	private function new() {
+		activeMap = new GameMap(); //Phantom Map (prevents bugs)
 	}
 	
+	public function Init()
+	{
+		loadNewMap("map_diamondIso");
+	}
+	
+	private function loadNewMap(mapName:String)
+	{
+		maps.set(mapName, new GameMap(mapName));
+	}
 	
 	public function generateMapDisplay(mapName:String, select:Bool = false):Void {
 		var newMap = maps.get(mapName);
@@ -76,8 +84,8 @@ class MapManager{
 		tileSprite.setTilePosition(x, y);
 		tileSprite.x += newMapRef.OffsetX;
 		tileSprite.y += newMapRef.OffsetY;
-		tileSprite.setZ(newMapRef.tilesHeight[tileIndex] + specialHeight * 0.001);
-		newMapRef.addTileToMap(tileSprite, newMapRef.tilesHeight[tileIndex]);
+		tileSprite.setZ(newMapRef.tileHeights[tileIndex] + specialHeight * 0.001);
+		newMapRef.addTileToMap(tileSprite, newMapRef.tileHeights[tileIndex]);
 	}
 	
 	
@@ -111,12 +119,12 @@ class MapManager{
 	}
 	
 
-	public function placeEnemyGroupRamdom(enemiesID:Array<String>, range:Int):Void
+	public function placeEnemyGroupRamdom(range:Int, ?enemiesID:Array<String>):Void
 	{
-		var tempEnemies = enemiesID.copy();
-		placeEnemyGroupRamdomInternal(enemiesID, range);
-		
-		activeMap.addEnemyGroup(tempEnemies);
+		if(enemiesID == null)
+			placeEnemyGroupRamdomInternal(activeMap.addEnemyGroup().enemiesID.copy(), range);
+		else
+			placeEnemyGroupRamdomInternal(enemiesID, range);
 	}
 	
 	private function placeEnemyGroupRamdomInternal(enemiesID:Array<String>, range:Int, ?__INTERNAL_LOOPS__:Int = 0):Void
@@ -139,7 +147,7 @@ class MapManager{
 		{
 			tempPos = rangeSpawn.splice(Math.floor(Math.random() * rangeSpawn.length), 1)[0];
 			CharacterManager.getInstance().findCharacterById(enemiesID[0]).setTilePosition(tempPos.x, tempPos.y);
-			
+			DrawManager.addToDisplay(CharacterManager.getInstance().findCharacterById(enemiesID[0]), activeMap.mapContainer);
 			enemiesID.shift();
 			//rangeSpawn.splice(rangeSpawn.indexOf(tempPos), 1);
 		}
@@ -148,6 +156,39 @@ class MapManager{
 	@:deprecated("NOT YET IMPLEMENTED !")
 	public function spawnEnemyGroupPrecise(position:TilePoint, range:Array<TilePoint>)
 	{
+	}
+	
+	public function rePopCharactersOnMap()
+	{
+		for (group in activeMap.mapCharacterData.enemyGroups)
+		{
+			if (!group.isInFight)
+			{
+				for (enemyId in group.enemiesID)
+				{
+					var tempCharacter:Character = CharacterManager.getInstance().findCharacterById(enemyId);
+					//if enemy is still in the character manager teleport it there.
+					if (tempCharacter != null)
+					{
+						trace("Enemy "+tempCharacter.inGameName+" found in CharacterManager, moving to previous position.");
+						tempCharacter.teleportTo(TilePoint.fromString(group.enemiesData.get(enemyId).position));
+						tempCharacter.visible = true;
+						untyped tempCharacter.parentGroup = group;
+						DrawManager.addToDisplay(tempCharacter, activeMap.mapContainer);
+					}
+					else //create a new Enemy and teleport it to the position.
+					{
+						tempCharacter = Type.createInstance(Type.resolveClass(group.enemiesData.get(enemyId).className), []);
+						tempCharacter.changeId(enemyId);
+						untyped tempCharacter.parentGroup = group;
+						tempCharacter.visible = true;
+						DrawManager.addToDisplay(tempCharacter, activeMap.mapContainer);
+					
+						tempCharacter.teleportTo(TilePoint.fromString(group.enemiesData.get(enemyId).position));
+					}
+				}
+			}
+		}
 	}
 	
 	public function switchState():Void {

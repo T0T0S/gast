@@ -1,4 +1,6 @@
 package managers;
+import js.Error;
+import managers.InputManager.Keycode;
 import objects.Button;
 import objects.character.Player;
 import objects.HudButton;
@@ -28,10 +30,31 @@ class HudManager {
 	
 
 	private function new() {
-		
+		generateBaseHud();
 	}
 	
+	private function generateBaseHud()
+	{
+		var HPText:Text = new Text("", { "fill" :"white", "font":"35px gastFont", "stroke": "black", "strokeThickness":5 } );
+		HPText.anchor.set(0.5,0.5);
+		HPText.name = "HP";
+		HPText.x = - 342 ;
+		HPText.y = - 65 ;
+		HPmeter = HPText;
+		
+		var APText:Text = new Text("", { "fill" :"white", "font":"35px gastFont", "stroke": "black", "strokeThickness":5 } );
+		APText.anchor.set(0.5,0.5);
+		APText.name = "AP";
+		APText.x = - 342;
+		APText.y = - 175;
+		APmeter = APText;
+	}
+	
+	
 	public function generateFightHud():Void {
+		if (!Player.initialized)
+			throw new Error("Player needs to be initialized before you can generate Fight Hud !");
+			
 		var rightHud:Sprite 	= new HudElement(Texture.fromImage("hud_bottom_right.png"));
 		rightHud.scale.set(Main.screenRatio.x,Main.screenRatio.y);
 		rightHud.anchor.set(1, 1);
@@ -50,45 +73,31 @@ class HudManager {
 		//moveButton.x = -695;
 		//moveButton.y = -73;
 		
-		
-		
-		var attackButton:HudButton = addActionButton("button_attack", "normal", 1);
-		
-		var tripleAttackButton:HudButton  =  addActionButton("button_triple_attack", "triple", 2);
+		var i:Int = 0;
+		var tempButton:HudButton;
+		for (attackName in Player.getInstance().attacks.keys())
+		{
+			++i;
+			tempButton = addActionButton("button_" + attackName, attackName, i);
+			InputManager.getInstance().AddOnKeyUp(attackName, tempButton.Action, Keycode.Zero + i, i > 9);
+			DrawManager.addToDisplay(tempButton, attackHud);
+		}
 		
 		APTicker = new Sprite(Texture.fromImage("timerFill.png"));
 		APTicker.anchor.set(0.5,0.5);
 		APTicker.x = - (APTicker.width * 0.5 + 50);
 		APTicker.y = - (APTicker.height * 0.5 + 48);
 		APTicker.name = "tickTimer";
-	
-		var HPText:Text = new Text("", { "fill" :"white", "font":"35px gastFont", "stroke": "black", "strokeThickness":5 } );
-		HPText.anchor.set(0.5,0.5);
-		HPText.name = "HP";
-		HPText.x = - 342 ;
-		HPText.y = - 65 ;
-		HPmeter = HPText;
-		
-		var APText:Text = new Text("", { "fill" :"white", "font":"35px gastFont", "stroke": "black", "strokeThickness":5 } );
-		APText.anchor.set(0.5,0.5);
-		APText.name = "AP";
-		APText.x = - 342;
-		APText.y = - 175;
-		APmeter = APText;
 		
 		
 		if (fightHud.parent == null)
 			DrawManager.addToDisplay(fightHud, Main.getInstance().hudCont);
 			
-		
 		DrawManager.addToDisplay(attackHud, fightHud);
-		DrawManager.addToDisplay(attackButton, attackHud);
-		DrawManager.addToDisplay(tripleAttackButton, attackHud);
-
 		DrawManager.addToDisplay(rightHud, fightHud);
 		DrawManager.addToDisplay(APTicker, rightHud);
-		DrawManager.addToDisplay(APText, rightHud);
-		DrawManager.addToDisplay(HPText, rightHud);
+		DrawManager.addToDisplay(APmeter, rightHud);
+		DrawManager.addToDisplay(HPmeter, rightHud);
 
 	}
 	

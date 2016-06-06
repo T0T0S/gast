@@ -14,8 +14,9 @@ import states.MenuState;
  * @author ToTos
  */
 class StateManager{
-
-	public static var instance:StateManager;
+	//Used to preload mapData on first state preload.
+	public static var jsonToPreload:Map<String, String> = new Map.Map();
+	private static var instance:StateManager;
 	
 	private var statesArray:Map<String,State> = new Map.Map();
 	private var activeState:String = "Preload";

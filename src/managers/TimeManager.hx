@@ -17,10 +17,10 @@ class TimeManager {
 
 	public static var elapsedTime:Float = 0;
 	public static var deltaTime:Float = 0;
+	public var frameElapsed:Int = 0;
 	
 	public static var FPS:Float = 0;
 	
-	private var frameElapsed:Int = 0;
 	private var tickInterval:Int = 90;
 	private var numberOfTicks:Int = 0;
 	
@@ -40,6 +40,7 @@ class TimeManager {
 		FPS = 3600 * deltaTime > 60 ? 60 : Math.floor(3600 * deltaTime);
 	};
 	
+	@:deprecated("ServSide")
 	private function combatTick():Void{
 		++frameElapsed;
 		if (frameElapsed % tickInterval == 0){

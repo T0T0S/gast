@@ -17,7 +17,7 @@ class UpdateManager{
 	
 	
 	
-	public function _update()
+	public function Update()
 	{
 		testStart();
 		for (element in elementsToManage.iterator())

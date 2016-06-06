@@ -69,16 +69,16 @@
 			"loop": true,
 			"frameData" : [[0,10],[11,22],[23,34],[35,45]]
 		},
-		"normalAttack": {
+		"NormalAttack": {
 			"fps": 10,
 			"loop": true,
 			"frameData" : [[46],[47],[48],[49]]
 		}
 	},
 	"attacks":{
-		"normal":{
+		"NormalAttack":{
 			"waitForFinish": true,
-			"animationName": "normalAttack",
+			"animationName": "NormalAttack",
 			"minRange": 1,
 			"maxRange": 10,
 			"apCost" : 30,
@@ -89,13 +89,13 @@
 				"type" : "bullet"
 				}
 		},
-		"triple":{
+		"TripleAttack":{
 			"waitForFinish": true,
-			"animationName": "normalAttack",
+			"animationName": "NormalAttack",
 			"minRange": 3,
-			"maxRange": 4,
+			"maxRange": 5,
 			"apCost" : 50,
-			"damage" : 300,
+			"damage" : 334,
 			"framesData": [[5,2],[5,2],[5,2]],
 			"effect": {
 				"name" : "bulletNormal",

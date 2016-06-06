@@ -16,7 +16,14 @@ import pixi.core.graphics.Graphics;
 import utils.TilePoint;
 
 /**
- * ...
+ * ############################################
+ * 
+ * 					DEPRECATED !
+ * 
+ * ############################################
+ * 
+ * Still used by camera to get global mouse events (needs refactoring)
+ * 
  * @author ToTos
  */
 class MouseManager{
