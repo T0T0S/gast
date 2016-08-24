@@ -68,6 +68,8 @@ class Main
 	
 	public static var tileSize:TilePoint = new TilePoint();
 	public static var screenRatio:Point = new Point(); // ratio of the scale from 1920x1080 screen
+	public static var gameSize:Point = new Point();
+	public static var gameCenter:Point = new Point();
 	
 	private var mouseCallPerFrame:Int = 1;
 	private var mouseCalled:Int = 0;
@@ -90,6 +92,11 @@ class Main
 		
 		screenRatio.x = renderer.width / 1920;
 		screenRatio.y = renderer.height / 1080;
+		
+		gameSize.x = renderer.width;
+		gameSize.y = renderer.height;
+		gameCenter.x = gameSize.x * 0.5;
+		gameCenter.y = gameSize.y * 0.5;
 		
 		fullStage.addChild(renderMask);
 		
@@ -141,7 +148,8 @@ class Main
 		var font = new Font();
 		font.onload = function() { Browser.window.requestAnimationFrame(cast InitManager.getInstance); };
 		font.fontFamily = "gastFont";
-		font.src = "assets/fonts/Days.otf";
+		font.src = "assets/fonts/TRACER__.ttf";
+		//font.src = "assets/fonts/Days.otf";
 	}
 	
 
@@ -164,8 +172,6 @@ class Main
 		serverManager = ServerManager.getInstance();
 		updateManager = UpdateManager.getInstance();
 
-
-
 		Browser.window.addEventListener("resize", resize);
 		Browser.window.requestAnimationFrame(cast Update);
 	}
@@ -174,6 +180,11 @@ class Main
 		//renderer.resize(DeviceCapabilities.width, DeviceCapabilities.height);
 		screenRatio.x = renderer.width / 1920;
 		screenRatio.y = renderer.height / 1080;
+		gameSize.x = renderer.width;
+		gameSize.y = renderer.height;
+		
+		gameCenter.x = gameSize.x * 0.5;
+		gameCenter.y = gameSize.y * 0.5;
 	}
 	
 	public function Update() {
@@ -240,20 +251,17 @@ class Main
  * 	
  * normal mode => menu contextuel (right clic)
  * 
- * ######
- * intégrer custom loader cool (folio) <<<<<<<<<<<<<<<<<<=================== FAIT ÇA !!!
- * ######
  * 
  * run anim.
  * 
- * 
+ * 	=> Popup de victoire ou défaite <<<<===== to do secondary
+
  * ##################
  * 	 tache en cours
  * ##################
- * 		=> Time Manager => Map respawn 1 enemy group every minute <<<<==== TODO !!!
- * 		=> Popup de victoire ou défaite <<<<===== to do secondary
- *		=>	LE SERVER !!!!!
- *  
+ *  => make landing page for login.
+ * 	
+ * 
  * ##############################################
  *  mark functions that need to be server side !
  * ##############################################
@@ -262,19 +270,8 @@ class Main
  * 	   SUPPORT
  *	#############
  * 	
- * 	MAKE BUTTON BIND TO KEYBOARD POSSIBLE !
- *      => Need InputManager 
- * 		=> has onkeydown-up events && a list of callbacks with refs to the objects to apply to
- *  	=> if object is null => auto remove callback.
- * 
- *  NEED MAP DRAG AND DROP FOR MORE PRECISION IN MOVEMENT!
- * 	
- * 	Need Utilitaire d'import de map.
  * 	Need Utilitaire d'import de perso.
- * 
- * 
  * ADD DISPLACEMENT MAP :>
- * 
  * 
  * Add sounds,  basic beeps for text. shooting sounds and movement.
  * FAIRE UNE PASSE SUR LES GRAPHISMES pour au moins vendre un peu le projet.

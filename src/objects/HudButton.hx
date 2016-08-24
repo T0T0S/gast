@@ -13,7 +13,7 @@ class HudButton extends Button {
 	
 	
 	public function new(textureName:String, actionName:String) {
-		super(textureName);
+		super(textureName, true);
 		anchor.set(0.5, 0.5);
 		this.actionName = actionName;
 		this.name = actionName;

@@ -11,8 +11,8 @@ class Npc extends Character{
 	private var targetCharacter:Character;
 	/* End AI */
 
-	public function new(newName:String, ?newInGameName:String) {
-		super(newName, newInGameName);
+	public function new(newName:String, ?newpseudo:String) {
+		super(newName, newpseudo);
 		entityType = EntityType.npc;
 	}
 	

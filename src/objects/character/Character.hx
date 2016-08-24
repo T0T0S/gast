@@ -82,10 +82,8 @@ class Character extends MovieClip{
 	private var isMoving:Bool = false;
 	public var isActive:Bool = true;
 	
-	public var refreshSpeed:Float = 1;
-	
 	public var type:String;
-	public var inGameName:String = "";
+	public var pseudo:String = "";
 	public var entityType:EntityType = EntityType.enemy;
 	public var attacks:Map<String,Attack> = new Map.Map();
 	private var activeAttack:Attack;
@@ -116,10 +114,10 @@ class Character extends MovieClip{
 	/*#################
 	*		NEW	 
 	* ################# */
-	public function new(newName:String, ?newInGameName:String = null) 
+	public function new(newName:String, ?newpseudo:String = null) 
 	{
 		type = newName;
-		inGameName = newInGameName;
+		pseudo = newpseudo;
 		config = InitManager.data[untyped newName];
 		super(generateTextures(type));
 		
@@ -213,7 +211,7 @@ class Character extends MovieClip{
 		DrawManager.addToDisplay(dmgText,Main.getInstance().gameCont);
 		dmgText.animate(0.5);
 		
-		setAnimation("damage", returnDmgText);
+		setAnimation("damage", false, returnDmgText);
 		
 		
 		stats.health -= amount;
@@ -380,7 +378,7 @@ class Character extends MovieClip{
 			losModule.moveToPoint(tilePos); //refresh los
 	}
 	
-	public function setAnimation(animName:String, resetFrames:Bool = true):Void {
+	public function setAnimation(animName:String, resetFrames:Bool = true, ?newCallBack:Dynamic):Void {
 		var lastAnimPreciseFrame:Float = 0;
 		if (!resetFrames)
 			lastAnimPreciseFrame = activeAnimation.preciseAnimFrame;
@@ -393,6 +391,9 @@ class Character extends MovieClip{
 			return;
 		}
 		activeAnimation = animations.get(animName);
+		if (newCallBack != null)
+			activeAnimation.setCallBack(newCallBack);
+		
 		activeAnimation.resetAnim(directionFacing);
 		animationSpeed = activeAnimation.fps / 60;
 		if (!resetFrames)
@@ -414,7 +415,7 @@ class Character extends MovieClip{
 		
 		CharacterManager.getInstance().setTileData(tilePos, true, true);
 		
-		trace("TARGET '" + inGameName+"' has been killed !");
+		trace("TARGET '" + pseudo+"' has been killed !");
 		FightManager.getInstance().testFightOver();
 		
 		setAnimation("death");
@@ -472,7 +473,7 @@ class Character extends MovieClip{
 	public function setZ(newZ:Float):Void{
 		z = newZ;
 		if (newZ >= Main.tileSize.y * 0.5)
-			Browser.window.console.warn("Z axis is >= than tileSize.y * 0.5 for object "+inGameName+", this may cause graphical glitches!");
+			Browser.window.console.warn("Z axis is >= than tileSize.y * 0.5 for object "+pseudo+", this may cause graphical glitches!");
 		depth = y + z;
 	}
 
@@ -587,7 +588,7 @@ class Character extends MovieClip{
 		useAp(cast stats.AP - stats.MaxAP);
 		removefloorTile();
 		updateBlocked = false; 
-		trace("character \"" + inGameName+"\" has lost his fight."); 	
+		trace("character \"" + pseudo+"\" has lost his fight."); 	
 	}
 	
 	public function onCombatWon():Void 
@@ -595,7 +596,7 @@ class Character extends MovieClip{
 		useAp(cast stats.AP - stats.MaxAP);
 		removefloorTile();
 		updateBlocked = false; 
-		trace("character \""+inGameName+"\" has WON his fight.");
+		trace("character \""+pseudo+"\" has WON his fight.");
 	}
 	
 	/**

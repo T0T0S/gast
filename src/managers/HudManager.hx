@@ -5,6 +5,7 @@ import objects.Button;
 import objects.character.Player;
 import objects.HudButton;
 import objects.HudElement;
+import objects.TextInput;
 import pixi.core.display.Container;
 import pixi.core.sprites.Sprite;
 import pixi.core.text.Text;
@@ -59,14 +60,14 @@ class HudManager {
 		rightHud.scale.set(Main.screenRatio.x,Main.screenRatio.y);
 		rightHud.anchor.set(1, 1);
 		rightHud.x = Main.getInstance().renderer.width;
-		rightHud.y = Main.getInstance().renderer.height;
+		rightHud.y = Main.gameSize.y;
 		rightHud.name = "right_bottom";
 		
 		var attackHud:Sprite 	= new HudElement(Texture.fromImage("hud_bottom_center.png"));
 		attackHud.scale.set(Main.screenRatio.x, Main.screenRatio.y);
 		attackHud.anchor.set(1, 1);
 		attackHud.x = rightHud.x - (rightHud.width + 20);
-		attackHud.y = Main.getInstance().renderer.height;
+		attackHud.y = Main.gameSize.y;
 		attackHud.name = "center";
 		
 		//var moveButton:Button  = new Button("button_move");
@@ -120,7 +121,7 @@ class HudManager {
 		if (instance == null) instance = new HudManager();
 		return instance;
 	}
-	
+
 	public function destroy (): Void {
 		instance = null;
 	}

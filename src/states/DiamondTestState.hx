@@ -40,7 +40,7 @@ class DiamondTestState extends State{
 		//Main.camera.setCameraPosition(new Point(-MapManager.getInstance().activeMap.mapContainer.width * 0.25,0));
 		
 		var hero:Player = Player.getInstance();
-		hero.inGameName = "ChaudRiz";
+		hero.pseudo = "ChaudRiz";
 		hero.setTilePosition(8, 8);
 		DrawManager.addToDisplay(hero, MapManager.getInstance().activeMap.mapContainer);
 		

@@ -106,7 +106,7 @@ class Camera{
 	
 	public function getContainerBounds (?e):Void {
 		size.x = Main.getInstance().renderer.width;
-		size.y = Main.getInstance().renderer.height;
+		size.y = Main.gameSize.y;
 	}
 	
 	public function updateMapSize(newMap:GameMap):Void{

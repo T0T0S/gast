@@ -1,8 +1,6 @@
 package objects;
 
 import haxe.Constraints.Function;
-import js.Browser;
-import js.html.Event;
 import pixi.core.text.Text;
 import pixi.core.textures.Texture;
 import pixi.extras.MovieClip;
@@ -23,11 +21,25 @@ class Button extends MovieClip {
 	
 	private var locked:Bool = false;
 	
-	public function new(name:String) {
-		var arrayTextures:Array<Texture> = [];
-		arrayTextures.push(Texture.fromImage(name+"_idle.png"));
-		arrayTextures.push(Texture.fromImage(name+"_hover.png"));
-		arrayTextures.push(Texture.fromImage(name+"_down.png"));
+	/**
+	 * basic button constructor
+	 * 
+	 * @param	name The name of the button (ex: 'pouet' will seek "pouet.png" for textures.)
+	 * @param	customButtonTexture Are there custom "idle/hover/down" sprites made for the button (ex: "pouet_idle.png"...) (if == false, brightness is used instead)
+	 */
+	public function new(name:String, customButtonTexture:Bool = false) {
+		var arrayTextures:Array<Texture>;
+
+		if (!customButtonTexture)
+			arrayTextures = Misc.generateButtonTextures(Texture.fromImage(name+".png"));
+		else
+		{
+			arrayTextures = [];
+			arrayTextures.push(Texture.fromImage(name+"_idle.png"));
+			arrayTextures.push(Texture.fromImage(name+"_hover.png"));
+			arrayTextures.push(Texture.fromImage(name+"_down.png"));
+		}
+		
 		super(arrayTextures);
 		
 		interactive = true;
@@ -62,16 +74,15 @@ class Button extends MovieClip {
 		
 	}
 	
-	
 	public function setText(newText:String):Void {
 		text.text = newText;
 		text.visible = true;
-		if (text.parent == null && newText != "") {
+		if (text.parent == null && newText.length != 0) {
 			text.anchor.set(0.5, 0.5);
 			text.scale.set(1 / scale.x, 1 / scale.y);
 			addChild(text);
 		}
-		else if(newText == ""){
+		else if(newText.length == 0){
 			text.visible = false;
 		}
 	};

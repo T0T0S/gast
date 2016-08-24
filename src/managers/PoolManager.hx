@@ -60,26 +60,26 @@ class PoolManager {
 		
 		return Pools.get(poolName)[item];
 	}
-	/*
-	 * FINISH RETURN BULLETS 
-	 * 
-	 * */
+	
 	public static function returnObject(item:Dynamic, poolType:PoolType):Void{
-		if (!Pools.exists(poolName))
+		if (!Pools.exists(poolType))
 		{
-			Browser.window.console.warn("Unknown pool: " + poolName.getName());
+			Browser.window.console.warn("Unknown pool: " + poolType.getName());
 			return;
 		}
 		
-		var item:Int = Pools.get(poolType).indexOf(item);
+		var itemindex:Int = Pools.get(poolType).indexOf(item);
 		
-		if (item == -1)
+		if (itemindex == -1)
 		{
-			Browser.window.console.warn("Item not found in pool: " + poolName.getName());
+			Browser.window.console.warn("Item '"+Type.getClassName(item)+"' not found in pool: " + poolType.getName());
 			return;
 		}
 		
-		itemUsed.get(poolName)[item] = false;
+		if (item.parent != null)
+			DrawManager.removeFromDisplay(item);
+			
+		itemUsed.get(poolType)[itemindex] = false;
 	}
 	
 	private static function getUnusedPoolIndex(poolName:PoolType):Int{

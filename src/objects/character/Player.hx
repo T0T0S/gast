@@ -342,10 +342,10 @@ class Player extends Character{
 	}
 	
 	
-	private function poolHide(i:Dynamic):Void{
-		i.visible = false;
+	private function poolHide(i:Dynamic):Void {
 		i.tint = 0xFFFFFF;
 		i.alpha = 1;
+		PoolManager.returnObject(i, PoolType.tileWhite);
 	}
 	
 	

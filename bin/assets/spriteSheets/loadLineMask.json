@@ -1,0 +1,21 @@
+{"frames": {
+
+"lineMask.png":
+{
+	"frame": {"x":0,"y":0,"w":1920,"h":210},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":1920,"h":210},
+	"sourceSize": {"w":1920,"h":210},
+	"pivot": {"x":0.5,"y":0.5}
+}},
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "loadLineMask.png",
+	"format": "RGBA8888",
+	"size": {"w":1920,"h":210},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:453d86edcd947203d23fd40073716fb0:f3d7615bfe244e58ab429490f3f4280a:5d51c0d6cbafbf356e46e184d0ff4877$"
+}
+}

@@ -6,8 +6,10 @@ import pixi.core.display.Container;
 import pixi.core.text.Text;
 import states.DebugState;
 import states.DiamondTestState;
+import states.LoadingState;
 import states.PreloadState;
 import states.MenuState;
+import tweenx909.TweenX;
 
 /**
  * ...
@@ -43,16 +45,17 @@ class StateManager{
 	public function new() {
 	
 		addState(new PreloadState());
+		addState(new LoadingState());
 		addState(new MenuState());
 		addState(new DebugState());
 		addState(new DiamondTestState());
 		
 		Main.getInstance().debugCont.addChild(debugActiveState);
 		debugActiveState.x = 10;
-		debugActiveState.y = Main.getInstance().renderer.height - 30;
+		debugActiveState.y = Main.gameSize.y - 30;
 		
 		debugText.x = 200;
-		debugText.y = Main.getInstance().renderer.height - 30;
+		debugText.y = Main.gameSize.y - 30;
 		Main.getInstance().debugCont.addChild(debugText);
 		
 		switchToState(activeState);
@@ -96,6 +99,15 @@ class StateManager{
 		if(!skipNextLateUpdate)
 			statesArray[activeState].LateUpdate();
 		skipNextLateUpdate = false;
+	}
+	
+	public static function alphaTransition(newState:String, timeIn:Float = 0.5, timeOut:Float = 0.5):Void
+	{
+		TweenX.serial([
+			TweenX.to(Main.getInstance().fullStage, { alpha: 0 }, timeIn),
+			TweenX.func(function() { getInstance().switchToState(newState); } ),//creation de function non opti mais on s'en fous on fait rarement de transition. 
+			TweenX.to(Main.getInstance().fullStage, { alpha: 1 }, timeOut)
+		]);
 	}
 	
 	public static function getInstance():StateManager {

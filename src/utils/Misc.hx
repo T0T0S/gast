@@ -2,8 +2,12 @@ package utils;
 
 
 
+import haxe.Timer;
 import js.Browser;
+import js.Error;
 import objects.modules.LOSModule.LOSPoint;
+import pixi.core.display.Container;
+import pixi.core.graphics.Graphics;
 import pixi.core.math.Point;
 import Main;
 import managers.CharacterManager;
@@ -16,8 +20,12 @@ import objects.attacks.TripleAttack;
 import objects.Camera;
 import objects.Tile;
 import pixi.core.math.Point in PixPoint;
+import pixi.core.math.shapes.Rectangle;
+import pixi.core.Pixi.ScaleModes;
 import pixi.core.sprites.Sprite;
+import pixi.core.text.Text;
 import pixi.core.textures.Texture;
+import pixi.filters.color.ColorMatrixFilter;
 import pixi.interaction.EventTarget;
 
 /**
@@ -289,6 +297,109 @@ class Misc {
 		PoolManager.applyFunctionToPool(PoolType.pointer, function(element) { element.visible = false; } );
 	}
 	
+	public static function getBasicMask():Graphics
+	{
+		var returnMask:Graphics = new Graphics();
+		returnMask.beginFill(0xFFFFFF, 1);
+		returnMask.drawRect(0, 0, 20, 20);
+		returnMask.endFill();
+		return returnMask;
+	}
+	
+	public static function getRoundMask():Graphics
+	{
+		var returnMask:Graphics = new Graphics();
+		returnMask.beginFill(0xFFFFFF, 1);
+		returnMask.drawCircle(0, 0, 10);
+		returnMask.endFill();
+		return returnMask;
+	}
+	public static function generateButtonTextures(texture:Texture):Array<Texture>
+	{
+		var returnArray:Array<Texture> = [];
+		var tempSprite:Sprite = new Sprite(texture);
+		if (tempSprite.texture.valid == false)
+		{
+			throw new Error("Texture '"+texture.baseTexture.source.name+"' could not be generated.");
+			return [];
+		}
+		var filter:ColorMatrixFilter = new ColorMatrixFilter();
+		returnArray.push(tempSprite.generateTexture(Main.getInstance().renderer));
+		
+		tempSprite.filters = [filter];
+		filter.brightness(1.3, false);
+		returnArray.push(tempSprite.generateTexture(Main.getInstance().renderer));
+		filter.brightness(0.7, false);
+		returnArray.push(tempSprite.generateTexture(Main.getInstance().renderer));
+		
+		return returnArray;	
+	}
+	
+	public static function displayTextOverTime(textObject:Text, delay:Int = 0, speed:Int = 50):Void
+	{
+		var timer =  new Timer(speed);
+		var progression:Int = 0;
+		var textToDisplay:String = textObject.text;
+		textObject.text = "";
+		Timer.delay(function(){
+			timer.run = function(){
+				if (progression > textToDisplay.length)
+				{
+					timer.stop();
+					timer = null;
+					return;
+				}
+				textObject.text = textToDisplay.substr(0, progression);
+				++progression;
+			};
+		}, delay);
+		
+	}
+	
+	public static function get9slicedTexture(newTexture:Texture, width:Int, height:Int, scaleMode:Int = 2):Texture
+	{
+		var arraySprites:Array<Sprite> = [];
+		var textureToSlice:Texture = untyped newTexture.clone();
+		
+		textureToSlice.baseTexture.scaleMode = scaleMode;
+		
+		var thirdW =  Math.floor(textureToSlice.width / 3);
+		var thirdH =  Math.floor(textureToSlice.height / 3);
+		
+		var centerWidth:Float = width - (thirdW * 2);
+		var centerHeight:Float = height - (thirdH * 2);
+		for (i in 0...9)
+		{
+			arraySprites.push(new Sprite(new Texture(textureToSlice.baseTexture, new Rectangle(((i % 3) * thirdW) + textureToSlice.frame.x, Math.floor(i / 3) * thirdH + textureToSlice.frame.y,thirdW, thirdH))));
+		}
+		
+		arraySprites[1].width = centerWidth;
+		arraySprites[4].width = centerWidth;
+		arraySprites[7].width = centerWidth;
+		
+		arraySprites[3].height = centerHeight;
+		arraySprites[4].height = centerHeight;
+		arraySprites[5].height = centerHeight;
+		
+		var returnContainer:Container = new Container();
+		
+		var j:Int = 0;
+		for (sprite in arraySprites)
+		{
+			returnContainer.addChild(sprite);
+			if (j % 3 != 0)
+			{
+				sprite.x = arraySprites[j -1].width + arraySprites[j -1].x;
+			}
+			if (Math.floor(j / 3) != 0)
+			{
+				sprite.y = arraySprites[j - 3].height + arraySprites[j - 3].y;
+			}
+				
+			j++;
+		}
+		return returnContainer.generateTexture(Main.getInstance().renderer);	
+	}
 	
 	public static function getTileFromEvent(e:EventTarget):TilePoint
 	{

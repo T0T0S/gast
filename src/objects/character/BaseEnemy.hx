@@ -15,8 +15,8 @@ class BaseEnemy extends Npc{
 	public var agressionRange:Int = 0;
 	public var parentGroup:EnemyGroup;
 	
-	public function new(newName:String, ?newInGameName:String) {
-		super(newName, newInGameName);
+	public function new(newName:String, ?newpseudo:String) {
+		super(newName, newpseudo);
 		setZ(1);
 		entityType = EntityType.enemy;
 		agressionRange = config.agressionRange == null ? 0: config.agressionRange;

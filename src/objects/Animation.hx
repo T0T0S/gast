@@ -27,6 +27,11 @@ class Animation{
 		callback = endCallback == null ? callback : endCallback;
 	}
 	
+	public function setCallBack(newCallback:Dynamic)
+	{	
+		callback = untyped newCallBack;
+	}
+	
 	public function getFrames(newDirection:Int):Array<Int> {
 		direction = newDirection;
 		return data[direction];

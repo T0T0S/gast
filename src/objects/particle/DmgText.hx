@@ -10,7 +10,7 @@ import tweenx909.TweenX;
  * @author ToTos
  */
 class DmgText extends Text{
-	private var tempCallBack:Void->Void;
+	private var tempCallBack:DmgText->Void;
 	
 	public function new() {
 		super("", { "fill":"#ff6c00", "font":"30px gastFont", "stroke": "#790000", "strokeThickness":10 } );

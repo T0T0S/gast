@@ -170,7 +170,7 @@ class MapManager{
 					//if enemy is still in the character manager teleport it there.
 					if (tempCharacter != null)
 					{
-						trace("Enemy "+tempCharacter.inGameName+" found in CharacterManager, moving to previous position.");
+						trace("Enemy "+tempCharacter.pseudo+" found in CharacterManager, moving to previous position.");
 						tempCharacter.teleportTo(TilePoint.fromString(group.enemiesData.get(enemyId).position));
 						tempCharacter.visible = true;
 						untyped tempCharacter.parentGroup = group;
